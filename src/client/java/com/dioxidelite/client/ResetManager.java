@@ -40,7 +40,7 @@ public class ResetManager {
         Config.itemPhysicsRotationSpeed = 1.0f;
         Config.hudTheme = Config.HudTheme.DARK;
         Config.visualStyle = Config.VisualStyle.LIQUID_GLASS;
-        Config.clickGuiTheme = Config.ClickGuiTheme.ORIGINAL;
+        Config.clickGuiTheme = Config.ClickGuiTheme.SIGNATURE;
         Config.visualWatermark = false;
         Config.visualArrayList = false;
         Config.visualInfoHud = false;
@@ -135,7 +135,7 @@ public class ResetManager {
         Config.smoothHotbarScrolling = false;
         Config.smoothHotbarAnimationSpeed = 0.55f;
         Config.hotbarRollover = 0;
-        Config.useMainUI = false;
+        Config.useMainUI = true;
         Config.mainUICustomBackground = false;
         Config.mainUIMouseEffect = false;
         Config.mainUIBackgroundImage = "1.png";

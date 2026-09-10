@@ -13,17 +13,14 @@ public class ThemePage extends BasePage {
     public ThemePage() {
         modules.add(new SettingModule(
                 UiText.t("ClickGUI 主题", "ClickGUI Theme"),
-                UiText.t("切换完整 ClickGUI 外观；Liquid Glass 保留为原始主题，Signature 为独立参考风格", "Switch the complete ClickGUI presentation; Liquid Glass remains the original theme and Signature is an independent reference-inspired theme"),
+                UiText.t("在原版、Minimal 与 Signature 三套完整 ClickGUI 布局之间切换", "Switch between the complete original, Minimal and Signature ClickGUI layouts"),
                 null)
                 .addSub(UiText.t("界面", "Layout"),
                         UiText.t("主题只改变界面表现，不改变功能逻辑", "Changes presentation only; module logic stays untouched"),
                         new SettingCycle(
-                                List.of(UiText.t("DioxideLite Liquid Glass", "DioxideLite Liquid Glass"), UiText.t("DioxideLite Minimal", "DioxideLite Minimal"), UiText.t("DioxideLite Signature", "DioxideLite Signature")),
+                                List.of(UiText.t("DioxideLite", "DioxideLite"), UiText.t("DioxideLite Minimal", "DioxideLite Minimal"), UiText.t("DioxideLite Signature", "DioxideLite Signature")),
                                 () -> switch (Config.clickGuiTheme) { case ORIGINAL -> 0; case MINIMAL_POP -> 1; case SIGNATURE -> 2; },
-                                i -> {
-                                    Config.ClickGuiTheme next = i == 2 ? Config.ClickGuiTheme.SIGNATURE : (i == 1 ? Config.ClickGuiTheme.MINIMAL_POP : Config.ClickGuiTheme.ORIGINAL);
-                                    com.dioxidelite.client.gui.clickgui.ClickGuiThemeController.apply(next, null);
-                                })));
+                                i -> { Config.clickGuiTheme = i == 2 ? Config.ClickGuiTheme.SIGNATURE : (i == 1 ? Config.ClickGuiTheme.MINIMAL_POP : Config.ClickGuiTheme.ORIGINAL); Config.save(); })));
 
         modules.add(new SettingModule(
                 UiText.t("Liquid Glass 全局视觉", "Liquid Glass Global Visuals"),
@@ -35,7 +32,7 @@ public class ThemePage extends BasePage {
                 UiText.t("切换 DioxideLite 的整套界面语言", "Switch the complete DioxideLite visual language"),
                 null)
                 .addSub(UiText.t("模板", "Template"),
-                        UiText.t("Liquid Glass / Aurora / RISE Clean / DioxideLite Minimal", "Liquid Glass / Aurora / RISE Clean / DioxideLite Minimal"),
+                        UiText.t("Liquid Glass / Aurora / RISE Clean / Minimal / Signature", "Liquid Glass / Aurora / RISE Clean / Minimal / Signature"),
                         new SettingCycle(
                                 List.of(
                                         UiText.t("Liquid Glass", "Liquid Glass"),

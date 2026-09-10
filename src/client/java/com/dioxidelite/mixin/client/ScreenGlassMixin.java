@@ -6,7 +6,6 @@ import com.dioxidelite.client.render.skia.SkiaScreen;
 import net.minecraft.client.gui.GuiGraphics;
 import net.minecraft.client.gui.screens.Screen;
 import net.minecraft.client.gui.screens.TitleScreen;
-import net.minecraft.client.gui.screens.ChatScreen;
 import org.spongepowered.asm.mixin.Mixin;
 import org.spongepowered.asm.mixin.injection.At;
 import org.spongepowered.asm.mixin.injection.Inject;
@@ -19,7 +18,7 @@ public abstract class ScreenGlassMixin {
     private void dioxide_lite$screenGlass(GuiGraphics graphics, int mouseX, int mouseY, float delta, CallbackInfo ci) {
         if (!Config.liquidGlassAllVisuals) return;
         Screen screen = (Screen) (Object) this;
-        if (screen instanceof SkiaScreen || screen instanceof TitleScreen || screen instanceof ChatScreen) return;
+        if (screen instanceof SkiaScreen || screen instanceof TitleScreen) return;
         if (screen.width <= 120 || screen.height <= 80) return;
         float marginX = Math.max(24f, screen.width * .10f);
         float marginY = Math.max(18f, screen.height * .12f);

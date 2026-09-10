@@ -3,14 +3,12 @@ package com.dioxidelite.client.gui.clickgui;
 import com.dioxidelite.Config;
 import com.dioxidelite.client.gui.clickgui.pages.*;
 import com.dioxidelite.client.render.font.FontRenderer;
-import com.dioxidelite.client.render.skia.LiquidGlassRenderer;
 import com.dioxidelite.client.render.skia.SkiaScreen;
 import io.github.humbleui.skija.Canvas;
 import io.github.humbleui.skija.Paint;
 import io.github.humbleui.skija.PaintMode;
 import io.github.humbleui.types.RRect;
 import io.github.humbleui.types.Rect;
-import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.screens.Screen;
 import net.minecraft.network.chat.Component;
 import org.lwjgl.glfw.GLFW;
@@ -89,8 +87,10 @@ public final class DioxideLiteMinimalClickGuiScreen extends SkiaScreen {
         c.scale(scale, scale);
         c.translate(-width / 2f, -height / 2f);
 
-        LiquidGlassRenderer.drawSurface(c, Minecraft.getInstance(), x, y, W, H, Config.glassRadius, alpha);
-        rounded(c, x + 1, y + 1, W - 2, H - 2, 14, withAlpha(PANEL, alpha));
+        // The GPU-backed Skia screen composites the glass background before this
+        // canvas is submitted. Do not start a second blur/capture pass from inside
+        // the same canvas; that was one of the largest sources of ClickGUI stalls.
+        rounded(c, x, y, W, H, Config.glassRadius, withAlpha(PANEL, alpha));
         rounded(c, x + 1, y + 1, NAV_W, H - 2, 14, withAlpha(0xA8080D13, alpha));
 
         FontRenderer.drawText(c, "DIOXIDE", x + 28, y + 42, 19, TEXT);

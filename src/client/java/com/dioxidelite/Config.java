@@ -40,7 +40,7 @@ public class Config {
     public enum VisualStyle { AURORA, LIQUID_GLASS, RISE_CLEAN, MINIMAL, SIGNATURE }
     public static VisualStyle visualStyle = VisualStyle.LIQUID_GLASS;
     public enum ClickGuiTheme { ORIGINAL, MINIMAL_POP, SIGNATURE }
-    public static ClickGuiTheme clickGuiTheme = ClickGuiTheme.ORIGINAL;
+    public static ClickGuiTheme clickGuiTheme = ClickGuiTheme.SIGNATURE;
     // Presentation-only visual modules inspired by the reference client.
     public static boolean visualWatermark = false;
     public static boolean visualArrayList = false;
@@ -108,7 +108,7 @@ public class Config {
     public static int betterChatMessageFadeTime = 170;
     public static int betterChatInputFadeTime = 170;
     public static int hotbarRollover = 0;
-    public static boolean useMainUI = false;
+    public static boolean useMainUI = true;
     public static boolean mainUICustomBackground = false;
     public static boolean mainUIMouseEffect = false;
     public static boolean termsRead = false;
@@ -248,7 +248,7 @@ public class Config {
             itemPhysicsRotationSpeed = Float.parseFloat(prop.getProperty("itemPhysicsRotationSpeed", "1.0"));
             hudTheme = parseHudTheme(prop.getProperty("hudTheme", prop.getProperty("skiaBlurColor", "DARK")));
             visualStyle = parseVisualStyle(prop.getProperty("visualStyle", "LIQUID_GLASS"));
-            clickGuiTheme = parseEnum(prop.getProperty("clickGuiTheme", "ORIGINAL"), ClickGuiTheme.ORIGINAL, ClickGuiTheme.class);
+            clickGuiTheme = parseEnum(prop.getProperty("clickGuiTheme", "SIGNATURE"), ClickGuiTheme.SIGNATURE, ClickGuiTheme.class);
             visualWatermark = Boolean.parseBoolean(prop.getProperty("visualWatermark", "false"));
             visualArrayList = Boolean.parseBoolean(prop.getProperty("visualArrayList", "false"));
             visualInfoHud = Boolean.parseBoolean(prop.getProperty("visualInfoHud", "false"));
@@ -314,7 +314,7 @@ public class Config {
             betterChatMessageFadeTime = Integer.parseInt(prop.getProperty("betterChatMessageFadeTime", "170"));
             betterChatInputFadeTime = Integer.parseInt(prop.getProperty("betterChatInputFadeTime", "170"));
             hotbarRollover = Integer.parseInt(prop.getProperty("hotbarRollover", "0"));
-            useMainUI = Boolean.parseBoolean(prop.getProperty("useMainUI", "false"));
+            useMainUI = Boolean.parseBoolean(prop.getProperty("useMainUI", "true"));
             mainUICustomBackground = Boolean.parseBoolean(prop.getProperty("mainUICustomBackground", "false"));
             mainUIMouseEffect = Boolean.parseBoolean(prop.getProperty("mainUIMouseEffect", "false"));
             termsRead = Boolean.parseBoolean(prop.getProperty("termsRead", "false"));

@@ -12,7 +12,6 @@ import com.dioxidelite.client.gui.clickgui.NewSettingsScreen;
 import io.github.humbleui.skija.*;
 import io.github.humbleui.skija.impl.Library;
 import io.github.humbleui.types.RRect;
-import io.github.humbleui.types.Rect;
 import net.fabricmc.api.EnvType;
 import net.fabricmc.api.Environment;
 import net.minecraft.client.Minecraft;
@@ -49,6 +48,9 @@ public class DioxideLiteMainUI extends Screen {
     private static final long HINT_FADE_OUT_MS = 800L;
     private static final float SETTINGS_SIZE = 36f;
     private static final float SETTINGS_MARGIN = 24f;
+    private static final float THEME_W = 132f;
+    private static final float THEME_H = 30f;
+    private static final float THEME_GAP = 10f;
     private static final Identifier BACKGROUND_TEXTURE_ID = Identifier.fromNamespaceAndPath("dioxide_lite", "mainui_custom_background");
 
     private MainUIShader shader;
@@ -176,8 +178,11 @@ public class DioxideLiteMainUI extends Screen {
         MenuLayout layout = menuLayout(w, h);
         float intro = Math.min(1f, Math.max(0f, (nowMs - introStartMs) / 850f));
         intro = 1f - (float) Math.pow(1f - intro, 3f);
+        drawThemeSwitcher(c, intro);
         if (entryGate) {
             drawEntryGate(c, layout, intro);
+            renderSettingsPlaceholder(c);
+            if (settingsOpen) renderSettingsPanel(c);
             return;
         }
         float dx = mouseX - layout.cx;
@@ -239,6 +244,29 @@ public class DioxideLiteMainUI extends Screen {
                 withAlpha(0xFF9AA7B5, intro));
         FontRenderer.drawText(c, Version.displayName(), layout.footerX, layout.footerY,
                 Math.max(6f, layout.brandSize * .52f), withAlpha(0xFF8C98A5, intro * .82f));
+
+        // Keep the original background/settings surface available in the Setsuna-style menu.
+        renderSettingsPlaceholder(c);
+        if (settingsOpen) renderSettingsPanel(c);
+    }
+
+    private void drawThemeSwitcher(Canvas c, float intro) {
+        float x = getThemeX();
+        float y = SETTINGS_MARGIN + 3f;
+        boolean light = isLightTheme();
+        int base = light ? 0x111111 : 0xFFFFFF;
+        int accent = light ? 0xD17600 : 0x78CFFF;
+        try (Paint bg = new Paint().setAntiAlias(true)) {
+            bg.setColor(withAlpha(light ? 0xF5F5F5 : 0x081019, .64f * intro));
+            c.drawRRect(RRect.makeXYWH(x, y, THEME_W, THEME_H, 10f), bg);
+            bg.setMode(PaintMode.STROKE);
+            bg.setStrokeWidth(.8f);
+            bg.setColor(withAlpha(accent, .55f * intro));
+            c.drawRRect(RRect.makeXYWH(x + .5f, y + .5f, THEME_W - 1f, THEME_H - 1f, 10f), bg);
+        }
+        FontRenderer.drawText(c, Config.isChinese ? "主界面" : "MAIN MENU", x + 12f, y + 12f, 6.5f, withAlpha(light ? 0x4D5559 : 0x9AA7B5, intro));
+        FontRenderer.drawText(c, "SETSUNA", x + 12f, y + 23f, 8.5f, withAlpha(base, intro));
+        FontRenderer.drawText(c, "↔", x + THEME_W - 22f, y + 20f, 10f, withAlpha(accent, intro));
     }
 
     private void drawEntryGate(Canvas c, MenuLayout layout, float intro) {
@@ -267,9 +295,9 @@ public class DioxideLiteMainUI extends Screen {
         c.rotate(8f);
         Paint p = new Paint().setAntiAlias(false);
         p.setColor(withAlpha(0xFF78CFFF, (.075f + singleHover * .055f) * intro));
-        c.drawRect(Rect.makeXYWH(-extent, -extent, extent, extent * 2f), p);
+        c.drawRect(io.github.humbleui.types.Rect.makeXYWH(-extent, -extent, extent, extent * 2f), p);
         p.setColor(withAlpha(0xFFF1A45D, (.055f + multiHover * .045f) * intro));
-        c.drawRect(Rect.makeXYWH(0, -extent, extent, extent * 2f), p);
+        c.drawRect(io.github.humbleui.types.Rect.makeXYWH(0, -extent, extent, extent * 2f), p);
         c.restore();
         p.close();
 
@@ -305,8 +333,10 @@ public class DioxideLiteMainUI extends Screen {
             panel.close();
             Paint edge = new Paint().setAntiAlias(false).setColor(withAlpha(accent,
                     panelProgress * (.24f + .24f * hover)));
-            c.drawRect(Rect.makeXYWH(anchorX - panelWidth * .5f, centerY - panelHeight * .5f, panelWidth, Math.max(1f, layout.scale)), edge);
-            c.drawRect(Rect.makeXYWH(anchorX - panelWidth * .5f, centerY + panelHeight * .5f - Math.max(1f, layout.scale), panelWidth, Math.max(1f, layout.scale)), edge);
+            c.drawRect(io.github.humbleui.types.Rect.makeXYWH(anchorX - panelWidth * .5f, centerY - panelHeight * .5f,
+                    panelWidth, Math.max(1f, layout.scale)), edge);
+            c.drawRect(io.github.humbleui.types.Rect.makeXYWH(anchorX - panelWidth * .5f, centerY + panelHeight * .5f - Math.max(1f, layout.scale),
+                    panelWidth, Math.max(1f, layout.scale)), edge);
             edge.close();
         }
         FontRenderer.drawText(c, label, x, y, fontSize,
@@ -371,7 +401,7 @@ public class DioxideLiteMainUI extends Screen {
         FontRenderer.drawText(c, label, x, y, size, withAlpha(0xFFFFFFFF, intro * (.68f + .32f * hover)));
         Paint line = new Paint().setAntiAlias(true).setColor(withAlpha(accent, intro * (.25f + hover * (.55f + .15f * flash))));
         float lw = 30f + hover * 40f;
-        c.drawRect(Rect.makeXYWH(anchorX - lw/2f, centerY + 13f, lw, 1.2f), line);
+        c.drawRect(io.github.humbleui.types.Rect.makeXYWH(anchorX - lw/2f, centerY + 13f, lw, 1.2f), line);
         line.close();
     }
 
@@ -379,7 +409,7 @@ public class DioxideLiteMainUI extends Screen {
         float tw = FontRenderer.measureTextWidth(label, 6.5f);
         FontRenderer.drawText(c, label, x - tw/2f, y, 6.5f, withAlpha(0xFFFFFFFF, reveal * (.65f + .35f * hover)));
         Paint p = new Paint().setAntiAlias(true).setColor(withAlpha(accent, reveal * (.28f + .65f * hover)));
-        c.drawRect(Rect.makeXYWH(x - 4f - hover * 4f, y + 8f, 8f + hover * 8f, 1.2f), p);
+        c.drawRect(io.github.humbleui.types.Rect.makeXYWH(x - 4f - hover * 4f, y + 8f, 8f + hover * 8f, 1.2f), p);
         p.close();
     }
 
@@ -408,8 +438,60 @@ public class DioxideLiteMainUI extends Screen {
     @Override
     public boolean mouseClicked(MouseButtonEvent event, boolean consumed) {
         if (event.button() != 0) return false;
-        float mx = (float)event.x();
-        float my = (float)event.y();
+        float mx = (float) event.x();
+        float my = (float) event.y();
+
+        // Explicit main-menu theme switch. The vanilla screen gets the same control
+        // from MainUIScreenManager, so the user can move between both themes at any time.
+        if (isInsideThemeSwitcher(mx, my)) {
+            Config.useMainUI = false;
+            Config.save();
+            playClickSound();
+            if (minecraft != null) minecraft.setScreen(new TitleScreen());
+            return true;
+        }
+
+        if (isInsideSettings(mx, my)) {
+            settingsOpen = !settingsOpen;
+            playClickSound();
+            return true;
+        }
+        if (settingsOpen && isInsideSettingsArea(mx, my)) {
+            if (isInsideBackgroundModeBuiltin(mx, my)) {
+                Config.mainUICustomBackground = false;
+                Config.save();
+                destroyBackgroundTexture();
+                refreshThemeFromBackground();
+                playClickSound();
+                return true;
+            }
+            if (isInsideBackgroundModeCustom(mx, my)) {
+                Config.mainUICustomBackground = true;
+                Config.save();
+                ensureBackgroundTexture();
+                refreshThemeFromBackground();
+                playClickSound();
+                return true;
+            }
+            if (Config.mainUICustomBackground && isInsideOpenBackgroundFolder(mx, my)) {
+                MainUIBackgrounds.openFolder();
+                playClickSound();
+                return true;
+            }
+            if (Config.mainUICustomBackground && isInsideBackgroundImageSelect(mx, my)) {
+                cycleBackgroundImage();
+                playClickSound();
+                return true;
+            }
+            if (Config.mainUICustomBackground && isInsideMouseEffectToggle(mx, my)) {
+                Config.mainUIMouseEffect = !Config.mainUIMouseEffect;
+                Config.save();
+                playClickSound();
+                return true;
+            }
+            return true;
+        }
+
         MenuLayout layout = menuLayout(width, height);
         if (entryGate) {
             entryGate = false;
@@ -610,7 +692,7 @@ public class DioxideLiteMainUI extends Screen {
         if (a <= 0) return;
 
         String text = Config.isChinese
-                ? "点击左上角“DioxideLite”标题可返回原版UI，右键则可以切换风格。"
+                ? "点击右上角“SETSUNA”可切换回原版主界面；齿轮仍保留原来的背景切换设置。"
                 : "Click the \"DioxideLite\" title in the top-left to return to the vanilla UI. Right-click it to switch styles.";
         int textW = this.font.width(text);
         int x = (this.width - textW) / 2;
@@ -796,6 +878,16 @@ public class DioxideLiteMainUI extends Screen {
         int bottom = Math.min(this.height, (int) Math.ceil(maxY + 6f));
         textW = Math.max(1, right - textX);
         textH = Math.max(1, bottom - textY);
+    }
+
+    private float getThemeX() {
+        return this.width - SETTINGS_MARGIN - SETTINGS_SIZE - THEME_GAP - THEME_W;
+    }
+
+    private boolean isInsideThemeSwitcher(float mx, float my) {
+        float x = getThemeX();
+        float y = SETTINGS_MARGIN + 3f;
+        return mx >= x && mx <= x + THEME_W && my >= y && my <= y + THEME_H;
     }
 
     private float getSettingsX() {
