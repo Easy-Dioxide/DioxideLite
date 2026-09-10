@@ -8,6 +8,8 @@ import io.github.humbleui.skija.Picture;
 import io.github.humbleui.skija.PictureRecorder;
 import io.github.humbleui.types.RRect;
 import io.github.humbleui.types.Rect;
+import net.minecraft.client.Minecraft;
+import net.minecraft.client.gui.GuiGraphics;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -179,6 +181,50 @@ public class SettingModule {
             float aw = FontRenderer.measureTextWidth(arrow, 12f, FontRenderer.MATERIAL_SYMBOLS);
             FontRenderer.drawText(canvas, arrow, x + contentW - 5f - aw, y + (MODULE_H - 8f) / 2f + 5.5f,
                     12f, DioxideLiteVisuals.muted(alpha), FontRenderer.MATERIAL_SYMBOLS);
+        }
+    }
+
+    public void drawFast(GuiGraphics g, int x, int y, int contentW, int alpha, int viewportTop, int viewportBottom, int mouseX, int mouseY) {
+        int moduleH = 56;
+        int cardH = 48;
+        boolean hover = mouseX >= x && mouseX <= x + contentW && mouseY >= y && mouseY <= y + cardH;
+        int fill = (Math.min(255, Math.max(0, Math.round(alpha * (hover ? .12f : .075f)))) << 24) | 0x0C1216;
+        g.fill(x, y, x + contentW, y + cardH, fill);
+        int lineAlpha = Math.min(255, Math.max(0, Math.round(alpha * (hover ? .55f : .24f))));
+        g.renderOutline(x, y, contentW, cardH, (lineAlpha << 24) | (hover ? 0x58DDBE : 0x71807C));
+        Minecraft mc = Minecraft.getInstance();
+        g.drawString(mc.font, title, x + 16, y + 9, (alpha << 24) | 0xF2F7F6, false);
+        if (subtitle != null && !subtitle.isEmpty()) {
+            g.drawString(mc.font, subtitle, x + 16, y + 25, (Math.round(alpha * .62f) << 24) | 0x9BA6A3, false);
+        }
+        if (mainWidget != null) {
+            int wx = x + contentW - 20 - Math.round(mainWidget.getWidth());
+            int wy = y + 12;
+            mainWidget.drawFast(g, wx, wy, alpha);
+        }
+        if (hasVisibleSubEntries() && expandProgress > .01f) {
+            int sy = y + moduleH;
+            for (SubEntry sub : subEntries) {
+                if (!sub.isVisible()) continue;
+                int sh = 44;
+                int subCardH = 38;
+                if (sy + sh > viewportTop && sy < viewportBottom) {
+                    int subAlpha = Math.round(alpha * expandProgress);
+                    g.fill(x + 8, sy, x + contentW, sy + subCardH, (Math.round(subAlpha * .055f) << 24) | 0x10181D);
+                    g.renderOutline(x + 8, sy, contentW - 8, subCardH, (Math.round(subAlpha * .18f) << 24) | 0x63736F);
+                    g.drawString(mc.font, sub.title, x + 22, sy + 8, (subAlpha << 24) | 0xE6EFED, false);
+                    if (sub.subtitle != null && !sub.subtitle.isEmpty()) g.drawString(mc.font, sub.subtitle, x + 22, sy + 22, (Math.round(subAlpha * .55f) << 24) | 0x8F9C99, false);
+                    if (sub.widget != null) {
+                        int wx = x + contentW - 20 - Math.round(sub.widget.getWidth());
+                        sub.widget.drawFast(g, wx, sy + 7, subAlpha);
+                    }
+                }
+                sy += sh;
+            }
+        }
+        if (hasVisibleSubEntries()) {
+            String marker = expandProgress > .5f ? "−" : "+";
+            g.drawString(mc.font, marker, x + contentW - 10, y + 18, (Math.round(alpha * .55f) << 24) | 0x58DDBE, false);
         }
     }
 

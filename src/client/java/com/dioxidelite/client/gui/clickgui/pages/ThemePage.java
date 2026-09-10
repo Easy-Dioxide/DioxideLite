@@ -2,6 +2,7 @@ package com.dioxidelite.client.gui.clickgui.pages;
 
 import com.dioxidelite.Config;
 import com.dioxidelite.client.gui.clickgui.UiText;
+import com.dioxidelite.client.gui.clickgui.ClickGuiThemeController;
 import com.dioxidelite.client.gui.clickgui.widget.SettingCycle;
 import com.dioxidelite.client.gui.clickgui.widget.SettingModule;
 import com.dioxidelite.client.gui.clickgui.widget.SettingSlider;
@@ -18,9 +19,9 @@ public class ThemePage extends BasePage {
                 .addSub(UiText.t("界面", "Layout"),
                         UiText.t("主题只改变界面表现，不改变功能逻辑", "Changes presentation only; module logic stays untouched"),
                         new SettingCycle(
-                                List.of(UiText.t("DioxideLite", "DioxideLite"), UiText.t("DioxideLite Minimal", "DioxideLite Minimal"), UiText.t("DioxideLite Signature", "DioxideLite Signature")),
+                                List.of(UiText.t("Liquid Glass", "Liquid Glass"), UiText.t("DioxideLite Minimal", "DioxideLite Minimal"), UiText.t("DioxideLite Signature", "DioxideLite Signature")),
                                 () -> switch (Config.clickGuiTheme) { case ORIGINAL -> 0; case MINIMAL_POP -> 1; case SIGNATURE -> 2; },
-                                i -> { Config.clickGuiTheme = i == 2 ? Config.ClickGuiTheme.SIGNATURE : (i == 1 ? Config.ClickGuiTheme.MINIMAL_POP : Config.ClickGuiTheme.ORIGINAL); Config.save(); })));
+                                i -> { Config.ClickGuiTheme theme = i == 2 ? Config.ClickGuiTheme.SIGNATURE : (i == 1 ? Config.ClickGuiTheme.MINIMAL_POP : Config.ClickGuiTheme.ORIGINAL); ClickGuiThemeController.apply(theme, null); })));
 
         modules.add(new SettingModule(
                 UiText.t("Liquid Glass 全局视觉", "Liquid Glass Global Visuals"),

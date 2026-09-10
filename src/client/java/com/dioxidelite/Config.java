@@ -40,7 +40,7 @@ public class Config {
     public enum VisualStyle { AURORA, LIQUID_GLASS, RISE_CLEAN, MINIMAL, SIGNATURE }
     public static VisualStyle visualStyle = VisualStyle.LIQUID_GLASS;
     public enum ClickGuiTheme { ORIGINAL, MINIMAL_POP, SIGNATURE }
-    public static ClickGuiTheme clickGuiTheme = ClickGuiTheme.SIGNATURE;
+    public static ClickGuiTheme clickGuiTheme = ClickGuiTheme.ORIGINAL;
     // Presentation-only visual modules inspired by the reference client.
     public static boolean visualWatermark = false;
     public static boolean visualArrayList = false;
@@ -248,7 +248,7 @@ public class Config {
             itemPhysicsRotationSpeed = Float.parseFloat(prop.getProperty("itemPhysicsRotationSpeed", "1.0"));
             hudTheme = parseHudTheme(prop.getProperty("hudTheme", prop.getProperty("skiaBlurColor", "DARK")));
             visualStyle = parseVisualStyle(prop.getProperty("visualStyle", "LIQUID_GLASS"));
-            clickGuiTheme = parseEnum(prop.getProperty("clickGuiTheme", "SIGNATURE"), ClickGuiTheme.SIGNATURE, ClickGuiTheme.class);
+            clickGuiTheme = parseEnum(prop.getProperty("clickGuiTheme", "ORIGINAL"), ClickGuiTheme.ORIGINAL, ClickGuiTheme.class);
             visualWatermark = Boolean.parseBoolean(prop.getProperty("visualWatermark", "false"));
             visualArrayList = Boolean.parseBoolean(prop.getProperty("visualArrayList", "false"));
             visualInfoHud = Boolean.parseBoolean(prop.getProperty("visualInfoHud", "false"));

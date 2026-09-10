@@ -1,7 +1,6 @@
 package com.dioxidelite.mixin.client;
 
-import com.dioxidelite.client.gui.clickgui.NewSettingsScreen;
-import com.dioxidelite.client.gui.clickgui.TermsScreen;
+import com.dioxidelite.client.gui.clickgui.ClickGuiThemeController;
 import com.dioxidelite.Config;
 import net.minecraft.client.gui.screens.Screen;
 import net.minecraft.client.gui.screens.inventory.AbstractContainerScreen;
@@ -20,7 +19,7 @@ public abstract class AbstractContainerScreenMixin extends Screen {
     private void addGlobalSettingsButton(CallbackInfo ci) {
         this.addRenderableWidget(Button.builder(Component.literal("DioxideLite"), (button) -> {
             Config.applyFirstUseLanguageDefault();
-            if (this.minecraft != null) this.minecraft.setScreen(Config.termsRead ? new NewSettingsScreen(this) : new TermsScreen(this));
+            if (this.minecraft != null) this.minecraft.setScreen(ClickGuiThemeController.create(Config.clickGuiTheme, this));
         }).bounds(this.width - 82, 2, 80, 20).build());
     }
 }

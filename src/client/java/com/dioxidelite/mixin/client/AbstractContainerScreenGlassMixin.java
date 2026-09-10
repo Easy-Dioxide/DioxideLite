@@ -12,8 +12,8 @@ import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
 /** Places the glass material after the vanilla container background but before slots/widgets. */
 @Mixin(AbstractContainerScreen.class)
 public abstract class AbstractContainerScreenGlassMixin {
-    @Inject(method = "renderBg", at = @At("TAIL"))
-    private void dioxide_lite$liquidGlassContainer(GuiGraphics graphics, float partialTick, int mouseX, int mouseY, CallbackInfo ci) {
+    @Inject(method = "renderSlots", at = @At("HEAD"))
+    private void dioxide_lite$liquidGlassContainer(GuiGraphics graphics, int mouseX, int mouseY, CallbackInfo ci) {
         if (!Config.liquidGlassAllVisuals) return;
         AbstractContainerScreen<?> screen = (AbstractContainerScreen<?>) (Object) this;
         LiquidGlassVisualSystem.renderContainer(graphics, screen.width, screen.height);

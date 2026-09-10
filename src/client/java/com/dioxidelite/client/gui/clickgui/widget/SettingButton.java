@@ -5,6 +5,7 @@ import com.dioxidelite.client.render.skia.DioxideLiteVisuals;
 import io.github.humbleui.skija.Canvas;
 import io.github.humbleui.skija.Paint;
 import io.github.humbleui.types.RRect;
+import net.minecraft.client.gui.GuiGraphics;
 
 import java.util.function.Supplier;
 
@@ -40,6 +41,14 @@ public class SettingButton extends SettingWidget {
             cachedTextWidth = FontRenderer.measureTextWidth(text, 11f);
         }
         FontRenderer.drawText(canvas, text, x + (getWidth() - cachedTextWidth) * 0.5f, y + 15.5f, 11f, DioxideLiteVisuals.text(alpha));
+    }
+
+    @Override
+    public void drawFast(GuiGraphics g, int x, int y, int alpha) {
+        g.fill(x, y, x + 100, y + 24, (alpha << 24) | 0x10283A);
+        g.renderOutline(x, y, 100, 24, (alpha << 24) | 0x58DDBE);
+        String text = label.get();
+        g.drawCenteredString(net.minecraft.client.Minecraft.getInstance().font, text, x + 50, y + 8, (alpha << 24) | 0xF2F7F6);
     }
 
     @Override

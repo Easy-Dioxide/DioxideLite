@@ -40,7 +40,7 @@ public class ResetManager {
         Config.itemPhysicsRotationSpeed = 1.0f;
         Config.hudTheme = Config.HudTheme.DARK;
         Config.visualStyle = Config.VisualStyle.LIQUID_GLASS;
-        Config.clickGuiTheme = Config.ClickGuiTheme.SIGNATURE;
+        Config.clickGuiTheme = Config.ClickGuiTheme.ORIGINAL;
         Config.visualWatermark = false;
         Config.visualArrayList = false;
         Config.visualInfoHud = false;

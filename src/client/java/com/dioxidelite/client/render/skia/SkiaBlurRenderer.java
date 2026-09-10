@@ -170,12 +170,14 @@ public final class SkiaBlurRenderer {
         }
     }
 
-    private static void restoreReadBuffer(int framebufferId, int buffer) {
-        glReadBuffer(framebufferId == 0 ? GL_BACK : buffer);
+    private void restoreReadBuffer(int framebuffer, int buffer) {
+        glBindFramebuffer(GL_READ_FRAMEBUFFER, framebuffer);
+        glReadBuffer(buffer);
     }
 
-    private static void restoreDrawBuffer(int framebufferId, int buffer) {
-        glDrawBuffer(framebufferId == 0 ? GL_BACK : buffer);
+    private void restoreDrawBuffer(int framebuffer, int buffer) {
+        glBindFramebuffer(GL_DRAW_FRAMEBUFFER, framebuffer);
+        glDrawBuffer(buffer);
     }
 
     private void ensureCaptureResources(DirectContext context, int framebufferW, int framebufferH) {

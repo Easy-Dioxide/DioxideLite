@@ -2,6 +2,7 @@ package com.dioxidelite.client.gui.clickgui.pages;
 
 import com.dioxidelite.client.gui.clickgui.widget.SettingModule;
 import io.github.humbleui.skija.Canvas;
+import net.minecraft.client.gui.GuiGraphics;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -49,6 +50,21 @@ public abstract class BasePage {
                 m.draw(canvas, x, cy, contentW, alpha, viewportTop, viewportBottom);
             }
             cy += mh + 8f;
+        }
+    }
+
+    public void drawFast(GuiGraphics graphics, int x, int y, int contentW, int contentH, int alpha, float scrollOffset, int mouseX, int mouseY) {
+        ensureLayoutCache();
+        int cy = Math.round(y - scrollOffset);
+        int top = y;
+        int bottom = y + contentH;
+        for (int i = 0; i < visibleModules.size(); i++) {
+            SettingModule m = visibleModules.get(i);
+            int mh = Math.round(visibleModuleHeights.get(i));
+            if (cy + mh > top && cy < bottom) {
+                m.drawFast(graphics, x, cy, contentW, alpha, top, bottom, mouseX, mouseY);
+            }
+            cy += mh + 8;
         }
     }
 
