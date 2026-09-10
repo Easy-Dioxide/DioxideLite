@@ -1,5 +1,49 @@
 # DioxideLite 更新日志
 
+## v1.7.4 (Setsuna Boot · Liquid Glass Default) — 2026-09-11
+
+> 目标环境：Minecraft 1.21.11 · Fabric Loader 0.18.4
+> 定位：v1.7.3 渲染重构的完善版——**Setsuna 启动流程** + **Liquid Glass 默认主题**，主菜单与 ClickGUI 全面原生渲染
+
+### 新增
+
+- **Setsuna 启动流程（boot flow）**：主菜单默认呈现 Setsuna 风格的进入动效——黑色/背景入场 → `DIOXIDELITE / SETSUNA UI` 字标 → `CLICK TO START` → 点击后分段过渡（中心 / 分割线 / 菜单）→ `SINGLE PLAYER / MULTI PLAYER` 菜单，全程原生 `GuiGraphics` 渲染，无 GLSL / Skia / FBO / 逐帧 CPU 回读。
+- **主菜单顶部切换按钮**：`BACKGROUND: SETSUNA` / `VANILLA` 一键在 Setsuna 主界面与原版主界面之间切换。
+- **ClickGUI 默认主题回归 Liquid Glass**：`Config.clickGuiTheme` 默认值回到 `ORIGINAL`（Liquid Glass `NewSettingsScreen`），开箱即用液态玻璃界面。
+- **KeyInputHandler 免确认门**：Right Shift 直接打开当前所选主题的 ClickGUI，不再被 `TermsScreen` 拦截（协议页仍保留显式入口）。
+
+### 变更
+
+- **Signature 主题渲染重构**：径向 → 检查器（radial-to-inspector）界面改为原生 `GuiGraphics` 快速渲染路径，不再使用 Skia / GPU framebuffer 包装 / 离屏纹理 / 模糊捕获；模块与设置逻辑完全复用。
+- **主菜单渲染重构**：移除 GLSL 星云动画及其 shader 资源，改为原生渲染；保留 PVPUtils 风格自定义 PNG 背景（`DioxideLite/backgrounds`）；鼠标视差为可选且仅使用轻量坐标插值。
+- **三主题热切换**：Theme 页 `ClickGUI Theme` 循环控件通过 `ClickGuiThemeController.apply` **即时重建界面**，切换后无需重开 ClickGUI 即生效。
+- **Liquid Glass 全局视觉默认**：`liquidGlassAllVisuals` 保留一键全局玻璃（HUD / 快捷栏 / 聊天 / 容器界面 / 界面卡片，主菜单除外）。
+
+### 修复
+
+- 修复 `RenderPage` / `ThemePage` 结尾多余右括号导致的编译失败（历史遗留同款问题）。
+- 修复 `SkiaBlurRenderer` 缺失 `restoreReadBuffer` / `restoreDrawBuffer` 实现导致的编译失败。
+- 修复 `AbstractContainerScreenGlassMixin` 注入点在 1.21.11 下不可用的问题（`renderBg` TAIL → `renderSlots` HEAD），消除容器玻璃在渲染重做后的崩溃风险。
+
+### 产物
+
+- `DioxideLite-v1.7.4.jar` / `DioxideLite-v1.7.4-sources.jar`
+
+---
+
+## v1.7.3 (Render Rework) — 2026-09-10（前序基线，包含于 v1.7.4）
+
+> 说明：v1.7.4 源码基于 v1.7.3 渲染重构，以下为 v1.7.3 的核心变更（v1.7.4 已继承并完善）。
+
+### 变更
+
+- **主菜单原生化**：移除主菜单 GLSL 动画系统与 shader 资源，改为 Minecraft 原生 `GuiGraphics` 路径；保留 Setsuna 信息层级（`CLICK TO START` / `SINGLE PLAYER` / `MULTI PLAYER`），新增主菜单 `VANILLA` 直切按钮。
+- **Signature ClickGUI 原生化**：不再使用 Skia、GPU framebuffer 包装、模糊捕获与离屏纹理；新增原生 `GuiGraphics` 快速渲染路径；右键 / ESC 导航与滑块拖拽保持支持。
+- **ClickGUI 访问修复**：旧 keybind 流程在 `termsRead=false` 时可能停在 `TermsScreen`，现改为 Right Shift 直接打开所选主题 ClickGUI；协议页保留显式入口。
+- **性能目标**：新主菜单与 Signature ClickGUI 不再进行逐帧 CPU 回读、动态纹理上传、Skia surface 提交或模糊捕获；剩余 Liquid Glass 渲染器仅用于显式请求的界面。
+
+---
+
 ## v1.7.2 (Setsuna Theme Rework) — 2026-09-10
 
 > 目标环境：Minecraft 1.21.11 · Fabric Loader 0.18.4

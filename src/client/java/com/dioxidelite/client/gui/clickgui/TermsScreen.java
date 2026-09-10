@@ -46,7 +46,7 @@ public class TermsScreen extends Screen {
         drawCentered(graphics, "and they have been balanced as much as possible. However, some servers may still treat certain features as violations and punish players.", x, y + 14, 0xFFFFFFFF);
         drawCentered(graphics, "You can choose the full or restricted version at any time in Misc Settings. Choosing the full version means you agree to this notice.", x, y + 28, 0xFFFFFFFF);
         if (!openedTerms) {
-            drawCentered(graphics, Config.isChinese ? "请先阅读协议，否则无法打开 ClickGUI。" : "Please read the terms first, or ClickGUI cannot be opened.", x, this.height - 112, 0xFFFFD166);
+            drawCentered(graphics, Config.isChinese ? "使用须知可单独阅读；ClickGUI 可直接通过快捷键打开。" : "The terms can be read separately; ClickGUI can be opened directly with its keybind.", x, this.height - 112, 0xFFFFD166);
         }
         drawButton(graphics, restrictedX, buttonY, buttonW, buttonH, mouseX, mouseY, 0xFFD64040, Config.isChinese ? "受限版本" : "Restricted", !openedTerms);
         drawButton(graphics, fullX, buttonY, buttonW, buttonH, mouseX, mouseY, 0xFF3DBB58, Config.isChinese ? "完整版本" : "Full", !openedTerms);

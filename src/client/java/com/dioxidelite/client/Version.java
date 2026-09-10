@@ -5,7 +5,7 @@ public final class Version {
     public static final String NAME = "DioxideLite";
 
     // 版本号：例如 DioxideLite-v1.2-alpha.1 里的 1.2
-    public static final String VERSION = "1.7.2";
+    public static final String VERSION = "1.7.4";
 
     // 版本类型：0 = 正式版，1 = alpha，2 = beta
     public static final int TYPE = 0;

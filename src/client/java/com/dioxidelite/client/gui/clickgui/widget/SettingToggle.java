@@ -4,6 +4,7 @@ import com.dioxidelite.client.render.skia.DioxideLiteVisuals;
 import io.github.humbleui.skija.Canvas;
 import io.github.humbleui.skija.Paint;
 import io.github.humbleui.types.RRect;
+import net.minecraft.client.gui.GuiGraphics;
 
 import java.util.function.Consumer;
 import java.util.function.Supplier;
@@ -51,6 +52,16 @@ public class SettingToggle extends SettingWidget {
         DioxideLiteVisuals.outline(canvas, x, y, 44f, 24f, 12f, colorT > 0.5f ? DioxideLiteVisuals.CYAN : 0x7D8A9C, alpha * (0.28f + 0.25f * colorT), 0.8f);
         thumbPaint.setColor(withAlpha(COLOR_THUMB, alpha));
         canvas.drawCircle(thumbX + 10f, y + 12f, 8f, thumbPaint);
+    }
+
+    @Override
+    public void drawFast(GuiGraphics g, int x, int y, int alpha) {
+        boolean on = getter.get();
+        int track = on ? ((alpha << 24) | 0x1B806B) : ((alpha << 24) | 0x25303A);
+        g.fill(x, y + 3, x + 44, y + 21, track);
+        g.renderOutline(x, y + 3, 44, 18, (alpha << 24) | (on ? 0x58DDBE : 0x66737F));
+        int knobX = on ? x + 31 : x + 7;
+        g.fill(knobX, y + 6, knobX + 10, y + 18, (alpha << 24) | 0xEAF8FF);
     }
 
     @Override
