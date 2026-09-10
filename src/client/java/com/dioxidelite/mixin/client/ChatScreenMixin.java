@@ -15,11 +15,12 @@ import org.spongepowered.asm.mixin.injection.callback.CallbackInfoReturnable;
 @Mixin(ChatScreen.class)
 public class ChatScreenMixin {
 
-    @Inject(method = "renderBackground", at = @At("TAIL"))
-    private void dioxide_lite$liquidGlassChatBackground(GuiGraphics graphics, int mouseX, int mouseY, float delta, CallbackInfo ci) {
-        if (!Config.liquidGlassAllVisuals) return;
-        Minecraft mc = Minecraft.getInstance();
-        LiquidGlassVisualSystem.renderChat(graphics, mc.getWindow().getGuiScaledWidth(), mc.getWindow().getGuiScaledHeight(), true);
+    @Inject(method = "render", at = @At("HEAD"))
+    private void dioxide_lite$liquidGlassChat(GuiGraphics graphics, int mouseX, int mouseY, float delta, CallbackInfo ci) {
+        if (Config.liquidGlassAllVisuals) {
+            Minecraft mc = Minecraft.getInstance();
+            LiquidGlassVisualSystem.renderChat(graphics, mc.getWindow().getGuiScaledWidth(), mc.getWindow().getGuiScaledHeight(), true);
+        }
     }
 
     @Inject(method = "<init>(Ljava/lang/String;Z)V", at = @At("RETURN"))

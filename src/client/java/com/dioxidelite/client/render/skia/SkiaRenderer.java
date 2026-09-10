@@ -30,7 +30,7 @@ public class SkiaRenderer {
     private static final long FRAME_IDLE_TIMEOUT_MS = 10000L;
     private static final long REGION_IDLE_TIMEOUT_MS = 5000L;
     private static final SkiaGlBackend GL_BACKEND = new SkiaGlBackend();
-    private static final boolean USE_GL_BACKEND_FOR_FRAME = false;
+    private static final boolean USE_GL_BACKEND_FOR_FRAME = true;
 
     private static Surface surface;
     private static Surface regionSurface;
@@ -105,6 +105,20 @@ public class SkiaRenderer {
     }
 
     public static Canvas beginRegion(int x, int y, int w, int h) {
+        if (USE_GL_BACKEND_FOR_FRAME) {
+            if (regionDrawing) return GL_BACKEND.isDrawing() ? GL_BACKEND.begin() : null;
+            Canvas canvas = GL_BACKEND.begin();
+            if (canvas == null) return null;
+            canvas.save();
+            canvas.clipRect(io.github.humbleui.types.Rect.makeXYWH(x, y, Math.max(1, w), Math.max(1, h)), true);
+            canvas.translate(-x, -y);
+            regionDrawing = true;
+            regionX = x;
+            regionY = y;
+            regionW = Math.max(1, w);
+            regionH = Math.max(1, h);
+            return canvas;
+        }
         if (regionDrawing) return regionSurface != null ? regionSurface.getCanvas() : null;
         ensureNativeLoaded();
         pruneIdleSurfaces();
@@ -173,6 +187,12 @@ public class SkiaRenderer {
     }
 
     public static void endRegion(GuiGraphics graphics) {
+        if (USE_GL_BACKEND_FOR_FRAME) {
+            if (!regionDrawing) return;
+            regionDrawing = false;
+            GL_BACKEND.end();
+            return;
+        }
         if (!regionDrawing || regionSurface == null || regionTexture == null) return;
         regionDrawing = false;
         try {
@@ -197,6 +217,7 @@ public class SkiaRenderer {
     }
 
     public static void drawCachedRegion(GuiGraphics graphics) {
+        if (USE_GL_BACKEND_FOR_FRAME) return;
         pruneIdleSurfaces();
         if (regionTexture == null || regionCapacityPixelW <= 0 || regionCapacityPixelH <= 0) return;
         graphics.blit(RenderPipelines.GUI_TEXTURED, REGION_TEXTURE_ID, regionX, regionY, 0f, 0f, regionW, regionH, regionPixelW, regionPixelH, regionCapacityPixelW, regionCapacityPixelH);
@@ -217,7 +238,7 @@ public class SkiaRenderer {
     }
 
     public static boolean hasRegionCache() {
-        return regionSurface != null && regionTexture != null;
+        return USE_GL_BACKEND_FOR_FRAME || (regionSurface != null && regionTexture != null);
     }
 
     public static void markFrameDirty() {

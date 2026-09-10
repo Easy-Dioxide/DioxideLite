@@ -1,24 +1,17 @@
 package com.dioxidelite.client.render.MainUI;
 
-import com.mojang.blaze3d.platform.NativeImage;
 import com.mojang.blaze3d.platform.Window;
 import com.mojang.blaze3d.systems.RenderSystem;
-import com.mojang.blaze3d.textures.GpuTexture;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.GuiGraphics;
-import net.minecraft.client.renderer.texture.DynamicTexture;
-import net.minecraft.network.chat.Component;
-import net.minecraft.resources.Identifier;
 import org.lwjgl.opengl.GL11;
 import org.lwjgl.opengl.GL15;
 import org.lwjgl.opengl.GL20;
 import org.lwjgl.opengl.GL30;
-import org.lwjgl.system.MemoryUtil;
 
 import java.io.BufferedReader;
 import java.io.InputStream;
 import java.io.InputStreamReader;
-import java.nio.ByteBuffer;
 import java.nio.charset.StandardCharsets;
 import java.util.List;
 import java.util.concurrent.ThreadLocalRandom;
@@ -60,23 +53,16 @@ public final class MainUIShader {
             }
             """;
 
-    private final Identifier textureId;
     private final String fragmentPath;
     private final long startTime;
     private int program;
     private int vao;
     private int vbo;
-    private int fbo;
-    private int colorTexture;
-    private int textureW = -1;
-    private int textureH = -1;
-    private DynamicTexture dynamicTexture;
-    private ByteBuffer readBuffer;
     private boolean failed;
     private boolean loggedLoaded;
 
     private MainUIShader(String fragmentPath) {
-        this.textureId = Identifier.fromNamespaceAndPath("dioxide_lite", "mainui_shader_" + nextTextureId++);
+        nextTextureId++;
         this.fragmentPath = fragmentPath;
         this.startTime = System.currentTimeMillis();
     }
@@ -114,18 +100,15 @@ public final class MainUIShader {
         Window window = Minecraft.getInstance().getWindow();
         int fbW = window.getWidth();
         int fbH = window.getHeight();
-        int guiW = window.getGuiScaledWidth();
-        int guiH = window.getGuiScaledHeight();
         float scale = (float) window.getGuiScale();
         float time = (System.currentTimeMillis() - startTime) / 1000f;
 
         RenderSystem.assertOnRenderThread();
-        ensureFramebuffer(fbW, fbH);
-        if (fbo == 0 || dynamicTexture == null || readBuffer == null) {
-            fallback(graphics);
-            return;
-        }
 
+        // v1.7.1: render the shader directly into Minecraft's active framebuffer.
+        // The previous implementation rendered into a private FBO, performed a
+        // and then drew that texture back to the screen. That forced a GPU->CPU sync
+        // every frame and could stall the entire client.
         int previousProgram = GL11.glGetInteger(GL20.GL_CURRENT_PROGRAM);
         int previousVao = GL11.glGetInteger(GL30.GL_VERTEX_ARRAY_BINDING);
         int previousArrayBuffer = GL11.glGetInteger(GL15.GL_ARRAY_BUFFER_BINDING);
@@ -136,7 +119,7 @@ public final class MainUIShader {
         boolean cullEnabled = GL11.glIsEnabled(GL11.GL_CULL_FACE);
         boolean blendEnabled = GL11.glIsEnabled(GL11.GL_BLEND);
 
-        GL30.glBindFramebuffer(GL30.GL_FRAMEBUFFER, fbo);
+        GL30.glBindFramebuffer(GL30.GL_FRAMEBUFFER, previousFramebuffer);
         GL11.glViewport(0, 0, fbW, fbH);
         GL11.glDisable(GL11.GL_DEPTH_TEST);
         GL11.glDisable(GL11.GL_CULL_FACE);
@@ -150,14 +133,11 @@ public final class MainUIShader {
         setUniform2f("resolution", fbW, fbH);
         GL30.glBindVertexArray(vao);
         GL11.glDrawArrays(GL11.GL_TRIANGLE_STRIP, 0, 4);
+
         int error = GL11.glGetError();
         if (error != GL11.GL_NO_ERROR) {
             System.err.println("DioxideLite MainUI shader draw GL error (" + fragmentPath + "): " + error);
         }
-
-        readBuffer.clear();
-        GL11.glReadPixels(0, 0, fbW, fbH, GL11.GL_RGBA, GL11.GL_UNSIGNED_BYTE, readBuffer);
-        readBuffer.rewind();
 
         GL30.glBindVertexArray(previousVao);
         GL15.glBindBuffer(GL15.GL_ARRAY_BUFFER, previousArrayBuffer);
@@ -167,11 +147,6 @@ public final class MainUIShader {
         if (depthEnabled) GL11.glEnable(GL11.GL_DEPTH_TEST); else GL11.glDisable(GL11.GL_DEPTH_TEST);
         if (cullEnabled) GL11.glEnable(GL11.GL_CULL_FACE); else GL11.glDisable(GL11.GL_CULL_FACE);
         if (blendEnabled) GL11.glEnable(GL11.GL_BLEND); else GL11.glDisable(GL11.GL_BLEND);
-
-        GpuTexture gpuTexture = dynamicTexture.getTexture();
-        RenderSystem.getDevice().createCommandEncoder()
-                .writeToTexture(gpuTexture, readBuffer, NativeImage.Format.RGBA, 0, 0, 0, 0, fbW, fbH);
-        graphics.blit(textureId, 0, 0, guiW, guiH, 0f, 1f, 1f, 0f);
     }
 
     private void ensureCompiled() {
@@ -231,37 +206,6 @@ public final class MainUIShader {
         GL30.glBindVertexArray(0);
     }
 
-    private void ensureFramebuffer(int width, int height) {
-        if (width <= 0 || height <= 0) return;
-        if (fbo != 0 && width == textureW && height == textureH) return;
-
-        releaseFramebuffer();
-        Minecraft client = Minecraft.getInstance();
-        textureW = width;
-        textureH = height;
-
-        colorTexture = GL11.glGenTextures();
-        GL11.glBindTexture(GL11.GL_TEXTURE_2D, colorTexture);
-        GL11.glTexParameteri(GL11.GL_TEXTURE_2D, GL11.GL_TEXTURE_MIN_FILTER, GL11.GL_LINEAR);
-        GL11.glTexParameteri(GL11.GL_TEXTURE_2D, GL11.GL_TEXTURE_MAG_FILTER, GL11.GL_LINEAR);
-        GL11.glTexParameteri(GL11.GL_TEXTURE_2D, GL11.GL_TEXTURE_WRAP_S, GL11.GL_CLAMP);
-        GL11.glTexParameteri(GL11.GL_TEXTURE_2D, GL11.GL_TEXTURE_WRAP_T, GL11.GL_CLAMP);
-        GL11.glTexImage2D(GL11.GL_TEXTURE_2D, 0, GL11.GL_RGBA8, width, height, 0, GL11.GL_RGBA, GL11.GL_UNSIGNED_BYTE, (ByteBuffer) null);
-        GL11.glBindTexture(GL11.GL_TEXTURE_2D, 0);
-
-        fbo = GL30.glGenFramebuffers();
-        GL30.glBindFramebuffer(GL30.GL_FRAMEBUFFER, fbo);
-        GL30.glFramebufferTexture2D(GL30.GL_FRAMEBUFFER, GL30.GL_COLOR_ATTACHMENT0, GL11.GL_TEXTURE_2D, colorTexture, 0);
-        if (GL30.glCheckFramebufferStatus(GL30.GL_FRAMEBUFFER) != GL30.GL_FRAMEBUFFER_COMPLETE) {
-            System.err.println("DioxideLite MainUI shader framebuffer incomplete: " + GL30.glCheckFramebufferStatus(GL30.GL_FRAMEBUFFER));
-            failed = true;
-        }
-        GL30.glBindFramebuffer(GL30.GL_FRAMEBUFFER, 0);
-
-        dynamicTexture = new DynamicTexture("dioxide_lite:mainui_shader", width, height, false);
-        client.getTextureManager().register(textureId, dynamicTexture);
-        readBuffer = MemoryUtil.memAlloc(width * height * 4);
-    }
 
     public void close() {
         if (program != 0) {
@@ -276,28 +220,6 @@ public final class MainUIShader {
             GL30.glDeleteVertexArrays(vao);
             vao = 0;
         }
-        releaseFramebuffer();
-    }
-
-    private void releaseFramebuffer() {
-        if (fbo != 0) {
-            GL30.glDeleteFramebuffers(fbo);
-            fbo = 0;
-        }
-        if (colorTexture != 0) {
-            GL11.glDeleteTextures(colorTexture);
-            colorTexture = 0;
-        }
-        if (dynamicTexture != null) {
-            Minecraft.getInstance().getTextureManager().release(textureId);
-            dynamicTexture = null;
-        }
-        if (readBuffer != null) {
-            MemoryUtil.memFree(readBuffer);
-            readBuffer = null;
-        }
-        textureW = -1;
-        textureH = -1;
     }
 
     private void setUniform1f(String name, float value) {

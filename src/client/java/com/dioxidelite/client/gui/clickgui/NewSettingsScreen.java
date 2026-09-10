@@ -145,34 +145,27 @@ public class NewSettingsScreen extends SkiaScreen {
         regionW = Math.min(this.width - regionX, Math.max(1, regionW));
         regionH = Math.min(this.height - regionY, Math.max(1, regionH));
 
-        boolean regionChanged = regionX != cachedRegionX || regionY != cachedRegionY || regionW != cachedRegionW || regionH != cachedRegionH;
-        boolean needsRedraw = redrawRequested || regionChanged || needsContinuousRedraw() || !SkiaRenderer.hasRegionCache();
-
-        if (needsRedraw) {
-            if (!Config.performanceMode && Config.visualStyle != Config.VisualStyle.MINIMAL) {
-                float cx2 = this.width / 2f, cy2 = this.height / 2f;
-                float bx = cx2 + (l[0] - cx2) * visualScale;
-                float by = cy2 + (l[1] - cy2) * visualScale;
-                float bw = l[2] * visualScale;
-                float bh = l[3] * visualScale;
-                com.dioxidelite.client.render.skia.SkiaBlurRenderer.getInstance().render(
-                        Minecraft.getInstance(), bx, by, bw, bh,
-                        Config.glassRadius * visualScale, 0x18D9ECFF, Config.glassBlur * 0.95f);
-            }
-            Canvas canvas = SkiaRenderer.beginRegion(regionX, regionY, regionW, regionH);
-            if (canvas != null) {
-                drawSkia(canvas, this.width, this.height, mouseX, mouseY, delta);
-            }
-            SkiaRenderer.endRegion(graphics);
-            redrawRequested = false;
-            cachedRegionX = regionX;
-            cachedRegionY = regionY;
-            cachedRegionW = regionW;
-            cachedRegionH = regionH;
-            return;
+        // v1.7.1: render ClickGUI directly to the active GL framebuffer.
+        // The previous raster-region path uploaded a CPU Skia surface every
+        // animation frame and then performed another framebuffer blur pass.
+        // On fast GPUs that synchronization could collapse FPS to ~1.
+        if (!Config.performanceMode && Config.visualStyle != Config.VisualStyle.MINIMAL) {
+            float cx2 = this.width / 2f, cy2 = this.height / 2f;
+            float bx = cx2 + (l[0] - cx2) * visualScale;
+            float by = cy2 + (l[1] - cy2) * visualScale;
+            float bw = l[2] * visualScale;
+            float bh = l[3] * visualScale;
+            com.dioxidelite.client.render.skia.SkiaBlurRenderer.getInstance().render(
+                    Minecraft.getInstance(), bx, by, bw, bh,
+                    Config.glassRadius * visualScale, 0x30D9ECFF, Config.glassBlur * 0.85f);
         }
 
-        SkiaRenderer.drawCachedRegion(graphics);
+        Canvas canvas = SkiaRenderer.begin();
+        if (canvas != null) {
+            drawSkia(canvas, this.width, this.height, mouseX, mouseY, delta);
+        }
+        SkiaRenderer.end(graphics, this.width, this.height);
+        redrawRequested = false;
     }
 
     private float toLayoutX(double x, int width, float scale) {
@@ -392,8 +385,17 @@ public class NewSettingsScreen extends SkiaScreen {
         canvas.scale(visualScale, visualScale);
         canvas.translate(-cx, -cy);
 
-        LiquidGlassRenderer.drawSurface(canvas, null,
-                cardX, cardY, cardW, cardH, Config.glassRadius, alpha);
+        if (!SkiaRenderer.isDrawing()) {
+            LiquidGlassRenderer.drawSurface(canvas, null,
+                    cardX, cardY, cardW, cardH, Config.glassRadius, alpha);
+        } else {
+            // The panel blur was already composited on the native GL path before
+            // Skia started drawing. Keep only the glass material layers here.
+            Paint glassBase = new Paint().setAntiAlias(true);
+            glassBase.setColor(withAlpha(0x111827, Config.glassOpacity * alpha));
+            canvas.drawRRect(RRect.makeXYWH(cardX, cardY, cardW, cardH, Config.glassRadius), glassBase);
+            glassBase.close();
+        }
 
         int sidebarBase = switch (Config.visualStyle) {
             case AURORA -> 0x102238;
@@ -402,7 +404,7 @@ public class NewSettingsScreen extends SkiaScreen {
             default -> 0x0B121A;
         };
         sidebarPaint.setColor(withAlpha(sidebarBase,
-                (Config.visualStyle == Config.VisualStyle.LIQUID_GLASS ? 0.14f : 0.48f) * alpha));
+                (Config.visualStyle == Config.VisualStyle.LIQUID_GLASS ? 0.34f : 0.48f) * alpha));
         canvas.save();
         canvas.clipRRect(RRect.makeXYWH(cardX, cardY, sidebarW, cardH, 16f));
         canvas.drawRect(Rect.makeXYWH(cardX, cardY, sidebarW, cardH), sidebarPaint);

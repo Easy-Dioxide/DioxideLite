@@ -1,9 +1,10 @@
 // Necip's transf. https://www.shadertoy.com/view/MdlGz4
 #version 140
-#extension GL_OES_standard_derivatives : enable
 
 #define iTime    time
 #define iResolution resolution
+
+#extension GL_OES_standard_derivatives : enable
 
 uniform float time;
 uniform vec2 mouse;

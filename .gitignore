@@ -1,10 +1,12 @@
 .gradle/
-build/*
+build/
 !build/libs/
-build/libs/*
 !build/libs/*.jar
+
+
 run/
 out/
+
 .idea/
 *.iml
 *.ipr
@@ -14,6 +16,11 @@ out/
 .project
 .classpath
 bin/
+
 统计数据/
 .DS_Store
 Thumbs.db
+
+*.jks
+*.p12
+*.keystore

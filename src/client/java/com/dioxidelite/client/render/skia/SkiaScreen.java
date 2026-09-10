@@ -34,8 +34,11 @@ public abstract class SkiaScreen extends Screen {
     }
 
     protected boolean shouldRedraw() {
+        // GPU-backed Skia renders directly into Minecraft's active framebuffer.
+        // Unlike the old raster path there is no cached CPU texture to blit on
+        // later frames, so the screen must be submitted every frame.
+        if (!SkiaRenderer.supportsFrameCache()) return true;
         return redrawRequested
-                || !SkiaRenderer.supportsFrameCache()
                 || needsContinuousRedraw()
                 || this.width != lastFrameWidth
                 || this.height != lastFrameHeight

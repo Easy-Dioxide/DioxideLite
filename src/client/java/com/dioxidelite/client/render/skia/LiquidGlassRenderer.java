@@ -45,12 +45,9 @@ public final class LiquidGlassRenderer {
                 inner = withAlpha(0x8DD8FF, 0.065f * alpha);
             }
             default -> {
-                // Liquid Glass must read as a material, not as an opaque dark panel.
-                // Keep the body low-alpha so the captured backdrop remains visible.
-                float glassBody = 0.26f + 0.14f * Config.glassOpacity;
-                fill = withAlpha(0x111827, glassBody * alpha);
-                rim = withAlpha(0xEAF6FF, 0.34f * Config.glassHighlight * alpha);
-                inner = withAlpha(0xDCEBFF, 0.055f * alpha);
+                fill = withAlpha(0x111827, Config.glassOpacity * alpha);
+                rim = withAlpha(0xFFFFFF, 0.22f * Config.glassHighlight * alpha);
+                inner = withAlpha(0xDCEBFF, 0.07f * alpha);
             }
         }
 

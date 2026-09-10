@@ -4,9 +4,7 @@ import com.dioxidelite.Config;
 import net.fabricmc.fabric.api.client.screen.v1.ScreenEvents;
 import net.fabricmc.fabric.api.client.screen.v1.Screens;
 import net.minecraft.client.gui.components.Button;
-import net.minecraft.client.gui.components.SpriteIconButton;
 import net.minecraft.client.gui.screens.TitleScreen;
-import net.minecraft.client.gui.screens.options.AccessibilityOptionsScreen;
 import net.minecraft.network.chat.Component;
 
 public final class MainUIScreenManager {
@@ -19,11 +17,11 @@ public final class MainUIScreenManager {
                 client.setScreen(new DioxideLiteMainUI(titleScreen));
                 return;
             }
-            Button button = Button.builder(Component.literal("P"), b -> {
+            Button button = Button.builder(Component.literal("DioxideLite · SETSUNA"), b -> {
                 Config.useMainUI = true;
                 Config.save();
                 client.setScreen(new DioxideLiteMainUI(titleScreen, true));
-            }).bounds(scaledWidth / 2 + 104, scaledHeight / 4 + 48 + 36 - 24, 20, 20).build();
+            }).bounds(Math.max(6, scaledWidth - 174), 12, 162, 22).build();
             Screens.getButtons(titleScreen).add(button);
         });
     }
