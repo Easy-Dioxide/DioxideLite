@@ -13,6 +13,7 @@ public final class ClickGuiThemeController {
             case ORIGINAL -> new NewSettingsScreen(parent);
             case MINIMAL_POP -> new DioxideLiteMinimalClickGuiScreen(parent);
             case SIGNATURE -> new DioxideLiteSignatureClickGuiScreen(parent);
+            case GLASS -> new GlassThemeScreen(parent);
         };
     }
 

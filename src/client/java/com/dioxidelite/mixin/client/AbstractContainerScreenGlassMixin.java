@@ -1,7 +1,7 @@
 package com.dioxidelite.mixin.client;
 
 import com.dioxidelite.Config;
-import com.dioxidelite.client.render.skia.LiquidGlassVisualSystem;
+import com.dioxidelite.client.render.nativeui.NativeGlassVisualSystem;
 import net.minecraft.client.gui.GuiGraphics;
 import net.minecraft.client.gui.screens.inventory.AbstractContainerScreen;
 import org.spongepowered.asm.mixin.Mixin;
@@ -16,6 +16,6 @@ public abstract class AbstractContainerScreenGlassMixin {
     private void dioxide_lite$liquidGlassContainer(GuiGraphics graphics, int mouseX, int mouseY, CallbackInfo ci) {
         if (!Config.liquidGlassAllVisuals) return;
         AbstractContainerScreen<?> screen = (AbstractContainerScreen<?>) (Object) this;
-        LiquidGlassVisualSystem.renderContainer(graphics, screen.width, screen.height);
+        NativeGlassVisualSystem.renderContainer(graphics, screen.width, screen.height);
     }
 }

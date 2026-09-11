@@ -1,7 +1,7 @@
 package com.dioxidelite.mixin.client;
 
 import com.dioxidelite.Config;
-import com.dioxidelite.client.render.skia.LiquidGlassVisualSystem;
+import com.dioxidelite.client.render.nativeui.NativeGlassVisualSystem;
 import net.minecraft.client.DeltaTracker;
 import net.minecraft.client.gui.Gui;
 import net.minecraft.client.gui.GuiGraphics;
@@ -21,6 +21,6 @@ public abstract class GuiLiquidGlassMixin {
         float hotbarW = Math.min(190f, w * .72f);
         float x = (w - hotbarW) * .5f;
         float y = h - 24f;
-        LiquidGlassVisualSystem.renderHudDock(graphics, x - 5f, y - 4f, hotbarW + 10f, 24f, .78f);
+        NativeGlassVisualSystem.renderHudDock(graphics, x - 5f, y - 4f, hotbarW + 10f, 24f, .78f);
     }
 }

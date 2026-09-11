@@ -1,5 +1,6 @@
 package com.dioxidelite.client.gui.clickgui;
 
+import com.dioxidelite.client.render.font.FontRenderer;
 import com.dioxidelite.Config;
 import com.dioxidelite.client.gui.clickgui.pages.BasePage;
 import com.dioxidelite.client.gui.clickgui.pages.CombatPage;
@@ -20,13 +21,13 @@ import java.util.ArrayList;
 import java.util.List;
 
 /**
- * Fast Signature theme. Uses Minecraft's immediate GUI renderer only: no Skia,
+ * Fast Signature theme. Uses Minecraft's immediate GUI renderer only: no external rasterizer,
  * no off-screen framebuffer, no blur capture and no CPU texture upload.
  */
-public final class DioxideLiteSignatureClickGuiScreen extends Screen implements ClickGuiScreen {
+public class DioxideLiteSignatureClickGuiScreen extends Screen {
     private static final int BG = 0xFF06090D;
-    private static final int PANEL = 0xE50B1116;
-    private static final int PANEL_2 = 0xCC0E161C;
+    private static final int PANEL = 0xB50B1116;
+    private static final int PANEL_2 = 0xA20E161C;
     private static final int TEXT = 0xFFF2F7F6;
     private static final int MUTED = 0xFF96A39F;
     private static final int FAINT = 0xFF56635F;
@@ -47,7 +48,7 @@ public final class DioxideLiteSignatureClickGuiScreen extends Screen implements 
     private float dragStartScroll;
 
     public DioxideLiteSignatureClickGuiScreen(Screen parent) {
-        super(Component.literal("DioxideLite Signature"));
+        super(FontRenderer.component("DioxideLite Signature"));
         this.parent = parent;
         pages.add(new CombatPage());
         pages.add(new RenderPage());
@@ -74,7 +75,7 @@ public final class DioxideLiteSignatureClickGuiScreen extends Screen implements 
         open = approach(open, selected >= 0 ? 1f : 0f, 10f, dt);
         scroll = approach(scroll, targetScroll, 16f, dt);
 
-        g.fill(0, 0, width, height, BG);
+        g.fill(0, 0, width, height, 0x1806090D);
         drawAmbient(g, mouseX, mouseY, intro);
         if (selected < 0) drawLauncher(g, mouseX, mouseY, intro);
         else drawWorkspace(g, mouseX, mouseY, intro, open, dt);
@@ -86,9 +87,11 @@ public final class DioxideLiteSignatureClickGuiScreen extends Screen implements 
         g.renderOutline(Math.max(20, cx - 190), Math.max(20, cy - 190), Math.min(width - 40, 380), Math.min(height - 40, 380), (aa << 24) | ACCENT);
         g.fill(24, cy, width - 24, cy + 1, (Math.round(255 * .025f * a) << 24) | 0xFFFFFF);
         g.fill(cx, 18, cx + 1, height - 18, (Math.round(255 * .025f * a) << 24) | 0xFFFFFF);
-        g.drawString(font, "DIOXIDELITE", 22, 20, (Math.round(255 * a) << 24) | TEXT, false);
-        g.drawString(font, "SIGNATURE UI", 22, 33, (Math.round(255 * .45f * a) << 24) | ACCENT, false);
-        g.drawString(font, "RIGHT SHIFT", width - 92, height - 18, (Math.round(255 * .35f * a) << 24) | FAINT, false);
+        int scanY = 20 + (int)(((System.nanoTime() / 1_000_000_000d) % 3.0) / 3.0 * Math.max(1, height - 40));
+        g.fill(24, scanY, width - 24, scanY + 1, (Math.round(255 * .06f * a) << 24) | ACCENT);
+        g.drawString(font, FontRenderer.component("DIOXIDELITE"), 22, 20, (Math.round(255 * a) << 24) | TEXT, false);
+        g.drawString(font, FontRenderer.component("SIGNATURE UI"), 22, 33, (Math.round(255 * .45f * a) << 24) | ACCENT, false);
+        g.drawString(font, FontRenderer.component("RIGHT SHIFT"), width - 92, height - 18, (Math.round(255 * .35f * a) << 24) | FAINT, false);
     }
 
     private void drawLauncher(GuiGraphics g, int mx, int my, float a) {
@@ -97,9 +100,9 @@ public final class DioxideLiteSignatureClickGuiScreen extends Screen implements 
         int aa = Math.round(255 * .55f * a);
         g.renderOutline(cx - r, cy - r, r * 2, r * 2, (aa << 24) | ACCENT);
         g.renderOutline(cx - r - 10, cy - r - 10, r * 2 + 20, r * 2 + 20, (Math.round(255 * .12f * a) << 24) | 0xFFFFFF);
-        g.drawCenteredString(font, "DioxideLite", cx, cy - 10, (Math.round(255 * a) << 24) | TEXT);
-        g.drawCenteredString(font, "SIGNATURE", cx, cy + 5, (Math.round(255 * .85f * a) << 24) | ACCENT);
-        g.drawCenteredString(font, "SELECT CATEGORY", cx, cy + 20, (Math.round(255 * .42f * a) << 24) | MUTED);
+        g.drawCenteredString(font, FontRenderer.component("DioxideLite"), cx, cy - 10, (Math.round(255 * a) << 24) | TEXT);
+        g.drawCenteredString(font, FontRenderer.component("SIGNATURE"), cx, cy + 5, (Math.round(255 * .85f * a) << 24) | ACCENT);
+        g.drawCenteredString(font, FontRenderer.component("SELECT CATEGORY"), cx, cy + 20, (Math.round(255 * .42f * a) << 24) | MUTED);
         for (int i = 0; i < NAV.length; i++) {
             double ang = -Math.PI / 2 + i * Math.PI * 2 / NAV.length;
             int x = cx + (int)(Math.cos(ang) * r);
@@ -110,10 +113,10 @@ public final class DioxideLiteSignatureClickGuiScreen extends Screen implements 
             g.fill(x - size/2, y - size/2, x + size/2, y + size/2, fill);
             g.renderOutline(x - size/2, y - size/2, size, size,
                     (Math.round(255 * (hover ? .62f : .16f) * a) << 24) | (hover ? ACCENT : 0xFFFFFF));
-            g.drawCenteredString(font, NAV[i], x, y - 3, (Math.round(255 * (hover ? 1f : .68f) * a) << 24) | (hover ? TEXT : MUTED));
-            g.drawCenteredString(font, String.format("%02d", i + 1), x, y + 9, (Math.round(255 * .5f * a) << 24) | (hover ? ACCENT : FAINT));
+            g.drawCenteredString(font, FontRenderer.component(NAV[i]), x, y - 3, (Math.round(255 * (hover ? 1f : .68f) * a) << 24) | (hover ? TEXT : MUTED));
+            g.drawCenteredString(font, FontRenderer.component(String.format("%02d", i + 1)), x, y + 9, (Math.round(255 * .5f * a) << 24) | (hover ? ACCENT : FAINT));
         }
-        g.drawString(font, "ESC  CLOSE", 24, height - 20, (Math.round(255 * .45f * a) << 24) | FAINT, false);
+        g.drawString(font, FontRenderer.component("ESC  CLOSE"), 24, height - 20, (Math.round(255 * .45f * a) << 24) | FAINT, false);
     }
 
     private void drawWorkspace(GuiGraphics g, int mx, int my, float a, float p, float dt) {
@@ -131,8 +134,8 @@ public final class DioxideLiteSignatureClickGuiScreen extends Screen implements 
         g.renderOutline(margin, top, railW, h, (Math.round(255 * .22f * a) << 24) | 0x71807C);
         g.renderOutline(panelX, top, panelW, h, (Math.round(255 * .18f * a) << 24) | 0x71807C);
 
-        g.drawString(font, "DioxideLite", margin + 18, top + 18, (alpha << 24) | TEXT, false);
-        g.drawString(font, "SIGNATURE", margin + 18, top + 32, (alpha << 24) | ACCENT, false);
+        g.drawString(font, FontRenderer.component("DioxideLite"), margin + 18, top + 18, (alpha << 24) | TEXT, false);
+        g.drawString(font, FontRenderer.component("SIGNATURE"), margin + 18, top + 32, (alpha << 24) | ACCENT, false);
         for (int i = 0; i < NAV.length; i++) {
             int y = top + 58 + i * 43;
             boolean active = i == selected;
@@ -142,19 +145,19 @@ public final class DioxideLiteSignatureClickGuiScreen extends Screen implements 
                         (Math.round(255 * (active ? .14f : .07f) * a) << 24) | (active ? ACCENT_DIM : 0xFFFFFF));
                 g.fill(margin + 10, y, margin + 12, y + 34, (alpha << 24) | ACCENT);
             }
-            g.drawString(font, String.format("%02d", i + 1), margin + 19, y + 9,
+            g.drawString(font, FontRenderer.component(String.format("%02d", i + 1)), margin + 19, y + 9,
                     (Math.round(255 * .55f * a) << 24) | (active ? ACCENT : FAINT), false);
-            g.drawString(font, NAV[i], margin + 44, y + 9,
+            g.drawString(font, FontRenderer.component(NAV[i]), margin + 44, y + 9,
                     (Math.round(255 * (active ? 1f : .68f) * a) << 24) | (active ? TEXT : MUTED), false);
         }
-        g.drawString(font, "ESC", margin + 18, top + h - 18, (Math.round(255 * .5f * a) << 24) | FAINT, false);
-        g.drawString(font, "BACK", margin + 44, top + h - 18, (Math.round(255 * .75f * a) << 24) | MUTED, false);
+        g.drawString(font, FontRenderer.component("ESC"), margin + 18, top + h - 18, (Math.round(255 * .5f * a) << 24) | FAINT, false);
+        g.drawString(font, FontRenderer.component("BACK"), margin + 44, top + h - 18, (Math.round(255 * .75f * a) << 24) | MUTED, false);
 
         BasePage page = pages.get(selected);
         page.update(dt);
-        g.drawString(font, NAV[selected], panelX + 20, top + 18, (alpha << 24) | TEXT, false);
-        g.drawString(font, page.getSubtitle(), panelX + 20, top + 33, (Math.round(255 * .6f * a) << 24) | MUTED, false);
-        g.drawString(font, String.format("%02d / %02d", selected + 1, NAV.length), panelX + panelW - 58, top + 18, (Math.round(255 * .42f * a) << 24) | FAINT, false);
+        g.drawString(font, FontRenderer.component(NAV[selected]), panelX + 20, top + 18, (alpha << 24) | TEXT, false);
+        g.drawString(font, FontRenderer.component(page.getSubtitle()), panelX + 20, top + 33, (Math.round(255 * .6f * a) << 24) | MUTED, false);
+        g.drawString(font, FontRenderer.component(String.format("%02d / %02d", selected + 1, NAV.length)), panelX + panelW - 58, top + 18, (Math.round(255 * .42f * a) << 24) | FAINT, false);
         g.fill(panelX + 20, top + 47, panelX + panelW - 20, top + 48, (Math.round(255 * .20f * a) << 24) | ACCENT);
 
         int contentX = panelX + 18;
@@ -199,19 +202,16 @@ public final class DioxideLiteSignatureClickGuiScreen extends Screen implements 
             if (mx >= margin + 10 && mx <= margin + railW - 10 && my >= y && my <= y + 34) { selected = i; scroll = targetScroll = 0; return true; }
         }
         if (mx >= panelX + 18 && mx <= panelX + panelW - 18 && my >= top + 60 && my <= top + h - 16) {
-            int contentX = panelX + 18, contentY = top + 60, contentW = panelW - 36, contentH = h - 76;
-            float cy = contentY - scroll;
+            int contentX = panelX + 18, contentY = top + 60, contentW = panelW - 36;
             BasePage page = pages.get(selected);
-            for (SettingModule module : page.getModules()) {
-                if (!module.isVisible()) continue;
-                float mh = module.getTotalHeight();
-                if (my >= cy && my <= cy + mh) {
-                    if (page.onClick(mx, my, contentX, contentY, contentW, scroll, event.button())) return true;
-                    break;
-                }
-                cy += mh + 8;
+            // Single source of truth for hit-testing, including right-click expansion.
+            if (page.onClick(mx, my, contentX, contentY, contentW, scroll, event.button())) return true;
+            if (event.button() == GLFW.GLFW_MOUSE_BUTTON_LEFT) {
+                dragging = true;
+                dragStartY = my;
+                dragStartScroll = scroll;
             }
-            dragging = true; dragStartY = my; dragStartScroll = scroll; return true;
+            return true;
         }
         return true;
     }

@@ -14,14 +14,14 @@ public class ThemePage extends BasePage {
     public ThemePage() {
         modules.add(new SettingModule(
                 UiText.t("ClickGUI 主题", "ClickGUI Theme"),
-                UiText.t("在原版、Minimal 与 Signature 三套完整 ClickGUI 布局之间切换", "Switch between the complete original, Minimal and Signature ClickGUI layouts"),
+                UiText.t("在 Liquid Glass、Minimal、Signature 与 Glass 四套完整 ClickGUI 布局之间切换", "Switch between the Liquid Glass, Minimal, Signature and Glass ClickGUI layouts"),
                 null)
                 .addSub(UiText.t("界面", "Layout"),
                         UiText.t("主题只改变界面表现，不改变功能逻辑", "Changes presentation only; module logic stays untouched"),
                         new SettingCycle(
-                                List.of(UiText.t("Liquid Glass", "Liquid Glass"), UiText.t("DioxideLite Minimal", "DioxideLite Minimal"), UiText.t("DioxideLite Signature", "DioxideLite Signature")),
-                                () -> switch (Config.clickGuiTheme) { case ORIGINAL -> 0; case MINIMAL_POP -> 1; case SIGNATURE -> 2; },
-                                i -> { Config.ClickGuiTheme theme = i == 2 ? Config.ClickGuiTheme.SIGNATURE : (i == 1 ? Config.ClickGuiTheme.MINIMAL_POP : Config.ClickGuiTheme.ORIGINAL); ClickGuiThemeController.apply(theme, null); })));
+                                List.of(UiText.t("Liquid Glass", "Liquid Glass"), UiText.t("DioxideLite Minimal", "DioxideLite Minimal"), UiText.t("DioxideLite Signature", "DioxideLite Signature"), UiText.t("Glass", "Glass")),
+                                () -> switch (Config.clickGuiTheme) { case ORIGINAL -> 0; case MINIMAL_POP -> 1; case SIGNATURE -> 2; case GLASS -> 3; },
+                                i -> { Config.ClickGuiTheme theme = switch (i) { case 1 -> Config.ClickGuiTheme.MINIMAL_POP; case 2 -> Config.ClickGuiTheme.SIGNATURE; case 3 -> Config.ClickGuiTheme.GLASS; default -> Config.ClickGuiTheme.ORIGINAL; }; ClickGuiThemeController.apply(theme, null); })));;
 
         modules.add(new SettingModule(
                 UiText.t("Liquid Glass 全局视觉", "Liquid Glass Global Visuals"),

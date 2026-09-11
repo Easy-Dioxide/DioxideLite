@@ -14,10 +14,6 @@ import com.dioxidelite.client.modules.impl.Render.DynamicIslandRenderer;
 import com.dioxidelite.client.modules.impl.Render.HudEditOverlay;
 import com.dioxidelite.client.modules.impl.Render.DioxideLiteVisualOverlay;
 import com.dioxidelite.client.modules.impl.Tool.BlockCountDisplayRenderer;
-import com.dioxidelite.client.render.skia.SkiaRenderer;
-import com.dioxidelite.client.gui.clickgui.ClickGuiScreen;
-import com.dioxidelite.client.render.skia.LiquidGlassVisualSystem;
-import io.github.humbleui.skija.Canvas;
 import net.minecraft.client.gui.Gui;
 import net.minecraft.client.gui.GuiGraphics;
 import net.minecraft.client.DeltaTracker;
@@ -45,22 +41,7 @@ public class GuiMixin {
 
     @Inject(method = "render", at = @At("TAIL"))
     private void onRender(GuiGraphics guiGraphics, DeltaTracker deltaTracker, CallbackInfo ci) {
-        Minecraft mc = Minecraft.getInstance();
-        int guiWidth = mc.getWindow().getGuiScaledWidth();
-        int guiHeight = mc.getWindow().getGuiScaledHeight();
-        Canvas canvas = null;
-
-        boolean skiaScreenOpen = mc.screen instanceof ClickGuiScreen;
-        if (!skiaScreenOpen && NotificationOverlay.getInstance().needsStandaloneCanvas()) {
-            int[] bounds = NotificationOverlay.getInstance().getCanvasBounds(guiWidth, guiHeight);
-            if (bounds != null) {
-                canvas = SkiaRenderer.beginRegion(bounds[0], bounds[1], bounds[2], bounds[3]);
-            }
-        }
-
-        if (!skiaScreenOpen) {
-            NotificationOverlay.getInstance().render(guiGraphics, canvas);
-        }
+        NotificationOverlay.getInstance().render(guiGraphics);
         HitMarkerRenderer.getInstance().render(guiGraphics);
         TargetHudRenderer.getInstance().render(guiGraphics);
         DynamicIslandRenderer.getInstance().render(guiGraphics);
@@ -70,12 +51,7 @@ public class GuiMixin {
         ArmorHudRenderer.getInstance().render(guiGraphics);
         PotionStatusRenderer.getInstance().render(guiGraphics);
         DioxideLiteVisualOverlay.getInstance().render(guiGraphics);
-        HudEditOverlay.getInstance().render(guiGraphics, canvas);
-
-        if (canvas != null) {
-            SkiaRenderer.endRegion(guiGraphics);
-        }
-
+        HudEditOverlay.getInstance().render(guiGraphics);
         BlockCountDisplayRenderer.getInstance().render(guiGraphics, null);
     }
 

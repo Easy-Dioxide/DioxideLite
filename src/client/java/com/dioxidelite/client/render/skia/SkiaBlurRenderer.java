@@ -22,8 +22,10 @@ import static org.lwjgl.opengl.GL45.*;
 
 public final class SkiaBlurRenderer {
     private static final SkiaBlurRenderer INSTANCE = new SkiaBlurRenderer();
-    private static final float GPU_CAPTURE_SCALE = 0.55f;
-    private static final long CAPTURE_INTERVAL_NS = 1_000_000L;
+    private static final float NORMAL_CAPTURE_SCALE = 0.50f;
+    private static final float PERFORMANCE_CAPTURE_SCALE = 0.38f;
+    private static final long NORMAL_CAPTURE_INTERVAL_NS = 33_333_333L; // ~30 Hz
+    private static final long PERFORMANCE_CAPTURE_INTERVAL_NS = 50_000_000L; // ~20 Hz
 
     private final Paint blurPaint = new Paint().setAntiAlias(true);
     private final Paint frostPaint = new Paint().setAntiAlias(true);
@@ -91,10 +93,11 @@ public final class SkiaBlurRenderer {
             encode = ImageFilter.makeColorFilter(ColorFilter.getLinearToSRGBGamma(), blur);
             blurPaint.setImageFilter(encode);
 
-            float srcX = x * GPU_CAPTURE_SCALE * scale;
-            float srcY = (sourceH - (y + height) * scale) * GPU_CAPTURE_SCALE;
-            float srcW = width * GPU_CAPTURE_SCALE * scale;
-            float srcH = height * GPU_CAPTURE_SCALE * scale;
+            float captureScale = captureScale();
+            float srcX = x * captureScale * scale;
+            float srcY = (sourceH - (y + height) * scale) * captureScale;
+            float srcW = width * captureScale * scale;
+            float srcH = height * captureScale * scale;
             srcX = Math.max(0f, Math.min(captureW - 1f, srcX));
             srcY = Math.max(0f, Math.min(captureH - 1f, srcY));
             srcW = Math.max(1f, Math.min(captureW - srcX, srcW));
@@ -133,7 +136,7 @@ public final class SkiaBlurRenderer {
         long now = System.nanoTime();
         boolean sizeChanged = framebufferW != sourceW || framebufferH != sourceH ||
                 captureContext != context || captureImage == null || captureTextureId == 0;
-        boolean frameExpired = now - lastCaptureNs >= CAPTURE_INTERVAL_NS || sourceFramebufferId != lastSourceFramebuffer;
+        boolean frameExpired = now - lastCaptureNs >= captureIntervalNs() || sourceFramebufferId != lastSourceFramebuffer;
         if (!sizeChanged && !frameExpired) return true;
 
         ensureCaptureResources(context, framebufferW, framebufferH);
@@ -170,19 +173,26 @@ public final class SkiaBlurRenderer {
         }
     }
 
-    private void restoreReadBuffer(int framebuffer, int buffer) {
-        glBindFramebuffer(GL_READ_FRAMEBUFFER, framebuffer);
-        glReadBuffer(buffer);
+    private static void restoreReadBuffer(int framebuffer, int buffer) {
+        if (framebuffer == 0) {
+            glReadBuffer(GL_BACK);
+        } else {
+            glReadBuffer(buffer);
+        }
     }
 
-    private void restoreDrawBuffer(int framebuffer, int buffer) {
-        glBindFramebuffer(GL_DRAW_FRAMEBUFFER, framebuffer);
-        glDrawBuffer(buffer);
+    private static void restoreDrawBuffer(int framebuffer, int buffer) {
+        if (framebuffer == 0) {
+            glDrawBuffer(GL_BACK);
+        } else {
+            glDrawBuffer(buffer);
+        }
     }
 
     private void ensureCaptureResources(DirectContext context, int framebufferW, int framebufferH) {
-        int desiredW = Math.max(1, Math.round(framebufferW * GPU_CAPTURE_SCALE));
-        int desiredH = Math.max(1, Math.round(framebufferH * GPU_CAPTURE_SCALE));
+        float scale = captureScale();
+        int desiredW = Math.max(1, Math.round(framebufferW * scale));
+        int desiredH = Math.max(1, Math.round(framebufferH * scale));
         if (captureTextureId != 0 && desiredW == captureW && desiredH == captureH && captureImage != null && captureContext == context) {
             sourceW = framebufferW;
             sourceH = framebufferH;
@@ -248,8 +258,16 @@ public final class SkiaBlurRenderer {
     }
 
     private float blurSigma(float strength) {
-        float clamped = Math.max(0f, Math.min(2f, strength));
-        return Math.max(0.1f, 3f + clamped * 9f);
+        float clamped = Math.max(0f, Math.min(1.6f, strength));
+        return Math.max(0.1f, 2.5f + clamped * 7f);
+    }
+
+    private static float captureScale() {
+        return com.dioxidelite.Config.performanceMode ? PERFORMANCE_CAPTURE_SCALE : NORMAL_CAPTURE_SCALE;
+    }
+
+    private static long captureIntervalNs() {
+        return com.dioxidelite.Config.performanceMode ? PERFORMANCE_CAPTURE_INTERVAL_NS : NORMAL_CAPTURE_INTERVAL_NS;
     }
 
     private void ensureNativeLoaded() {
