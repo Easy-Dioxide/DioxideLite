@@ -15,7 +15,7 @@ import com.dioxidelite.client.modules.impl.Render.HudEditOverlay;
 import com.dioxidelite.client.modules.impl.Render.DioxideLiteVisualOverlay;
 import com.dioxidelite.client.modules.impl.Tool.BlockCountDisplayRenderer;
 import com.dioxidelite.client.render.skia.SkiaRenderer;
-import com.dioxidelite.client.render.skia.SkiaScreen;
+import com.dioxidelite.client.gui.clickgui.ClickGuiScreen;
 import com.dioxidelite.client.render.skia.LiquidGlassVisualSystem;
 import io.github.humbleui.skija.Canvas;
 import net.minecraft.client.gui.Gui;
@@ -50,7 +50,7 @@ public class GuiMixin {
         int guiHeight = mc.getWindow().getGuiScaledHeight();
         Canvas canvas = null;
 
-        boolean skiaScreenOpen = mc.screen instanceof SkiaScreen;
+        boolean skiaScreenOpen = mc.screen instanceof ClickGuiScreen;
         if (!skiaScreenOpen && NotificationOverlay.getInstance().needsStandaloneCanvas()) {
             int[] bounds = NotificationOverlay.getInstance().getCanvasBounds(guiWidth, guiHeight);
             if (bounds != null) {

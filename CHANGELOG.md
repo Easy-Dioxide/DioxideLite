@@ -1,5 +1,38 @@
 # DioxideLite 更新日志
 
+## v1.8 (Native Render Rework) — 2026-09-11
+
+> 目标环境：Minecraft 1.21.11 · Fabric Loader 0.18.4
+> 定位：**ClickGUI 底层渲染重构**——彻底移除 Skia + OpenGL 渲染路径，三套主题全部改为 Minecraft 原生 `GuiGraphics` 渲染
+
+### 背景
+
+- v1.7.x 的 ClickGUI（Liquid Glass / Minimal）仍走 Skia + OpenGL：`BackendRenderTarget.makeGL` 直接包装 Minecraft 帧缓冲，硬编码 `framebuffer 0` 与单采样配置，在 Windows 上画进错误的帧缓冲导致 **ClickGUI 打开后一片空白（无报错）**，且每帧 Skia surface 提交 + 玻璃模糊 FBO 捕获造成性能损耗。
+
+### 变更（渲染底层）
+
+- **三主题全面原生化**：`NewSettingsScreen`（Liquid Glass）、`DioxideLiteMinimalClickGuiScreen`（Minimal）、`DioxideLiteSignatureClickGuiScreen`（Signature）均改为继承 `Screen`，使用 `GuiGraphics` 的 `fill` / `renderOutline` / `drawString`（MC 原生字体）绘制，与游戏主菜单（v1.7.3 起）同一条渲染路径。
+- **移除 Skia 依赖**：ClickGUI 路径不再调用 `SkiaRenderer` / `SkiaGlBackend` / `SkiaBlurRenderer` / `LiquidGlassRenderer` / `FontRenderer`；删除 `SkiaScreen`，新增 `ClickGuiScreen` 标记接口供 HUD 渲染器 / Mixin 判断 ClickGUI 打开状态。
+- **玻璃效果重做**：Liquid Glass 面板由"GPU FBO 模糊捕获"改为**半透明填充 + 细描边 + 顶部高光**（`DioxideLiteVisuals` 新增 `glassFast / cardFast / outlineFast / accentLineFast / dotFast`），保留玻璃观感，零 GPU 捕获。
+- **图标退化文本**：MC 原生字体不包含 icon.ttf 字形，ClickGUI 标签图标改为纯文本（中文/英文标签），字体渲染统一为 MC 默认字体（与 Signature 主题 v1.7.3 做法一致）。
+- **每帧提交消失**：不再有 Skia surface 提交、`flushAndSubmit`、CPU 像素回读、动态纹理上传；ClickGUI 渲染成本与普通 MC 界面一致。
+
+### 修复
+
+- **修复 Windows 上 ClickGUI 空白**：不再依赖 GL framebuffer 包装，渲染与平台无关（Windows / Linux / macOS 行为一致）。
+- 修复 Minimal 屏幕渲染方法签名（5 参数手误）与 1.21.11 `Matrix3x2fStack` 2D pose API 适配。
+
+### 兼容
+
+- 设置模型 / 页面 / 控件（`BasePage.drawFast`、`SettingButton/Cycle/Slider/Toggle/Module.drawFast`）复用原生快速路径，主题切换逻辑不变（关闭重开 ClickGUI 即生效，或经 `ClickGuiThemeController` 热切换）。
+- 游戏内 HUD / Liquid Glass 全局视觉模块（`LiquidGlassVisualSystem` 等）暂保持 Skia 实现，未受影响；如需彻底移除 skija 依赖可在后续版本跟进。
+
+### 产物
+
+- `DioxideLite-v1.8.jar` / `DioxideLite-v1.8-sources.jar`
+
+---
+
 ## v1.7.4 (Setsuna Boot · Liquid Glass Default) — 2026-09-11
 
 > 目标环境：Minecraft 1.21.11 · Fabric Loader 0.18.4

@@ -23,7 +23,7 @@ import java.util.List;
  * Fast Signature theme. Uses Minecraft's immediate GUI renderer only: no Skia,
  * no off-screen framebuffer, no blur capture and no CPU texture upload.
  */
-public final class DioxideLiteSignatureClickGuiScreen extends Screen {
+public final class DioxideLiteSignatureClickGuiScreen extends Screen implements ClickGuiScreen {
     private static final int BG = 0xFF06090D;
     private static final int PANEL = 0xE50B1116;
     private static final int PANEL_2 = 0xCC0E161C;

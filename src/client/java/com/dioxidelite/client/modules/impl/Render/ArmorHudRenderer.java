@@ -4,6 +4,7 @@ import com.mojang.blaze3d.platform.NativeImage;
 import com.mojang.blaze3d.systems.RenderSystem;
 import com.mojang.blaze3d.textures.GpuTexture;
 import com.dioxidelite.Config;
+import com.dioxidelite.client.gui.clickgui.ClickGuiScreen;
 import com.dioxidelite.client.render.font.FontRenderer;
 import com.dioxidelite.client.render.skia.LiquidGlassVisualSystem;
 import io.github.humbleui.skija.Canvas;
@@ -78,7 +79,7 @@ public class ArmorHudRenderer {
             destroyTextures(client);
             return;
         }
-        if (client.player == null || client.level == null || client.options.hideGui || client.screen instanceof com.dioxidelite.client.render.skia.SkiaScreen) {
+        if (client.player == null || client.level == null || client.options.hideGui || client.screen instanceof ClickGuiScreen) {
             return;
         }
 

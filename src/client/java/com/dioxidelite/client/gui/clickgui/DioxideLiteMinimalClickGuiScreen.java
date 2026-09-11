@@ -2,13 +2,8 @@ package com.dioxidelite.client.gui.clickgui;
 
 import com.dioxidelite.Config;
 import com.dioxidelite.client.gui.clickgui.pages.*;
-import com.dioxidelite.client.render.font.FontRenderer;
-import com.dioxidelite.client.render.skia.SkiaScreen;
-import io.github.humbleui.skija.Canvas;
-import io.github.humbleui.skija.Paint;
-import io.github.humbleui.skija.PaintMode;
-import io.github.humbleui.types.RRect;
-import io.github.humbleui.types.Rect;
+import com.dioxidelite.client.render.skia.DioxideLiteVisuals;
+import net.minecraft.client.gui.GuiGraphics;
 import net.minecraft.client.gui.screens.Screen;
 import net.minecraft.network.chat.Component;
 import org.lwjgl.glfw.GLFW;
@@ -17,12 +12,14 @@ import java.util.ArrayList;
 import java.util.List;
 
 /**
- * DioxideLite Signature ClickGUI theme.
- * It uses the same SettingModule/page model as the original ClickGUI, so theme
- * switching never removes or duplicates settings. The presentation is independently
- * implemented with the compact, outline-first visual language of the supplied reference.
+ * DioxideLite Minimal ClickGUI theme, v1.8 native render rework.
+ *
+ * Like the Liquid Glass screen this is now drawn with plain GuiGraphics
+ * (fills, hairline outlines, vanilla font) - no Skia/OpenGL anywhere in the
+ * ClickGUI. Theme switching never removes or duplicates settings; the
+ * presentation is the compact, outline-first minimal visual language.
  */
-public final class DioxideLiteMinimalClickGuiScreen extends SkiaScreen {
+public final class DioxideLiteMinimalClickGuiScreen extends Screen implements ClickGuiScreen {
     private static final int BG = 0xB0080B10;
     private static final int PANEL = 0xD90C1118;
     private static final int TEXT = 0xFFF4F8FF;
@@ -35,6 +32,7 @@ public final class DioxideLiteMinimalClickGuiScreen extends SkiaScreen {
     private static final String[] NAV = {"Combat", "Render", "Tools", "Theme", "Optimize", "Misc"};
 
     private final List<BasePage> pages = new ArrayList<>();
+    private final Screen parent;
     private int selected = 1;
     private float open = 0f;
     private float scroll = 0f;
@@ -46,7 +44,8 @@ public final class DioxideLiteMinimalClickGuiScreen extends SkiaScreen {
     private float dragStartScroll;
 
     public DioxideLiteMinimalClickGuiScreen(Screen parent) {
-        super(Component.literal("DioxideLite"), parent);
+        super(Component.literal("DioxideLite"));
+        this.parent = parent;
         pages.add(new CombatPage());
         pages.add(new RenderPage());
         pages.add(new ToolPage());
@@ -63,9 +62,10 @@ public final class DioxideLiteMinimalClickGuiScreen extends SkiaScreen {
         targetScroll = 0f;
     }
 
-    @Override protected boolean needsContinuousRedraw() { return true; }
-
-    @Override protected void drawSkia(Canvas c, int width, int height, int mouseX, int mouseY, float delta) {
+    @Override
+    public void render(GuiGraphics g, int mouseX, int mouseY, float delta) {
+        int width = this.width;
+        int height = this.height;
         long now = System.nanoTime();
         float dt = Math.min(.05f, Math.max(.001f, (now - lastFrameNs) / 1_000_000_000f));
         lastFrameNs = now;
@@ -81,46 +81,44 @@ public final class DioxideLiteMinimalClickGuiScreen extends SkiaScreen {
         float y = targetY + (1f - open) * 46f;
         float alpha = .24f + .76f * open;
 
-        c.drawColor(withAlpha(BG, .76f * open));
-        c.save();
-        c.translate(width / 2f, height / 2f);
-        c.scale(scale, scale);
-        c.translate(-width / 2f, -height / 2f);
+        g.fill(0, 0, width, height, withAlpha(BG, .76f * open));
+        g.pose().pushMatrix();
+        g.pose().translate(width / 2f, height / 2f);
+        g.pose().scale(scale, scale);
+        g.pose().translate(-width / 2f, -height / 2f);
 
-        // The GPU-backed Skia screen composites the glass background before this
-        // canvas is submitted. Do not start a second blur/capture pass from inside
-        // the same canvas; that was one of the largest sources of ClickGUI stalls.
-        rounded(c, x, y, W, H, Config.glassRadius, withAlpha(PANEL, alpha));
-        rounded(c, x + 1, y + 1, NAV_W, H - 2, 14, withAlpha(0xA8080D13, alpha));
+        DioxideLiteVisuals.glassFast(g, Math.round(x), Math.round(y), Math.round(W), Math.round(H), alpha,
+                PANEL & 0xFFFFFF, (PANEL >>> 24) / 255f, 0xD7E4F5, 0.16f);
+        g.fill(Math.round(x + 1), Math.round(y + 1), Math.round(x + 1 + NAV_W), Math.round(y + H - 1), withAlpha(0xA8080D13, alpha));
 
-        FontRenderer.drawText(c, "DIOXIDE", x + 28, y + 42, 19, TEXT);
-        FontRenderer.drawText(c, "SIGNATURE", x + 28, y + 62, 10, ACCENT);
-        FontRenderer.drawText(c, "DIOXIDELITE", x + 28, y + H - 30, 8, MUTED);
+        g.drawString(this.font, "DIOXIDE", Math.round(x + 28), Math.round(y + 34), TEXT, false);
+        g.drawString(this.font, "MINIMAL", Math.round(x + 28), Math.round(y + 46), ACCENT, false);
+        g.drawString(this.font, "DIOXIDELITE", Math.round(x + 28), Math.round(y + H - 30), withAlpha(MUTED, 0.8f), false);
 
         float localMouseX = width / 2f + (mouseX - width / 2f) / scale;
         float localMouseY = height / 2f + (mouseY - height / 2f) / scale;
         for (int i = 0; i < NAV.length; i++) {
-            float ny = y + 105 + i * 48;
+            float ny = y + 96 + i * 44;
             boolean active = i == selected;
-            boolean hovered = pointIn(localMouseX, localMouseY, x + 14, ny - 17, NAV_W - 28, 34);
-            if (active) rounded(c, x + 14, ny - 17, NAV_W - 28, 34, 6, 0x2878CFFF);
-            if (active) rounded(c, x + 14, ny - 17, 2, 34, 1, ACCENT);
-            FontRenderer.drawText(c, NAV[i], x + 32, ny + 4, 10,
-                    withAlpha(TEXT, active ? 1f : (hovered ? .76f : .45f)));
+            boolean hovered = pointIn(localMouseX, localMouseY, x + 14, ny - 15, NAV_W - 28, 32);
+            if (active) {
+                g.fill(Math.round(x + 14), Math.round(ny - 15), Math.round(x + 14 + NAV_W - 28), Math.round(ny + 17), 0x2878CFFF);
+                g.fill(Math.round(x + 14), Math.round(ny - 15), Math.round(x + 16), Math.round(ny + 17), ACCENT);
+            }
+            g.drawString(this.font, NAV[i], Math.round(x + 32), Math.round(ny - 4),
+                    withAlpha(TEXT, active ? 1f : (hovered ? .76f : .45f)), false);
         }
 
         float contentX = x + NAV_W + 30f;
         float contentY = y + 92f;
         float contentW = W - NAV_W - 54f;
         float contentH = H - 112f;
-        FontRenderer.drawText(c, page.getTitle(), contentX, y + 42, 18, TEXT);
-        FontRenderer.drawText(c, page.getSubtitle(), contentX, y + 62, 9, MUTED);
-        rounded(c, contentX, y + 76, contentW, 1, .5f, 0x4078CFFF);
+        g.drawString(this.font, page.getTitle(), Math.round(contentX), Math.round(y + 34), TEXT, false);
+        g.drawString(this.font, page.getSubtitle(), Math.round(contentX), Math.round(y + 48), MUTED, false);
+        DioxideLiteVisuals.accentLineFast(g, Math.round(contentX), Math.round(y + 58), Math.round(contentW), 0.5f);
 
-        c.save();
-        c.clipRect(Rect.makeXYWH(contentX, contentY, contentW, contentH), true);
-        page.draw(c, contentX, contentY, contentW, contentH, alpha, scroll);
-        c.restore();
+        page.drawFast(g, Math.round(contentX), Math.round(contentY), Math.round(contentW), Math.round(contentH),
+                Math.round(alpha * 255f), scroll, Math.round(localMouseX), Math.round(localMouseY));
 
         // Scroll thumb is intentionally tiny and unobtrusive.
         float total = Math.max(contentH, page.getTotalHeight() + 18f);
@@ -129,9 +127,9 @@ public final class DioxideLiteMinimalClickGuiScreen extends SkiaScreen {
             float thumbH = Math.max(24f, contentH * ratio);
             float maxScroll = Math.max(0f, total - contentH);
             float thumbY = contentY + (maxScroll <= 0 ? 0 : (scroll / maxScroll) * (contentH - thumbH));
-            rounded(c, x + W - 15, thumbY, 3, thumbH, 1.5f, 0x6678CFFF);
+            g.fill(Math.round(x + W - 15), Math.round(thumbY), Math.round(x + W - 12), Math.round(thumbY + thumbH), 0x6678CFFF);
         }
-        c.restore();
+        g.pose().popMatrix();
     }
 
     @Override public boolean mouseClicked(net.minecraft.client.input.MouseButtonEvent event, boolean consumed) {
@@ -195,11 +193,10 @@ public final class DioxideLiteMinimalClickGuiScreen extends SkiaScreen {
         return super.keyPressed(event);
     }
 
-    private static void rounded(Canvas c, float x, float y, float w, float h, float r, int color) {
-        Paint p = new Paint().setAntiAlias(true).setColor(color);
-        c.drawRRect(RRect.makeXYWH(x, y, w, h, r), p);
-        p.close();
+    @Override public void onClose() {
+        if (this.minecraft != null) this.minecraft.setScreen(parent);
     }
+
     private static boolean pointIn(float mx, float my, float x, float y, float w, float h) { return mx >= x && mx <= x+w && my >= y && my <= y+h; }
     private static int withAlpha(int color, float a) { return (Math.max(0, Math.min(255, Math.round(((color >>> 24) & 255) * a))) << 24) | (color & 0xFFFFFF); }
 }
