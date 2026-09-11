@@ -7,7 +7,7 @@ import com.dioxidelite.Config;
 import com.dioxidelite.client.render.skia.LiquidGlassVisualSystem;
 import com.dioxidelite.client.render.font.FontRenderer;
 import com.dioxidelite.client.render.skia.SkiaGlBackend;
-import com.dioxidelite.client.render.skia.SkiaScreen;
+import com.dioxidelite.client.gui.clickgui.ClickGuiScreen;
 import com.dioxidelite.client.util.RateCounter;
 import io.github.humbleui.skija.*;
 import io.github.humbleui.skija.impl.Library;
@@ -73,7 +73,7 @@ public class KeystrokesRenderer {
         if (!Config.keystrokes) return;
 
         Minecraft client = Minecraft.getInstance();
-        if (client.screen instanceof SkiaScreen) return;
+        if (client.screen instanceof ClickGuiScreen) return;
         LocalPlayer player = client.player;
         if (player == null) return;
 
@@ -164,7 +164,7 @@ public class KeystrokesRenderer {
     public void renderFrameEnd() {
         if (!pendingFrame) return;
         Minecraft client = Minecraft.getInstance();
-        if (!Config.keystrokes || Config.keystrokesMode == Config.KeystrokesMode.LITE || client.options.hideGui || client.screen instanceof SkiaScreen) {
+        if (!Config.keystrokes || Config.keystrokesMode == Config.KeystrokesMode.LITE || client.options.hideGui || client.screen instanceof ClickGuiScreen) {
             clearPendingFrame();
             return;
         }

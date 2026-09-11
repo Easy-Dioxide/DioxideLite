@@ -4,16 +4,7 @@ import com.dioxidelite.Config;
 import com.dioxidelite.client.Version;
 import com.dioxidelite.client.gui.clickgui.pages.*;
 import com.dioxidelite.client.ResetManager;
-import com.dioxidelite.client.render.font.FontRenderer;
-import com.dioxidelite.client.render.skia.SkiaRenderer;
-import com.dioxidelite.client.render.skia.LiquidGlassRenderer;
 import com.dioxidelite.client.render.skia.DioxideLiteVisuals;
-import net.minecraft.client.Minecraft;
-import com.dioxidelite.client.render.skia.SkiaScreen;
-import io.github.humbleui.skija.Canvas;
-import io.github.humbleui.skija.Paint;
-import io.github.humbleui.types.RRect;
-import io.github.humbleui.types.Rect;
 import net.minecraft.client.gui.GuiGraphics;
 import net.minecraft.client.gui.screens.Screen;
 import net.minecraft.client.input.MouseButtonEvent;
@@ -22,12 +13,19 @@ import net.minecraft.network.chat.Component;
 import java.util.ArrayList;
 import java.util.List;
 
-public class NewSettingsScreen extends SkiaScreen {
+/**
+ * Liquid Glass settings screen, v1.8 native render rework.
+ *
+ * The whole ClickGUI now renders through plain Minecraft {@link GuiGraphics}
+ * (fills, hairline outlines and the vanilla font) instead of the Skia/OpenGL
+ * path. This is identical on Windows / Linux / macOS, removes the per-frame
+ * Skia surface submission and the GL framebuffer capture that caused blank
+ * ClickGUI panels on Windows, and costs a fraction of the old CPU cost.
+ */
+public class NewSettingsScreen extends Screen implements ClickGuiScreen {
 
     private final List<BasePage> pages;
 
-    private static final String[] TAB_ICONS = {"\uE903", "\uE901", "\uE026", "\uE3A9", "\uE121", "\uE900"};
-    private static final String[] TAB_ICON_FONTS = {FontRenderer.ICON, FontRenderer.ICON, FontRenderer.MATERIAL_SYMBOLS, FontRenderer.MATERIAL_SYMBOLS, FontRenderer.MATERIAL_SYMBOLS, FontRenderer.ICON};
     private static final String[] TAB_KEYS_ZH = {"战斗", "视觉", "工具", "主题", "优化", "其他"};
     private static final String[] TAB_KEYS_EN = {"Combat", "Render", "Tools", "Theme", "Optimize", "Misc"};
 
@@ -53,28 +51,14 @@ public class NewSettingsScreen extends SkiaScreen {
     private boolean draggingScrollbar = false;
     private float scrollbarDragOffset = 0f;
     private boolean redrawRequested = true;
-    private int cachedRegionX = 0;
-    private int cachedRegionY = 0;
-    private int cachedRegionW = 0;
-    private int cachedRegionH = 0;
     private static final float OPEN_DURATION = 0.16f;
     private static final float BASE_CARD_W = 740f;
     private static final float BASE_CARD_H = 500f;
     private static final float SCREEN_MARGIN = 24f;
-    private final Paint cardPaint = new Paint();
-    private final Paint sidebarPaint = new Paint();
-    private final Paint dividerPaint = new Paint();
-    private final Paint indicatorPaint = new Paint();
-    private final Paint hoverPaint = new Paint();
-    private final Paint resetBgPaint = new Paint();
-    private final Paint closeBgPaint = new Paint();
-    private final Paint scrollbarTrackPaint = new Paint();
-    private final Paint scrollbarThumbPaint = new Paint();
-    private final float resetIconWidth = FontRenderer.measureTextWidth("\uE042", 13f, FontRenderer.MATERIAL_SYMBOLS);
     private String cachedResetText = "";
-    private float cachedResetTextWidth = 0f;
+    private int cachedResetTextWidth = 0;
     private String cachedCloseText = "";
-    private float cachedCloseTextWidth = 0f;
+    private int cachedCloseTextWidth = 0;
     private BasePage cachedScrollPage = null;
     private float cachedScrollContentH = Float.NaN;
     private float cachedContentTotalHeight = 0f;
@@ -88,9 +72,12 @@ public class NewSettingsScreen extends SkiaScreen {
     private int debugAnimatingModules = 0;
 
     public NewSettingsScreen(Screen parent) {
-        super(Component.literal("Settings"), parent);
-        pages = new ArrayList<>(List.of(new CombatPage(), new RenderPage(), new ToolPage(), new ThemePage(), new OptimizePage(), new MiscPage()));
+        super(Component.literal("Settings"));
+        this.pages = new ArrayList<>(List.of(new CombatPage(), new RenderPage(), new ToolPage(), new ThemePage(), new OptimizePage(), new MiscPage()));
+        this.parent = parent;
     }
+
+    private final Screen parent;
 
     private float[] layout(int width, int height) {
         float cardW = BASE_CARD_W;
@@ -98,19 +85,19 @@ public class NewSettingsScreen extends SkiaScreen {
         float cardX = (width - cardW) / 2f;
         float cardY = (height - cardH) / 2f;
         float sidebarW = 190f;
-        float tabStartY = cardY + 110f;
-        float tabH = 38f;
+        float tabStartY = cardY + 96f;
+        float tabH = 34f;
         float tabGap = 2f;
         float tabW = sidebarW - 24f;
-        float closeH = 34f;
-        float resetH = 34f;
-        float closeY = cardY + cardH - 48f;
+        float closeH = 32f;
+        float resetH = 32f;
+        float closeY = cardY + cardH - 46f;
         float resetY = closeY - resetH - 8f;
         float closeX = cardX + 12f;
         float contentX = cardX + sidebarW + 1f;
         float contentW = cardW - sidebarW - 1f;
-        float contentY = cardY + 66f;
-        float contentH = cardH - 66f - 12f;
+        float contentY = cardY + 60f;
+        float contentH = cardH - 60f - 12f;
         return new float[]{
                 cardX, cardY, cardW, cardH,
                 sidebarW, tabStartY, tabH, tabGap, tabW,
@@ -131,40 +118,7 @@ public class NewSettingsScreen extends SkiaScreen {
 
     @Override
     public void render(GuiGraphics graphics, int mouseX, int mouseY, float delta) {
-        float visualScale = getVisualScale(this.width, this.height);
-        float[] l = layout(this.width, this.height);
-        float cx = this.width / 2f;
-        float cy = this.height / 2f;
-        float pad = 28f;
-        int regionX = (int) Math.floor(cx + (l[0] - cx) * visualScale - pad);
-        int regionY = (int) Math.floor(cy + (l[1] - cy) * visualScale - pad);
-        int regionW = (int) Math.ceil(l[2] * visualScale + pad * 2f);
-        int regionH = (int) Math.ceil(l[3] * visualScale + pad * 2f);
-        regionX = Math.max(0, regionX);
-        regionY = Math.max(0, regionY);
-        regionW = Math.min(this.width - regionX, Math.max(1, regionW));
-        regionH = Math.min(this.height - regionY, Math.max(1, regionH));
-
-        // v1.7.1: render ClickGUI directly to the active GL framebuffer.
-        // The previous raster-region path uploaded a CPU Skia surface every
-        // animation frame and then performed another framebuffer blur pass.
-        // On fast GPUs that synchronization could collapse FPS to ~1.
-        if (!Config.performanceMode && Config.visualStyle != Config.VisualStyle.MINIMAL) {
-            float cx2 = this.width / 2f, cy2 = this.height / 2f;
-            float bx = cx2 + (l[0] - cx2) * visualScale;
-            float by = cy2 + (l[1] - cy2) * visualScale;
-            float bw = l[2] * visualScale;
-            float bh = l[3] * visualScale;
-            com.dioxidelite.client.render.skia.SkiaBlurRenderer.getInstance().render(
-                    Minecraft.getInstance(), bx, by, bw, bh,
-                    Config.glassRadius * visualScale, 0x30D9ECFF, Config.glassBlur * 0.85f);
-        }
-
-        Canvas canvas = SkiaRenderer.begin();
-        if (canvas != null) {
-            drawSkia(canvas, this.width, this.height, mouseX, mouseY, delta);
-        }
-        SkiaRenderer.end(graphics, this.width, this.height);
+        drawNative(graphics, this.width, this.height, mouseX, mouseY, delta);
         redrawRequested = false;
     }
 
@@ -192,7 +146,7 @@ public class NewSettingsScreen extends SkiaScreen {
     }
 
     private static int withAlpha(int color, float alpha) {
-        return ((int)(alpha * 255) << 24) | (color & 0x00FFFFFF);
+        return DioxideLiteVisuals.withAlpha(color, alpha);
     }
 
     private static int lerpColor(int a, int b, float t) {
@@ -229,7 +183,6 @@ public class NewSettingsScreen extends SkiaScreen {
     private void requestRegionRedraw() {
         redrawRequested = true;
         cachedScrollPage = null;
-        SkiaRenderer.markRegionDirty();
     }
 
     private void updateDebugStats(BasePage page) {
@@ -247,23 +200,20 @@ public class NewSettingsScreen extends SkiaScreen {
         debugAnimatingModules = animating;
     }
 
-    private void drawDebugOverlay(Canvas canvas, float cardX, float cardY, float cardW, float alpha) {
+    private void drawDebugOverlay(GuiGraphics g, int cardX, int cardY, int cardW, float alpha) {
         if (!Version.DEBUG) return;
         String line1 = String.format("ClickGUI %.2fms draw %.2fms update", debugLastDrawMs, debugLastUpdateMs);
         String line2 = String.format("modules %d visible %d expanded %d anim", debugVisibleModules, debugExpandedModules, debugAnimatingModules);
         String line3 = String.format("scroll %.1f/%.1f full=%s", contentScrollOffset, cachedScrollMax, Config.fullMode ? "Y" : "N");
-        float padding = 10f;
-        float textSize = 10f;
-        float w = Math.max(FontRenderer.measureTextWidth(line1, textSize), Math.max(FontRenderer.measureTextWidth(line2, textSize), FontRenderer.measureTextWidth(line3, textSize))) + padding * 2f;
-        float h = 42f;
-        float x = cardX + cardW - w - 14f;
-        float y = cardY + 14f;
-        Paint bg = new Paint();
-        bg.setColor(withAlpha(0xF7F7F8, alpha));
-        canvas.drawRRect(RRect.makeXYWH(x, y, w, h, 8f), bg);
-        FontRenderer.drawText(canvas, line1, x + padding, y + 13f, textSize, withAlpha(0x444444, alpha));
-        FontRenderer.drawText(canvas, line2, x + padding, y + 25f, textSize, withAlpha(0x666666, alpha));
-        FontRenderer.drawText(canvas, line3, x + padding, y + 37f, textSize, withAlpha(0x666666, alpha));
+        int padding = 8;
+        int w = Math.max(this.font.width(line1), Math.max(this.font.width(line2), this.font.width(line3))) + padding * 2;
+        int h = 34;
+        int x = cardX + cardW - w - 14;
+        int y = cardY + 14;
+        g.fill(x, y, x + w, y + h, withAlpha(0xF7F7F8, alpha));
+        g.drawString(this.font, line1, x + padding, y + 6, withAlpha(0x444444, alpha), false);
+        g.drawString(this.font, line2, x + padding, y + 17, withAlpha(0x666666, alpha), false);
+        g.drawString(this.font, line3, x + padding, y + 26, withAlpha(0x666666, alpha), false);
     }
 
     private int computeHoverSignature(double mouseX, double mouseY) {
@@ -294,25 +244,7 @@ public class NewSettingsScreen extends SkiaScreen {
         return signature;
     }
 
-    @Override
-    protected boolean needsContinuousRedraw() {
-        if (closing) return true;
-        if (openProgress < 0.999f) return true;
-        if (pageTransition < 0.999f) return true;
-        if (draggingInContent || draggingScrollbar) return true;
-        if (Math.abs(contentScrollOffset - targetScrollOffset) > 0.35f) return true;
-        if (closeHoverAlpha > 0.01f || closeHovered) return true;
-        if (resetHoverAlpha > 0.01f || resetHovered) return true;
-        if (indicatorY < 0f) return true;
-        float[] l = layout(this.width, this.height);
-        float targetIndicatorY = l[5] + selectedTab * (l[6] + l[7]);
-        if (Math.abs(indicatorY - targetIndicatorY) > 0.35f) return true;
-        for (float alpha : tabHoverAlpha) if (alpha > 0.01f && alpha < 0.99f) return true;
-        return pages.get(selectedTab).hasAnimatingModules();
-    }
-
-    @Override
-    protected void drawSkia(Canvas canvas, int width, int height, int mouseX, int mouseY, float delta) {
+    private void drawNative(GuiGraphics g, int width, int height, int mouseX, int mouseY, float delta) {
         long debugDrawStartNs = Version.DEBUG ? System.nanoTime() : 0L;
         long now = System.currentTimeMillis();
         float dt = lastRenderMs == 0 ? 0.016f : Math.min((now - lastRenderMs) / 1000f, 0.033f);
@@ -321,7 +253,7 @@ public class NewSettingsScreen extends SkiaScreen {
         if (closing) {
             openProgress = clamp01(openProgress - dt / OPEN_DURATION);
             if (openProgress < 0.005f) {
-                super.closing();
+                if (this.minecraft != null) this.minecraft.setScreen(parent);
                 return;
             }
         } else {
@@ -380,22 +312,15 @@ public class NewSettingsScreen extends SkiaScreen {
         float cx = width / 2f;
         float cy = height / 2f;
 
-        canvas.save();
-        canvas.translate(cx, cy);
-        canvas.scale(visualScale, visualScale);
-        canvas.translate(-cx, -cy);
+        g.pose().pushMatrix();
+        g.pose().translate(cx, cy);
+        g.pose().scale(visualScale, visualScale);
+        g.pose().translate(-cx, -cy);
 
-        if (!SkiaRenderer.isDrawing()) {
-            LiquidGlassRenderer.drawSurface(canvas, null,
-                    cardX, cardY, cardW, cardH, Config.glassRadius, alpha);
-        } else {
-            // The panel blur was already composited on the native GL path before
-            // Skia started drawing. Keep only the glass material layers here.
-            Paint glassBase = new Paint().setAntiAlias(true);
-            glassBase.setColor(withAlpha(0x111827, Config.glassOpacity * alpha));
-            canvas.drawRRect(RRect.makeXYWH(cardX, cardY, cardW, cardH, Config.glassRadius), glassBase);
-            glassBase.close();
-        }
+        // Glass panel: translucent fill + hairline border, no framebuffer blur.
+        DioxideLiteVisuals.glassFast(g,
+                Math.round(cardX), Math.round(cardY), Math.round(cardW), Math.round(cardH), alpha,
+                0x111827, Config.glassOpacity, 0xD7E4F5, 0.16f);
 
         int sidebarBase = switch (Config.visualStyle) {
             case AURORA -> 0x102238;
@@ -403,89 +328,83 @@ public class NewSettingsScreen extends SkiaScreen {
             case MINIMAL -> 0x080B10;
             default -> 0x0B121A;
         };
-        sidebarPaint.setColor(withAlpha(sidebarBase,
-                (Config.visualStyle == Config.VisualStyle.LIQUID_GLASS ? 0.34f : 0.48f) * alpha));
-        canvas.save();
-        canvas.clipRRect(RRect.makeXYWH(cardX, cardY, sidebarW, cardH, 16f));
-        canvas.drawRect(Rect.makeXYWH(cardX, cardY, sidebarW, cardH), sidebarPaint);
-        canvas.restore();
+        g.fill(Math.round(cardX), Math.round(cardY), Math.round(cardX + sidebarW), Math.round(cardY + cardH),
+                withAlpha(sidebarBase, (Config.visualStyle == Config.VisualStyle.LIQUID_GLASS ? 0.34f : 0.48f) * alpha));
+        g.fill(Math.round(cardX + sidebarW), Math.round(cardY + 14f), Math.round(cardX + sidebarW + 1f), Math.round(cardY + cardH - 14f),
+                withAlpha(0xFFFFFF, 0.10f * alpha));
 
-        dividerPaint.setColor(withAlpha(0xFFFFFF, 0.10f * alpha));
-        canvas.drawRect(Rect.makeXYWH(cardX + sidebarW, cardY + 14f, 1f, cardH - 28f), dividerPaint);
+        g.drawString(this.font, "DIOXIDE", Math.round(cardX + 18f), Math.round(cardY + 26f), DioxideLiteVisuals.text(alpha), false);
+        g.drawString(this.font, "LITE", Math.round(cardX + 76f), Math.round(cardY + 26f), DioxideLiteVisuals.accent(alpha * 0.92f), false);
+        drawDebugOverlay(g, Math.round(cardX), Math.round(cardY), Math.round(cardW), alpha);
+        g.drawString(this.font, UiText.t("视觉 / 交互 / 性能", "VISUALS / INTERACTION / PERFORMANCE"),
+                Math.round(cardX + 18f), Math.round(cardY + 40f), DioxideLiteVisuals.muted(alpha * 0.82f), false);
 
-        FontRenderer.drawText(canvas, "DIOXIDE", cardX + 18f, cardY + 35f, 15f, DioxideLiteVisuals.text(alpha));
-        FontRenderer.drawText(canvas, "LITE", cardX + 18f, cardY + 50f, 8.5f, DioxideLiteVisuals.accent(alpha * 0.92f));
-        drawDebugOverlay(canvas, cardX, cardY, cardW, alpha);
-        FontRenderer.drawText(canvas, UiText.t("视觉 / 交互 / 性能", "VISUALS / INTERACTION / PERFORMANCE"), cardX + 18f, cardY + 66f, 8.5f, DioxideLiteVisuals.muted(alpha * 0.82f));
-
-        indicatorPaint.setColor(withAlpha(DioxideLiteVisuals.CYAN, 0.10f * alpha));
-        canvas.drawRRect(RRect.makeXYWH(cardX + 12f, indicatorY, tabW, tabH, 7f), indicatorPaint);
-        DioxideLiteVisuals.accentLine(canvas, cardX + 12f, indicatorY + tabH - 1.5f, 34f, alpha * 0.75f);
+        g.fill(Math.round(cardX + 12f), Math.round(indicatorY), Math.round(cardX + 12f + tabW), Math.round(indicatorY + tabH),
+                withAlpha(DioxideLiteVisuals.CYAN, 0.10f * alpha));
+        DioxideLiteVisuals.accentLineFast(g, Math.round(cardX + 12f), Math.round(indicatorY + tabH - 2f), 34, alpha * 0.75f);
 
         for (int i = 0; i < TAB_KEYS_ZH.length; i++) {
             float tabY = tabStartY + i * (tabH + tabGap);
             if (tabHoverAlpha[i] > 0.01f) {
-                hoverPaint.setColor(withAlpha(0xB9DFFF, 0.055f * alpha * tabHoverAlpha[i]));
-                canvas.drawRRect(RRect.makeXYWH(cardX + 12f, tabY, tabW, tabH, 7f), hoverPaint);
+                g.fill(Math.round(cardX + 12f), Math.round(tabY), Math.round(cardX + 12f + tabW), Math.round(tabY + tabH),
+                        withAlpha(0xB9DFFF, 0.055f * alpha * tabHoverAlpha[i]));
             }
             boolean active = i == selectedTab;
-            int iconColor = active ? DioxideLiteVisuals.accent(alpha) : DioxideLiteVisuals.muted(alpha * 0.82f);
             int textColor = active ? DioxideLiteVisuals.text(alpha) : DioxideLiteVisuals.muted(alpha * 0.88f);
-            FontRenderer.drawText(canvas, TAB_ICONS[i], cardX + 18f, tabY + tabH / 2f + 6f, 13f, iconColor, TAB_ICON_FONTS[i]);
-            FontRenderer.drawText(canvas, UiText.t(TAB_KEYS_ZH[i], TAB_KEYS_EN[i]), cardX + 38f, tabY + tabH / 2f + 6f, 13f, textColor);
+            g.drawString(this.font, UiText.t(TAB_KEYS_ZH[i], TAB_KEYS_EN[i]),
+                    Math.round(cardX + 18f), Math.round(tabY + tabH / 2f - 4f), textColor, false);
         }
 
         int closeTextColor = lerpColor(0xFF000000 | DioxideLiteVisuals.MUTED, 0xFFB9DFFF, closeHoverAlpha);
         int resetTextColor = lerpColor(0xFF000000 | DioxideLiteVisuals.MUTED, 0xFFB9DFFF, resetHoverAlpha);
-        resetBgPaint.setColor(withAlpha(0x0B1119, alpha * (0.72f + resetHoverAlpha * 0.12f)));
-        canvas.drawRRect(RRect.makeXYWH(closeX, resetY, tabW, resetH, 7f), resetBgPaint);
-        DioxideLiteVisuals.outline(canvas, closeX, resetY, tabW, resetH, 7f, DioxideLiteVisuals.CYAN, alpha * (0.10f + resetHoverAlpha * 0.20f), 0.7f);
+        g.fill(Math.round(closeX), Math.round(resetY), Math.round(closeX + tabW), Math.round(resetY + resetH),
+                withAlpha(0x0B1119, alpha * (0.72f + resetHoverAlpha * 0.12f)));
+        DioxideLiteVisuals.outlineFast(g, Math.round(closeX), Math.round(resetY), Math.round(tabW), Math.round(resetH),
+                DioxideLiteVisuals.CYAN, alpha * (0.10f + resetHoverAlpha * 0.20f));
         String resetText = resetConfirm ? UiText.t("再次点击以确认", "Click Again to Confirm") : UiText.t("重置所有设置", "Reset All Settings");
-        String resetIcon = "\uE042";
         if (!resetText.equals(cachedResetText)) {
             cachedResetText = resetText;
-            cachedResetTextWidth = FontRenderer.measureTextWidth(resetText, 12f);
+            cachedResetTextWidth = this.font.width(resetText);
         }
-        float resetTotalW = resetIconWidth + 6f + cachedResetTextWidth;
-        float resetStartX = closeX + (tabW - resetTotalW) / 2f;
-        FontRenderer.drawText(canvas, resetIcon, resetStartX, resetY + 22f, 13f, withAlpha(resetTextColor, alpha), FontRenderer.MATERIAL_SYMBOLS);
-        FontRenderer.drawText(canvas, resetText, resetStartX + resetIconWidth + 6f, resetY + 22f, 12f, withAlpha(resetTextColor, alpha));
+        g.drawString(this.font, resetText, Math.round(closeX + (tabW - cachedResetTextWidth) / 2f), Math.round(resetY + resetH / 2f - 4f),
+                withAlpha(resetTextColor, alpha), false);
 
-        closeBgPaint.setColor(withAlpha(0x0B1119, alpha * (0.72f + closeHoverAlpha * 0.12f)));
-        canvas.drawRRect(RRect.makeXYWH(closeX, closeY, tabW, closeH, 7f), closeBgPaint);
-        DioxideLiteVisuals.outline(canvas, closeX, closeY, tabW, closeH, 7f, closeHovered ? 0xD5ECFF : 0x6E7F93, alpha * (0.14f + closeHoverAlpha * 0.20f), 0.7f);
+        g.fill(Math.round(closeX), Math.round(closeY), Math.round(closeX + tabW), Math.round(closeY + closeH),
+                withAlpha(0x0B1119, alpha * (0.72f + closeHoverAlpha * 0.12f)));
+        DioxideLiteVisuals.outlineFast(g, Math.round(closeX), Math.round(closeY), Math.round(tabW), Math.round(closeH),
+                closeHovered ? 0xD5ECFF : 0x6E7F93, alpha * (0.14f + closeHoverAlpha * 0.20f));
         String closeText = UiText.t("× 关闭", "× Close");
         if (!closeText.equals(cachedCloseText)) {
             cachedCloseText = closeText;
-            cachedCloseTextWidth = FontRenderer.measureTextWidth(closeText, 12f);
+            cachedCloseTextWidth = this.font.width(closeText);
         }
-        FontRenderer.drawText(canvas, closeText, closeX + (tabW - cachedCloseTextWidth) / 2f, closeY + 22f, 12f, withAlpha(closeTextColor, alpha));
+        g.drawString(this.font, closeText, Math.round(closeX + (tabW - cachedCloseTextWidth) / 2f), Math.round(closeY + closeH / 2f - 4f),
+                withAlpha(closeTextColor, alpha), false);
 
         float pageAlpha = clamp01(pageTransition);
         float pageSlide = (1f - pageAlpha) * 10f;
-        FontRenderer.drawText(canvas, page.getTitle(), contentX + 18f + pageSlide, contentY + 25f, 18f, DioxideLiteVisuals.text(alpha * pageAlpha));
-        FontRenderer.drawText(canvas, page.getSubtitle(), contentX + 18f + pageSlide, contentY + 41f, 9.5f, DioxideLiteVisuals.muted(alpha * pageAlpha));
-        DioxideLiteVisuals.accentLine(canvas, contentX + 18f + pageSlide, contentY + 49f, 44f, alpha * pageAlpha * 0.72f);
+        g.drawString(this.font, page.getTitle(), Math.round(contentX + 18f + pageSlide), Math.round(contentY + 18f),
+                DioxideLiteVisuals.text(alpha * pageAlpha), false);
+        g.drawString(this.font, page.getSubtitle(), Math.round(contentX + 18f + pageSlide), Math.round(contentY + 31f),
+                DioxideLiteVisuals.muted(alpha * pageAlpha), false);
+        DioxideLiteVisuals.accentLineFast(g, Math.round(contentX + 18f + pageSlide), Math.round(contentY + 42f), 44, alpha * pageAlpha * 0.72f);
 
         float clipTop = contentY + 54f;
         float clipBottom = contentY + contentH;
-        canvas.save();
-        canvas.clipRect(Rect.makeXYWH(contentX, clipTop, contentW, clipBottom - clipTop));
 
         float moduleStartY = contentY + 54f;
-        page.draw(canvas, contentX + 10f, moduleStartY, contentW - 40f, contentH - 54f, alpha, contentScrollOffset);
-        drawScrollbar(canvas, page, contentX, contentY, contentW, contentH, alpha);
+        page.drawFast(g, Math.round(contentX + 10f), Math.round(moduleStartY), Math.round(contentW - 40f), Math.round(contentH - 54f),
+                Math.round(alpha * 255f), contentScrollOffset, Math.round(layoutMouseX), Math.round(layoutMouseY));
+        drawScrollbar(g, page, contentX, contentY, contentW, contentH, alpha);
 
-        canvas.restore();
-
-        canvas.restore();
+        g.pose().popMatrix();
 
         if (Version.DEBUG) {
             debugLastDrawMs = (System.nanoTime() - debugDrawStartNs) / 1_000_000.0;
         }
     }
 
-    private void drawScrollbar(Canvas canvas, BasePage page, float contentX, float contentY, float contentW, float contentH, float alpha) {
+    private void drawScrollbar(GuiGraphics g, BasePage page, float contentX, float contentY, float contentW, float contentH, float alpha) {
         updateScrollCache(page, contentH);
         if (cachedContentTotalHeight <= cachedScrollAreaHeight) return;
 
@@ -498,10 +417,10 @@ public class NewSettingsScreen extends SkiaScreen {
         float thumbTop = trackTop + (trackH - thumbH) * progress;
         thumbTop = Math.min(thumbTop, trackTop + trackH - thumbH);
 
-        scrollbarTrackPaint.setColor(withAlpha(0xE0E0E0, alpha * 0.5f));
-        canvas.drawRRect(RRect.makeXYWH(trackX, trackTop, 4f, trackH, 2f), scrollbarTrackPaint);
-        scrollbarThumbPaint.setColor(withAlpha(0xBBBBBB, alpha));
-        canvas.drawRRect(RRect.makeXYWH(trackX, thumbTop, 4f, thumbH, 2f), scrollbarThumbPaint);
+        g.fill(Math.round(trackX), Math.round(trackTop), Math.round(trackX + 4f), Math.round(trackTop + trackH),
+                withAlpha(0xE0E0E0, alpha * 0.5f));
+        g.fill(Math.round(trackX), Math.round(thumbTop), Math.round(trackX + 4f), Math.round(thumbTop + thumbH),
+                withAlpha(0xBBBBBB, alpha));
     }
 
     private boolean hasScrollbar(BasePage page, float contentH) {
@@ -694,4 +613,13 @@ public class NewSettingsScreen extends SkiaScreen {
         }
         return false;
     }
+
+    @Override
+    protected void renderBlurredBackground(GuiGraphics guiGraphics) {}
+
+    @Override
+    protected void renderMenuBackground(GuiGraphics guiGraphics) {}
+
+    @Override
+    public void renderBackground(GuiGraphics guiGraphics, int i, int j, float f) {}
 }

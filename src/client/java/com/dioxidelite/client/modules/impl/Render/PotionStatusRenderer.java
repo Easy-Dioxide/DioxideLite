@@ -7,7 +7,7 @@ import com.dioxidelite.Config;
 import com.dioxidelite.client.render.font.FontRenderer;
 import com.dioxidelite.client.render.skia.LiquidGlassVisualSystem;
 import com.dioxidelite.client.render.skia.SkiaGlBackend;
-import com.dioxidelite.client.render.skia.SkiaScreen;
+import com.dioxidelite.client.gui.clickgui.ClickGuiScreen;
 import io.github.humbleui.skija.Canvas;
 import io.github.humbleui.skija.Image;
 import io.github.humbleui.skija.Paint;
@@ -76,7 +76,7 @@ public class PotionStatusRenderer {
             clearPendingFrame();
             return;
         }
-        if (client.player == null || client.level == null || client.options.hideGui || client.screen instanceof SkiaScreen) {
+        if (client.player == null || client.level == null || client.options.hideGui || client.screen instanceof ClickGuiScreen) {
             clearPendingFrame();
             return;
         }
@@ -115,7 +115,7 @@ public class PotionStatusRenderer {
     public void renderFrameEnd() {
         if (!pendingFrame) return;
         Minecraft client = Minecraft.getInstance();
-        if (!Config.potionStatus || client.options.hideGui || client.screen instanceof SkiaScreen) {
+        if (!Config.potionStatus || client.options.hideGui || client.screen instanceof ClickGuiScreen) {
             clearPendingFrame();
             return;
         }
@@ -152,7 +152,7 @@ public class PotionStatusRenderer {
     public boolean shouldHideVanillaEffects() {
         if (!Config.potionStatus || !Config.potionStatusHideVanilla) return false;
         Minecraft client = Minecraft.getInstance();
-        if (client.player == null || client.level == null || client.options.hideGui || client.screen instanceof SkiaScreen) return false;
+        if (client.player == null || client.level == null || client.options.hideGui || client.screen instanceof ClickGuiScreen) return false;
         return HudEditOverlay.getInstance().isActive() || !visibleEffects(client).isEmpty();
     }
 
