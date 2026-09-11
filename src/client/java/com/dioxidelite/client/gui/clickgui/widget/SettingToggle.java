@@ -1,0 +1,89 @@
+package com.dioxidelite.client.gui.clickgui.widget;
+
+import com.dioxidelite.client.render.skia.DioxideLiteVisuals;
+import io.github.humbleui.skija.Canvas;
+import io.github.humbleui.skija.Paint;
+import io.github.humbleui.types.RRect;
+import net.minecraft.client.gui.GuiGraphics;
+
+import java.util.function.Consumer;
+import java.util.function.Supplier;
+
+public class SettingToggle extends SettingWidget {
+
+    private final Supplier<Boolean> getter;
+    private final Consumer<Boolean> setter;
+    private float thumbX = -1f;
+    private float colorT = -1f;
+    private float lastDrawX = 0f;
+    private final Paint trackPaint = new Paint();
+    private final Paint thumbPaint = new Paint();
+
+    private static final int COLOR_TRACK_ON  = 0xFF2F54EB;
+    private static final int COLOR_TRACK_OFF = 0xFFCCCCCC;
+    private static final int COLOR_THUMB     = 0xFFFFFFFF;
+
+    public SettingToggle(Supplier<Boolean> getter, Consumer<Boolean> setter) {
+        this.getter = getter;
+        this.setter = setter;
+    }
+
+    @Override public float getWidth() { return 44f; }
+    @Override public float getHeight() { return 24f; }
+
+    @Override
+    public void draw(Canvas canvas, float x, float y, float alpha) {
+        boolean on = getter.get();
+        lastDrawX = x;
+
+        if (colorT < 0f) colorT = on ? 1f : 0f;
+        if (thumbX < 0f) thumbX = on ? x + 22f : x + 2f;
+
+        float targetColorT = on ? 1f : 0f;
+        colorT += (targetColorT - colorT) * 0.2f;
+
+        float targetThumbX = on ? x + 22f : x + 2f;
+        thumbX += (targetThumbX - thumbX) * 0.2f;
+
+        int trackColor = lerpColor(0x17212C, 0x245D78, colorT);
+
+        trackPaint.setColor(withAlpha(trackColor, alpha * 0.92f));
+        canvas.drawRRect(RRect.makeXYWH(x, y, 44f, 24f, 12f), trackPaint);
+        DioxideLiteVisuals.outline(canvas, x, y, 44f, 24f, 12f, colorT > 0.5f ? DioxideLiteVisuals.CYAN : 0x7D8A9C, alpha * (0.28f + 0.25f * colorT), 0.8f);
+        thumbPaint.setColor(withAlpha(COLOR_THUMB, alpha));
+        canvas.drawCircle(thumbX + 10f, y + 12f, 8f, thumbPaint);
+    }
+
+    @Override
+    public void drawFast(GuiGraphics g, int x, int y, int alpha) {
+        boolean on = getter.get();
+        int track = on ? ((alpha << 24) | 0x1B806B) : ((alpha << 24) | 0x25303A);
+        g.fill(x, y + 3, x + 44, y + 21, track);
+        g.renderOutline(x, y + 3, 44, 18, (alpha << 24) | (on ? 0x58DDBE : 0x66737F));
+        int knobX = on ? x + 31 : x + 7;
+        g.fill(knobX, y + 6, knobX + 10, y + 18, (alpha << 24) | 0xEAF8FF);
+    }
+
+    @Override
+    public boolean isAnimating() {
+        boolean on = getter.get();
+        if (colorT < 0f || thumbX < 0f) return false;
+        float targetColorT = on ? 1f : 0f;
+        float targetThumbX = on ? lastDrawX + 22f : lastDrawX + 2f;
+        return Math.abs(colorT - targetColorT) > 0.01f || Math.abs(thumbX - targetThumbX) > 0.01f;
+    }
+
+    @Override
+    public boolean onClick(float mx, float my, float x, float y, int button) {
+        if (button != 0) return false;
+        setter.accept(!getter.get());
+        return true;
+    }
+
+    private static int lerpColor(int a, int b, float t) {
+        t = Math.max(0f, Math.min(1f, t));
+        int ar = (a >> 16) & 0xFF, ag = (a >> 8) & 0xFF, ab = a & 0xFF;
+        int br = (b >> 16) & 0xFF, bg = (b >> 8) & 0xFF, bb = b & 0xFF;
+        return ((int)(ar+(br-ar)*t) << 16) | ((int)(ag+(bg-ag)*t) << 8) | (int)(ab+(bb-ab)*t);
+    }
+}
