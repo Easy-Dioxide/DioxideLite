@@ -2,7 +2,7 @@ package com.dioxidelite.mixin.client;
 
 import com.dioxidelite.Config;
 import com.dioxidelite.client.modules.impl.Render.HudEditOverlay;
-import com.dioxidelite.client.render.skia.LiquidGlassVisualSystem;
+import com.dioxidelite.client.render.nativeui.NativeGlassVisualSystem;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.GuiGraphics;
 import net.minecraft.client.gui.screens.ChatScreen;
@@ -19,7 +19,7 @@ public class ChatScreenMixin {
     private void dioxide_lite$liquidGlassChat(GuiGraphics graphics, int mouseX, int mouseY, float delta, CallbackInfo ci) {
         if (Config.liquidGlassAllVisuals) {
             Minecraft mc = Minecraft.getInstance();
-            LiquidGlassVisualSystem.renderChat(graphics, mc.getWindow().getGuiScaledWidth(), mc.getWindow().getGuiScaledHeight(), true);
+            NativeGlassVisualSystem.renderChat(graphics, mc.getWindow().getGuiScaledWidth(), mc.getWindow().getGuiScaledHeight(), true);
         }
     }
 

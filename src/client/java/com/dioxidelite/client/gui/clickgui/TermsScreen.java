@@ -1,5 +1,6 @@
 package com.dioxidelite.client.gui.clickgui;
 
+import com.dioxidelite.client.render.font.FontRenderer;
 import com.dioxidelite.Config;
 import com.dioxidelite.client.TermsManager;
 import net.minecraft.client.gui.GuiGraphics;
@@ -19,7 +20,7 @@ public class TermsScreen extends Screen {
     private final int buttonH = 24;
 
     public TermsScreen(Screen parent) {
-        super(Component.literal(Config.isChinese ? "使用须知" : "Terms of Use"));
+        super(FontRenderer.component(Config.isChinese ? "使用须知" : "Terms of Use"));
         this.parent = parent;
     }
 

@@ -39,7 +39,7 @@ public class Config {
     /** DioxideLite visual shell used by ClickGUI/HUD surfaces. */
     public enum VisualStyle { AURORA, LIQUID_GLASS, RISE_CLEAN, MINIMAL, SIGNATURE }
     public static VisualStyle visualStyle = VisualStyle.LIQUID_GLASS;
-    public enum ClickGuiTheme { ORIGINAL, MINIMAL_POP, SIGNATURE }
+    public enum ClickGuiTheme { ORIGINAL, MINIMAL_POP, SIGNATURE, GLASS }
     public static ClickGuiTheme clickGuiTheme = ClickGuiTheme.ORIGINAL;
     // Presentation-only visual modules inspired by the reference client.
     public static boolean visualWatermark = false;
@@ -62,12 +62,11 @@ public class Config {
     public static float glassHighlight = 0.75f;
     public static float glassRadius = 18.0f;
     public static boolean glassRefraction = true;
-    public static boolean performanceMode = false;
+    public static boolean performanceMode = true;
     public static float dynamicIslandWidthScale = 1.0f;
     public static float dynamicIslandHeightScale = 1.0f;
     public static float dynamicIslandBlur = 0.85f;
     public static float dynamicIslandOpacity = 0.72f;
-    public static float skiaBlurStrength = 1.0f;
     public static boolean timeChange = false;
     public static boolean weatherChange = false;
     public static boolean armorHud = false;
@@ -109,7 +108,7 @@ public class Config {
     public static int betterChatInputFadeTime = 170;
     public static int hotbarRollover = 0;
     public static boolean useMainUI = true;
-    public static boolean mainUICustomBackground = false;
+    public static boolean mainUICustomBackground = true;
     public static boolean mainUIMouseEffect = false;
     public static boolean termsRead = false;
     public static boolean fullMode = false;
@@ -180,10 +179,6 @@ public class Config {
     public enum HudTheme { DARK, LIGHT }
     public enum WeatherMode { CLEAR, RAIN, SNOW, THUNDER }
 
-    public static int skiaBlurTintColor() {
-        return hudTheme == HudTheme.LIGHT ? 0x66F8FAFC : 0x66111827;
-    }
-
     public static int hudPrimaryTextColor() {
         return hudTheme == HudTheme.LIGHT ? 0xFF111827 : 0xFFFFFFFF;
     }
@@ -246,7 +241,7 @@ public class Config {
             itemPhysics = Boolean.parseBoolean(prop.getProperty("itemPhysics", "false"));
             item2DRender = Boolean.parseBoolean(prop.getProperty("item2DRender", "false"));
             itemPhysicsRotationSpeed = Float.parseFloat(prop.getProperty("itemPhysicsRotationSpeed", "1.0"));
-            hudTheme = parseHudTheme(prop.getProperty("hudTheme", prop.getProperty("skiaBlurColor", "DARK")));
+            hudTheme = parseHudTheme(prop.getProperty("hudTheme", prop.getProperty("hudTheme", "DARK")));
             visualStyle = parseVisualStyle(prop.getProperty("visualStyle", "LIQUID_GLASS"));
             clickGuiTheme = parseEnum(prop.getProperty("clickGuiTheme", "ORIGINAL"), ClickGuiTheme.ORIGINAL, ClickGuiTheme.class);
             visualWatermark = Boolean.parseBoolean(prop.getProperty("visualWatermark", "false"));
@@ -268,12 +263,11 @@ public class Config {
             glassHighlight = clamp01(finiteOrDefault(Float.parseFloat(prop.getProperty("glassHighlight", "0.75")), 0.75f));
             glassRadius = clamp(Float.parseFloat(prop.getProperty("glassRadius", "18.0")), 8f, 32f, 18.0f);
             glassRefraction = Boolean.parseBoolean(prop.getProperty("glassRefraction", "true"));
-            performanceMode = Boolean.parseBoolean(prop.getProperty("performanceMode", "false"));
+            performanceMode = Boolean.parseBoolean(prop.getProperty("performanceMode", "true"));
             dynamicIslandWidthScale = clamp(Float.parseFloat(prop.getProperty("dynamicIslandWidthScale", "1.0")), 0.55f, 1.8f, 1.0f);
             dynamicIslandHeightScale = clamp(Float.parseFloat(prop.getProperty("dynamicIslandHeightScale", "1.0")), 0.65f, 1.6f, 1.0f);
             dynamicIslandBlur = clamp(Float.parseFloat(prop.getProperty("dynamicIslandBlur", "0.85")), 0f, 2f, 0.85f);
             dynamicIslandOpacity = clamp01(finiteOrDefault(Float.parseFloat(prop.getProperty("dynamicIslandOpacity", "0.72")), 0.72f));
-            skiaBlurStrength = clamp(Float.parseFloat(prop.getProperty("skiaBlurStrength", "1.0")), 0f, 2f, 1.0f);
             timeChange = Boolean.parseBoolean(prop.getProperty("timeChange", "false"));
             weatherChange = Boolean.parseBoolean(prop.getProperty("weatherChange", "false"));
             armorHud = Boolean.parseBoolean(prop.getProperty("armorHud", "false"));
@@ -315,7 +309,7 @@ public class Config {
             betterChatInputFadeTime = Integer.parseInt(prop.getProperty("betterChatInputFadeTime", "170"));
             hotbarRollover = Integer.parseInt(prop.getProperty("hotbarRollover", "0"));
             useMainUI = Boolean.parseBoolean(prop.getProperty("useMainUI", "true"));
-            mainUICustomBackground = Boolean.parseBoolean(prop.getProperty("mainUICustomBackground", "false"));
+            mainUICustomBackground = Boolean.parseBoolean(prop.getProperty("mainUICustomBackground", "true"));
             mainUIMouseEffect = Boolean.parseBoolean(prop.getProperty("mainUIMouseEffect", "false"));
             termsRead = Boolean.parseBoolean(prop.getProperty("termsRead", "false"));
             fullMode = Boolean.parseBoolean(prop.getProperty("fullMode", "false"));
@@ -451,7 +445,6 @@ public class Config {
             prop.setProperty("dynamicIslandHeightScale", String.valueOf(dynamicIslandHeightScale));
             prop.setProperty("dynamicIslandBlur", String.valueOf(dynamicIslandBlur));
             prop.setProperty("dynamicIslandOpacity", String.valueOf(dynamicIslandOpacity));
-            prop.setProperty("skiaBlurStrength", String.valueOf(skiaBlurStrength));
             prop.setProperty("timeChange", String.valueOf(timeChange));
             prop.setProperty("weatherChange", String.valueOf(weatherChange));
             prop.setProperty("armorHud", String.valueOf(armorHud));

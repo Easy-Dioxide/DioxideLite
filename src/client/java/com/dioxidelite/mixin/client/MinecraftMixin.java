@@ -115,17 +115,5 @@ public class MinecraftMixin {
         }
     }
 
-    @Inject(
-            method = "runTick",
-            at = @At(
-                    value = "INVOKE",
-                    target = "Lcom/mojang/blaze3d/platform/Window;updateDisplay(Lcom/mojang/blaze3d/TracyFrameCapture;)V"
-            )
-    )
-    private void dioxide_lite$renderSkiaFrameEnd(boolean advanceGameTime, CallbackInfo ci) {
-        PotionStatusRenderer.getInstance().renderFrameEnd();
-        KeystrokesRenderer.getInstance().renderFrameEnd();
-        BlockCountDisplayRenderer.getInstance().renderFrameEnd();
-        HudEditOverlay.getInstance().renderFrameEnd();
-    }
+
 }

@@ -3,7 +3,8 @@ package com.dioxidelite.client.modules.impl.Render;
 import com.dioxidelite.Config;
 import com.dioxidelite.client.Version;
 import com.dioxidelite.client.render.font.FontRenderer;
-import com.dioxidelite.client.render.skia.LiquidGlassVisualSystem;
+import com.dioxidelite.client.render.nativeui.NativeGlassVisualSystem;
+import com.dioxidelite.client.render.nativeui.RenderPerformance;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.GuiGraphics;
 import net.minecraft.world.entity.player.Player;
@@ -24,9 +25,10 @@ public final class DioxideLiteVisualOverlay {
         Minecraft mc = Minecraft.getInstance();
         if (mc.player == null || mc.level == null || mc.screen != null) return;
         long now = System.currentTimeMillis();
+        RenderPerformance.sampleFrame(System.nanoTime());
         float dt = lastMs == 0 ? .016f : Math.min(.05f, (now-lastMs)/1000f);
         lastMs = now;
-        pulse += dt;
+        pulse += RenderPerformance.animateDecorations() ? dt : dt * .35f;
         int w = mc.getWindow().getGuiScaledWidth();
         int h = mc.getWindow().getGuiScaledHeight();
         int accent = Config.visualStyle == Config.VisualStyle.SIGNATURE ? 0xFF3ED6B4 : 0xFF78CFFF;
@@ -43,11 +45,11 @@ public final class DioxideLiteVisualOverlay {
         if (Config.visualScoreboard) drawScoreboard(g, mc, accent);
         if (Config.visualCompass) drawCompass(g, mc, w, accent);
         if (Config.visualCrosshair) drawCrosshair(g, mc, w, h, accent);
-        if (Config.visualParticles && !Config.performanceMode) drawAmbientDots(g, w, h, accent);
+        if (Config.visualParticles && RenderPerformance.animateDecorations()) drawAmbientDots(g, w, h, accent);
     }
 
     private void panel(GuiGraphics g, float x, float y, float w, float h, float alpha) {
-        if (Config.liquidGlassAllVisuals) LiquidGlassVisualSystem.renderHudDock(g, x, y, w, h, alpha);
+        if (Config.liquidGlassAllVisuals) NativeGlassVisualSystem.renderHudDock(g, x, y, w, h, alpha);
         else g.fill(Math.round(x), Math.round(y), Math.round(x+w), Math.round(y+h), ((int)(alpha*255)<<24)|0x080D13);
     }
 
@@ -55,8 +57,8 @@ public final class DioxideLiteVisualOverlay {
         int x=12, y=10;
         panel(g, x-8,y-6,132,30,.72f);
         g.fill(x-8,y-6,x-6,y+24,accent);
-        g.drawString(mc.font, "DioxideLite", x, y, 0xFFF4F8FF, true);
-        g.drawString(mc.font, Version.displayName(), x+74, y, 0xFF9BA7B7, false);
+        g.drawString(mc.font, FontRenderer.component("DioxideLite"), x, y, 0xFFF4F8FF, true);
+        g.drawString(mc.font, FontRenderer.component(Version.displayName()), x+74, y, 0xFF9BA7B7, false);
     }
 
     private void drawFeatureList(GuiGraphics g, Minecraft mc, int accent) {
@@ -83,7 +85,7 @@ public final class DioxideLiteVisualOverlay {
             int x=mc.getWindow().getGuiScaledWidth()-tw-18;
             panel(g, x-10,y-6,tw+20,24,.52f);
             g.fill(x-10,y-6,x-8,y+18,accent);
-            g.drawString(mc.font, name, x, y, 0xFFE7EEF7, false);
+            g.drawString(mc.font, FontRenderer.component(name), x, y, 0xFFE7EEF7, false);
             y += 22;
         }
     }

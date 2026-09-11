@@ -28,9 +28,9 @@ This pass is based on direct inspection of the uploaded Minimal visual-design/de
 
 ### Liquid Glass
 - Added shared `DioxideLiteVisuals` design-system renderer.
-- Kept framebuffer blur as a material layer, while adding a restrained top optical plane and animated sheen.
-- Added a weaker bottom rim to keep the glass physically readable.
-- Dense module cards deliberately avoid per-card framebuffer blur to prevent a blur-pass explosion.
+- Uses a native translucent material layer with a restrained top optical plane and bottom rim.
+- The default path avoids framebuffer capture so the UI remains responsive on lower-end systems.
+- Dense module cards use cheap layered fills/outlines rather than per-card blur passes.
 
 ### Dynamic Island
 - Added a compact dark-glass body with a cool hairline rim.
@@ -47,7 +47,7 @@ This pass is based on direct inspection of the uploaded Minimal visual-design/de
 
 ## Performance strategy
 
-The visual system distinguishes between large surfaces and dense lists. Large surfaces may use framebuffer blur; dense module lists use cached/layered cards without repeatedly capturing the framebuffer. `Config.performanceMode` remains the global quality switch.
+The visual system distinguishes between large surfaces and dense lists. The native path uses cached/layered cards and avoids repeated framebuffer capture. `Config.performanceMode` remains the global quality switch.
 
 ## Source / build note
 

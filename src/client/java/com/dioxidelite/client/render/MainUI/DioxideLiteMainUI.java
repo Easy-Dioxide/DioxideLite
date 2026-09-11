@@ -37,7 +37,7 @@ import java.util.List;
  * DioxideLite main menu. The composition and motion language follows the
  * supplied Setsuna reference, while the renderer/assets remain DioxideLite-owned.
  * It deliberately uses GuiGraphics only so the title screen never needs a
- * Skia/FBO/CPU readback path.
+ * external raster/FBO path.
  */
 public final class DioxideLiteMainUI extends Screen {
     private static final Identifier BACKGROUND_TEXTURE = Identifier.fromNamespaceAndPath("dioxide_lite", "mainui_background");
@@ -116,7 +116,8 @@ public final class DioxideLiteMainUI extends Screen {
             return;
         }
 
-        // Original, lightweight recreation of the reference's dark architectural backdrop.
+        // Original lightweight fallback backdrop. The default install ships with a
+        // dedicated image, so this path is only used if the external image is missing.
         g.fill(0, 0, width, height, 0xFF000000);
         if (intro <= 0) return;
         int alpha = Math.round(255f * intro);
@@ -160,7 +161,7 @@ public final class DioxideLiteMainUI extends Screen {
         g.drawCenteredString(font, "CLICK TO START", cx, cy + 38,
                 (Math.round(255f * intro * pulse) << 24) | 0xF2F7F6);
         g.drawCenteredString(font, "DIOXIDELITE", cx, cy - 62, white);
-        g.drawCenteredString(font, "SETSUNA UI", cx, cy - 48,
+        g.drawCenteredString(font, "LIQUID GLASS UI", cx, cy - 48,
                 (Math.round(135f * intro) << 24) | 0x96A39F);
         g.fill(cx - 48, cy + 59, cx + 48, cy + 60, accent);
     }
@@ -220,7 +221,7 @@ public final class DioxideLiteMainUI extends Screen {
     private void drawTopBar(GuiGraphics g, float a, int mx, int my) {
         int alpha = Math.round(255f * a);
         g.drawString(font, "DIOXIDELITE", 22, 18, (alpha << 24) | 0xF2F7F6, false);
-        g.drawString(font, "SETSUNA", 22, 31, (Math.round(135f * a) << 24) | 0x58DDBE, false);
+        g.drawString(font, "LIQUID GLASS", 22, 31, (Math.round(135f * a) << 24) | 0x58DDBE, false);
         int themeW = 94, bgW = 112;
         int themeX = width - themeW - 24, bgX = themeX - bgW - 10;
         button(g, bgX, 16, bgW, 20,

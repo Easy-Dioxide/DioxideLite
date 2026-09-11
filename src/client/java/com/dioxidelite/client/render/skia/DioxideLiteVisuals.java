@@ -6,7 +6,6 @@ import io.github.humbleui.skija.Paint;
 import io.github.humbleui.skija.PaintMode;
 import io.github.humbleui.types.RRect;
 import io.github.humbleui.types.Rect;
-import net.minecraft.client.gui.GuiGraphics;
 
 /**
  * DioxideLite's shared visual language.
@@ -95,53 +94,5 @@ public final class DioxideLiteVisuals {
     public static int withAlpha(int rgb, float alpha) {
         int a = Math.max(0, Math.min(255, Math.round(alpha * 255f)));
         return (a << 24) | (rgb & 0xFFFFFF);
-    }
-
-    // ------------------------------------------------------------------
-    // Native GuiGraphics variants (v1.8 render rework).
-    // The ClickGUI no longer uses the Skia/OpenGL path on any platform:
-    // every panel, card and accent is drawn with plain GuiGraphics fills
-    // and outlines, which renders identically on Windows/Linux/macOS and
-    // costs a fraction of the old per-frame Skia submission.
-    // ------------------------------------------------------------------
-
-    /** A glass-like panel without framebuffer blur: dark translucent fill + hairline border. */
-    public static void glassFast(GuiGraphics g, int x, int y, int w, int h, float alpha,
-                                 int baseRgb, float baseFillAlpha, int borderRgb, float borderAlpha) {
-        if (w <= 0 || h <= 0 || alpha <= 0f) return;
-        g.fill(x, y, x + w, y + h, withAlpha(baseRgb, baseFillAlpha * alpha));
-        g.renderOutline(x, y, w, h, withAlpha(borderRgb, borderAlpha * alpha));
-    }
-
-    /** A cheap card for dense UI lists (native variant of {@link #card}). */
-    public static void cardFast(GuiGraphics g, int x, int y, int w, int h, float alpha, boolean hovered, boolean selected) {
-        if (w <= 0 || h <= 0 || alpha <= 0f) return;
-        int base = selected ? 0x13243A : 0x0C1119;
-        float fillAlpha = alpha * (hovered ? 0.76f : 0.60f);
-        g.fill(x, y, x + w, y + h, withAlpha(base, fillAlpha));
-        // Very thin top plane keeps the optical layering of the old glass cards.
-        g.fill(x + 1, y + 1, x + w - 1, y + 2, withAlpha(0xFFFFFF, alpha * (hovered ? 0.075f : 0.035f)));
-        int border = selected ? CYAN_BRIGHT : 0xD7E4F5;
-        float borderAlpha = alpha * (selected ? 0.62f : (hovered ? 0.20f : 0.10f));
-        g.renderOutline(x, y, w, h, withAlpha(border, borderAlpha));
-    }
-
-    /** Hairline outline (native variant of {@link #outline}). */
-    public static void outlineFast(GuiGraphics g, int x, int y, int w, int h, int rgb, float alpha) {
-        g.renderOutline(x, y, w, h, withAlpha(rgb, alpha));
-    }
-
-    /** Accent underline (native variant of {@link #accentLine}). */
-    public static void accentLineFast(GuiGraphics g, int x, int y, int w, float alpha) {
-        g.fill(x, y, x + w, y + 2, withAlpha(CYAN, alpha));
-    }
-
-    /** Status dot rendered as a small square block (native variant of {@link #dot}). */
-    public static void dotFast(GuiGraphics g, int x, int y, int radius, float alpha, boolean active) {
-        g.fill(x - radius, y - radius, x + radius, y + radius, withAlpha(active ? CYAN_BRIGHT : 0x8290A5, alpha));
-        if (active) {
-            int halo = Math.max(1, Math.round(radius * 2.8f));
-            g.fill(x - halo, y - halo, x + halo, y + halo, withAlpha(CYAN, alpha * 0.16f));
-        }
     }
 }

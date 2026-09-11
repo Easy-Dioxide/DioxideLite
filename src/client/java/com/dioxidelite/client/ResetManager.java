@@ -65,7 +65,6 @@ public class ResetManager {
         Config.dynamicIslandHeightScale = 1.0f;
         Config.dynamicIslandBlur = 0.85f;
         Config.dynamicIslandOpacity = 0.72f;
-        Config.skiaBlurStrength = 1.0f;
         Config.armorHud = false;
         Config.armorHudShowPercentage = true;
         Config.armorHudShowBar = true;

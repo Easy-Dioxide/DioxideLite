@@ -1,5 +1,45 @@
 # DioxideLite 更新日志
 
+## v1.8.1 (Skia Optimized · Glass Theme) — 2026-09-11
+
+> 目标环境：Minecraft 1.21.11 · Fabric Loader 0.18.4
+> 定位：**Skia 渲染回归（Setsuna 优化实现）+ 字体补丁**——在 v1.8 原生渲染基础上，重新引入 GPU 玻璃质感，同时规避 v1.7 时代"打开 ClickGUI / 渲染动画帧率≈0"的性能陷阱
+
+### 背景
+
+- v1.8 全面原生化解决了 Windows 空白与性能问题，但玻璃质感（真实背景模糊、半透明材质）随之弱化。
+- 本版本以 **Setsuna 客户端的 Skia 实现**为蓝本重新引入 Skia：ClickGUI 直接向 Minecraft 当前帧缓冲绘制（GL 后端），玻璃模糊改为**低分辨率降采样捕获**（0.50× / 性能模式 0.38×，30Hz / 20Hz 节流），不再每帧全分辨率提交——这是帧率不再掉到≈0 的关键。
+
+### 新增
+
+- **GLASS 主题（纯透明玻璃）**：恢复 v1.7 时代的纯透明 Liquid Glass 玻璃 ClickGUI 为**独立主题**（`ClickGuiTheme.GLASS`）。面板使用真正的玻璃材质（`LiquidGlassRenderer.drawSurface`：背景模糊 + 高透明填充 + 折射内层 + 高光描边），与 ORIGINAL 主题在 GL 后端下的深色半透明面板区分开。
+- **Minimal 主题独立紧凑布局**：重写 `DioxideLiteMinimalClickGuiScreen`（此前只是 `NewSettingsScreen` 空壳）。新增 900×560 自适应卡片（大屏最高 1.15× 放大）、宽内容区、左侧六页导航、拖拽滚动 + 滚动条、关闭按钮，全屏下布局更大更易操作。
+- **ClickGUI 内帧率显示**：ClickGUI 右上角实时显示 `FPS` 数字（等效打开 F3 查看渲染帧率，无需切出）。
+
+### 变更（渲染）
+
+- **Skia 回归**：`SkiaScreen` / `SkiaRenderer`（`USE_GL_BACKEND_FOR_FRAME=true`，直绘 MC 帧缓冲）/ `SkiaGlBackend` / `SkiaBlurRenderer`（降采样 + 节流捕获）/ `LiquidGlassRenderer` / `LiquidGlassVisualSystem` 全量恢复。
+- **字体补丁**：`FontRenderer` 使用 skija 字体（harmony.ttf / icon.ttf / MaterialSymbolsRounded.ttf），字形栅格化委托 Minecraft/Blaze3D，避免 ImmediatelyFast 类优化与自绘字体冲突；修复 `drawString` 浮点坐标在 1.21.11 的适配。
+- **主题热切换**：`ClickGuiThemeController.apply` 支持运行中即时切换（无需重启游戏，重新打开 ClickGUI 即生效），新 GLASS 主题已注册进主题页 Cycle 控件（4 选项）。
+
+### 修复
+
+- **编译修复（用户源码 4 处）**：`RenderPage` / `ThemePage` 括号失配；`HudEditOverlay.mouseScrolled` 的 switch 箭头 case 后接语句（改为 block case）。
+- **1.21.11 API 适配**：`PlayerSkin` import 修正（`net.minecraft.world.entity.player.PlayerSkin`）；`ArmorHudRenderer` 的 `Inventory.armor` 改为 `getItemBySlot(EquipmentSlot)`（boots→helmet 顺序保持）；`TargetHudRenderer` 补 `PlayerFaceRenderer` import、头像改用 `getSkinManager().createLookup` + `PlayerFaceRenderer.draw`；`FontRenderer.drawString` 浮点→整数坐标。
+- **Mixin 修复**：`AbstractContainerScreenGlassMixin` 注入点由 `renderBg` TAIL 改为 `renderSlots` HEAD（1.21.11 的 renderBg 末尾无有效 RETURN，TAIL 注入导致游戏启动崩溃）。
+- **`SkiaBlurRenderer` 补全**：补齐 `restoreReadBuffer` / `restoreDrawBuffer` 两个 GL 状态恢复方法（源码缺失导致编译失败）。
+
+### 兼容
+
+- ClickGUI 四主题（Liquid Glass / Minimal / Signature / Glass）共享同一套页面与配置模型，主题间热切换。
+- 游戏内 HUD / Liquid Glass 全局视觉模块沿用既有实现；主菜单为 Setsuna 风格（DIOXIDELITE · LIQUID GLASS UI）。
+
+### 产物
+
+- `DioxideLite-v1.8.1.jar` / `DioxideLite-v1.8.1-sources.jar`
+
+---
+
 ## v1.8 (Native Render Rework) — 2026-09-11
 
 > 目标环境：Minecraft 1.21.11 · Fabric Loader 0.18.4
