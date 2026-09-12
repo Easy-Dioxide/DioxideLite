@@ -1,24 +1,43 @@
-.gradle/
-build/
+# eclipse
+bin
+*.launch
+.settings
+.metadata
+.classpath
+.project
 
-
-run/
-out/
-
-.idea/
-*.iml
+# idea
+out
 *.ipr
 *.iws
-.vscode/
-.settings/
-.project
-.classpath
-bin/
+*.iml
+.idea
 
-统计数据/
+# gradle
+build
+.gradle
+
+# other
+.kotlin
+.eclipse
+.reasonix
+run
+runs
+run-data
+repo
+
+# local server state and secrets
+Server auth/.secrets/
+setsuna-secrets/
+Server auth/config.local.php
+website2.0/config.local.php
+Server auth/irc/irc-config.php
+Server auth/*.log
+Server auth/Download/*.jar
+Server auth/setsuna-downloads/*.jar
+Server auth/setsuna-lite-downloads/*.jar
+Server auth/uploads/avatars/*
+!Server auth/uploads/avatars/.gitkeep
+
+# Mac OS
 .DS_Store
-Thumbs.db
-
-*.jks
-*.p12
-*.keystore

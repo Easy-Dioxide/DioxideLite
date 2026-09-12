@@ -1,0 +1,34 @@
+package com.dioxidelite.util.world;
+
+import com.dioxidelite.DioxideLite;
+import net.minecraft.core.BlockPos;
+import net.minecraft.world.entity.Entity;
+import net.minecraft.world.entity.ExperienceOrb;
+import net.minecraft.world.entity.item.ItemEntity;
+import net.minecraft.world.entity.projectile.arrow.Arrow;
+import net.minecraft.world.entity.projectile.throwableitemprojectile.ThrownExperienceBottle;
+import net.minecraft.world.phys.AABB;
+
+public final class BlockUtils {
+
+    private BlockUtils() {
+    }
+
+    public static boolean canPlaceAt(BlockPos pos) {
+        if (!DioxideLite.mc().level.getBlockState(pos).canBeReplaced()) {
+            return false;
+        }
+        return DioxideLite.mc().level.getEntities(
+                (Entity) null,
+                new AABB(pos),
+                entity -> !(entity instanceof ItemEntity
+                        || entity instanceof ExperienceOrb
+                        || entity instanceof ThrownExperienceBottle
+                        || entity instanceof Arrow)
+        ).isEmpty();
+    }
+
+    public static boolean isSolidBlock(BlockPos pos) {
+        return DioxideLite.mc().level.getBlockState(pos).isSolidRender();
+    }
+}
