@@ -3,13 +3,7 @@
   "package": "com.dioxidelite.fabric.mixin",
   "plugin": "com.dioxidelite.fabric.mixin.FabricMixinPlugin",
   "compatibilityLevel": "JAVA_25",
-  "client": [
-    "IndigoAltModelBlockRendererMixin",
-    "sodium.SodiumAbstractBlockRenderContextMixin",
-    "sodium.SodiumBlockRendererMixin",
-    "sodium.SodiumFluidRendererMixin",
-    "sodium.SodiumOcclusionCullerMixin"
-  ],
+  "client": [],
   "injectors": {
     "defaultRequire": 1
   }

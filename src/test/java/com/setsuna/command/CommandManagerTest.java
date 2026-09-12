@@ -1,8 +1,8 @@
-package com.DioxideLite.command;
+package com.dioxidelite.command;
 
 import com.mojang.brigadier.suggestion.Suggestions;
-import com.DioxideLite.command.builder.CommandBuilder;
-import com.DioxideLite.command.builder.ParameterBuilder;
+import com.dioxidelite.command.builder.CommandBuilder;
+import com.dioxidelite.command.builder.ParameterBuilder;
 import org.junit.jupiter.api.Test;
 
 import java.util.List;

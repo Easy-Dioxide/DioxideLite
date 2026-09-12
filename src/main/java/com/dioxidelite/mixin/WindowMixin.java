@@ -16,7 +16,7 @@ import java.util.List;
 /**
  * Replaces the vanilla window icon with the DioxideLite client icon.
  * <p>
- * The icon PNGs ship under {@code assets/dioxidelite/textures/icons/}; when either
+ * The icon PNGs ship under {@code assets/dioxide-lite/textures/icons/}; when either
  * resource is missing we fall back to the vanilla icons so the window still
  * gets a valid icon.
  */
@@ -29,8 +29,8 @@ public class WindowMixin {
                     value = "INVOKE",
                     target = "Lcom/mojang/blaze3d/platform/IconSet;getStandardIcons(Lnet/minecraft/server/packs/PackResources;)Ljava/util/List;"))
     private List<IoSupplier<InputStream>> DioxideLite$icons(IconSet iconSet, PackResources resources) throws IOException {
-        IoSupplier<InputStream> icon16 = () -> DioxideLite.class.getResourceAsStream("/assets/dioxidelite/textures/icons/icon_16x16.png");
-        IoSupplier<InputStream> icon32 = () -> DioxideLite.class.getResourceAsStream("/assets/dioxidelite/textures/icons/icon_32x32.png");
+        IoSupplier<InputStream> icon16 = () -> DioxideLite.class.getResourceAsStream("/assets/dioxide-lite/textures/icons/icon_16x16.png");
+        IoSupplier<InputStream> icon32 = () -> DioxideLite.class.getResourceAsStream("/assets/dioxide-lite/textures/icons/icon_32x32.png");
         try (InputStream stream16 = icon16.get(); InputStream stream32 = icon32.get()) {
             if (stream16 != null && stream32 != null) {
                 DioxideLite.LOGGER.info("Applying {} window icon.", DioxideLite.NAME);

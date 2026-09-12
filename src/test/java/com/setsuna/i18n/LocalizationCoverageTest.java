@@ -1,8 +1,8 @@
-package com.DioxideLite.i18n;
+package com.dioxidelite.i18n;
 
 import com.google.gson.JsonObject;
 import com.google.gson.JsonParser;
-import com.DioxideLite.util.StringUtil;
+import com.dioxidelite.util.StringUtil;
 import org.junit.jupiter.api.Test;
 
 import java.nio.file.Files;

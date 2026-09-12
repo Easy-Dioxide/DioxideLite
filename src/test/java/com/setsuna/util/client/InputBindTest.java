@@ -1,4 +1,4 @@
-package com.DioxideLite.util.client;
+package com.dioxidelite.util.client;
 
 import com.google.gson.JsonPrimitive;
 import org.junit.jupiter.api.Test;

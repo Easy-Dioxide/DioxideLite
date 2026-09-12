@@ -15,9 +15,6 @@
     ],
     "setsunavia": [
       "com.viaversion.setsunavia.visuals.DioxideLiteViaVisuals"
-    ],
-    "dioxide-litevia": [
-      "com.viaversion.setsunavia.visuals.DioxideLiteViaVisuals"
     ]
   },
   "mixins": [
@@ -41,9 +38,9 @@
     "dioxide-litevia:implVersion": "${version}+DioxideLite"
   },
   "provides": [
-    "setsunavia",
-    "setsunavia-api",
     "setsunavia-visuals",
+    "setsunavia-api",
+    "setsunavia",
     "dioxide-litevia",
     "dioxide-litevia-api",
     "dioxide-litevia-visuals",

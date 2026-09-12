@@ -1,6 +1,6 @@
-package com.DioxideLite.setting;
+package com.dioxidelite.setting;
 
-import com.DioxideLite.setting.settings.BooleanSetting;
+import com.dioxidelite.setting.settings.BooleanSetting;
 import org.junit.jupiter.api.Test;
 
 import java.util.concurrent.atomic.AtomicBoolean;

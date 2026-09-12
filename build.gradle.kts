@@ -10,7 +10,7 @@ val modAuthor = project.property("mod_author").toString()
 val javaVersion = project.property("java_version").toString()
 val minecraftVersion = project.property("minecraft_version").toString()
 val setsunaViaDir = layout.projectDirectory.dir("src/vendored/setsunavia")
-val nestedLibraryModules = (1..67).filter { it != 14 }.map { "nested-%03d".format(it) }
+val nestedLibraryModules = (1..67).map { "nested-%03d".format(it) }
 val modMenuLocalJar = file(providers.gradleProperty("modmenu_jar")
         .orElse("D:/modmenu-18.0.0-alpha.8.jar")
         .get())
@@ -75,12 +75,9 @@ dependencies {
     implementation("net.fabricmc:fabric-loader:${project.property("fabric_loader_version")}")
     implementation("net.fabricmc.fabric-api:fabric-api:${project.property("fabric_version")}")
     compileOnly("net.caffeinemc:sodium-fabric:0.8.12+mc26.1.2")
-    // Minecraft 26.1.2 provides fastutil 8.5.18; never bundle the older 8.5.15 copy.
-    compileOnly("it.unimi.dsi:fastutil:8.5.18")
     compileOnly("org.projectlombok:lombok:1.18.42")
     annotationProcessor("org.projectlombok:lombok:1.18.42")
     implementation("com.google.zxing:core:3.5.1")
-    implementation("org.luaj:luaj-jse:3.0.1")
     implementation("com.github.FPSMasterTeam:Cadence:v0.1.1") {
         exclude(group = "com.google.code.gson", module = "gson")
     }
@@ -125,15 +122,11 @@ dependencies {
     implementation("dev.kastle.webrtc:webrtc-java:1.0.3:$webRtcPlatform")
 
     val skijaVersion = "0.143.17"
-    // Skija is used directly by the client at runtime.  A plain implementation()
-    // dependency is not present in the standalone Fabric mod jar, so the Skija
-    // platform artifact and its shared JNI support are explicitly nested.
-    implementation("io.github.humbleui:skija-shared:$skijaVersion")
     implementation("io.github.humbleui:skija-windows-x64:$skijaVersion")
     implementation("io.github.humbleui:skija-linux-x64:$skijaVersion")
-    include("io.github.humbleui:skija-shared:$skijaVersion")
     include("io.github.humbleui:skija-windows-x64:$skijaVersion")
     include("io.github.humbleui:skija-linux-x64:$skijaVersion")
+    include("io.github.humbleui:skija-shared:$skijaVersion")
     nestedLibraryModules.forEach { include("setsuna.nested:$it:1.0.0") }
 }
 

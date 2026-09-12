@@ -4,6 +4,7 @@
   "compatibilityLevel": "JAVA_25",
   "client": [
     "DeltaTrackerTimerAccessor",
+    "MinecraftMixin",
     "KeyMappingAccessor",
     "LocalPlayerAccessor",
     "MultiPlayerGameModeAccessor",
@@ -34,16 +35,7 @@
     "ParticleEngineMixin",
     "PlayerTabOverlayMixin",
     "ScreenEffectRendererMixin",
-    "AbstractContainerScreenAccessor",
-    "BlockEntityRenderDispatcherMixin",
-    "BlockStateBrightnessMixin",
-    "ClientPacketListenerMixin",
-    "EquipmentLayerRendererMixin",
-    "FluidRendererMixin",
-    "LightmapMixin",
-    "LivingEntityRendererMixin",
-    "ModelBlockRendererMixin",
-    "SectionCompilerMixin"
+    "AbstractContainerScreenAccessor"
   ],
   "injectors": {
     "defaultRequire": 1

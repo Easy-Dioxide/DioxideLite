@@ -1,4 +1,4 @@
-package com.DioxideLite.setting.settings;
+package com.dioxidelite.setting.settings;
 
 import org.junit.jupiter.api.Test;
 

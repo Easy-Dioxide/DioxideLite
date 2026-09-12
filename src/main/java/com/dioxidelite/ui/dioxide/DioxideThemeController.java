@@ -12,6 +12,23 @@ public final class DioxideThemeController {
     private DioxideThemeController() {}
     public static Theme current() { return current; }
     public static void apply(Theme theme, Screen parent) {
+        setTheme(theme);
+        Minecraft mc = Minecraft.getInstance();
+        if (mc != null) mc.setScreen(ClickGui.INSTANCE.createScreen(parent));
+    }
+    public static void cycle(Screen parent) {
+        Theme[] values = Theme.values();
+        apply(values[(current.ordinal() + 1) % values.length], parent);
+    }
+
+    /** Cycles the visual theme in-place while the player is in-world. */
+    public static void cycleInGame() {
+        Theme[] values = Theme.values();
+        setTheme(values[(current.ordinal() + 1) % values.length]);
+    }
+
+    /** Applies only the presentation settings; never opens or replaces a screen. */
+    public static void setTheme(Theme theme) {
         current = theme == null ? Theme.LIQUID_GLASS : theme;
         ClickGui gui = ClickGui.INSTANCE;
         switch (current) {
@@ -19,11 +36,5 @@ public final class DioxideThemeController {
             case MINIMAL -> { gui.mode.set(ClickGui.Mode.Drop); gui.daylightMode.set(false); gui.accent.set(new Color(205, 215, 225)); }
             case SIGNATURE -> { gui.mode.set(ClickGui.Mode.Pop); gui.daylightMode.set(true); gui.accent.set(new Color(105, 185, 255)); }
         }
-        Minecraft mc = Minecraft.getInstance();
-        if (mc != null) mc.setScreen(gui.createScreen(parent));
-    }
-    public static void cycle(Screen parent) {
-        Theme[] values = Theme.values();
-        apply(values[(current.ordinal() + 1) % values.length], parent);
     }
 }

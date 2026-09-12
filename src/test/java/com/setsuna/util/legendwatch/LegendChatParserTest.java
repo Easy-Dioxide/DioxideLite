@@ -1,4 +1,4 @@
-package com.DioxideLite.util.legendwatch;
+package com.dioxidelite.util.legendwatch;
 
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;

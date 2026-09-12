@@ -1,4 +1,4 @@
-package com.DioxideLite.util.player;
+package com.dioxidelite.util.player;
 
 import net.minecraft.ChatFormatting;
 import net.minecraft.network.chat.Component;
