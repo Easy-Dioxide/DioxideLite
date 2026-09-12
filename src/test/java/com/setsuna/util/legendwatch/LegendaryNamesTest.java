@@ -1,4 +1,4 @@
-package com.DioxideLite.util.legendwatch;
+package com.dioxidelite.util.legendwatch;
 
 import net.minecraft.ChatFormatting;
 import net.minecraft.network.chat.ClickEvent;

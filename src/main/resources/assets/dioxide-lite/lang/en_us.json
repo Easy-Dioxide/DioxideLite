@@ -6,6 +6,7 @@
   "DioxideLite.category.player": "Player",
   "DioxideLite.category.render": "Render",
   "DioxideLite.category.client": "Client",
+
   "DioxideLite.module.clickgui": "ClickGUI",
   "DioxideLite.module.clickgui.menu_key": "Menu Key",
   "DioxideLite.module.clickgui.mode": "Mode",
@@ -17,9 +18,11 @@
   "DioxideLite.module.clickgui.gui_scale": "GUI Scale",
   "DioxideLite.module.clickgui.background_opacity": "Background Opacity",
   "DioxideLite.module.clickgui.text_shadow": "Text Shadow",
+
   "DioxideLite.module.sprint": "Sprint",
   "DioxideLite.module.sprint.only_on_ground": "Only On Ground",
   "DioxideLite.module.sprint.keep_sprint": "Keep Sprint",
+
   "DioxideLite.module.auto_hit_crystal": "Auto Hit Crystal",
   "DioxideLite.module.auto_totem": "Auto Totem",
   "DioxideLite.module.mace_aura": "Mace Aura",
@@ -37,6 +40,7 @@
   "DioxideLite.module.burrow.rotate": "Rotate",
   "DioxideLite.module.burrow.toggle": "Auto Toggle",
   "DioxideLite.module.burrow.tries": "Tries",
+
   "DioxideLite.module.zealot_crystal_plus": "Zealot Crystal+",
   "DioxideLite.module.zealot_crystal_plus.players": "Players",
   "DioxideLite.module.zealot_crystal_plus.mobs": "Mobs",
@@ -153,10 +157,12 @@
   "DioxideLite.module.zealot_crystal_plus.outline_width": "Outline Width",
   "DioxideLite.module.zealot_crystal_plus.moving_length": "Moving Length",
   "DioxideLite.module.zealot_crystal_plus.fade_length": "Fade Length",
+
   "DioxideLite.module.fullbright": "FullBright",
   "DioxideLite.module.fullbright.mode": "Mode",
   "DioxideLite.module.fullbright.mode.gamma": "Gamma",
   "DioxideLite.module.fullbright.mode.potion": "Potion",
+
   "DioxideLite.module.demo": "Demo",
   "DioxideLite.module.demo.general": "General",
   "DioxideLite.module.demo.toggle": "Toggle Value",
@@ -170,6 +176,7 @@
   "DioxideLite.module.demo.color": "Color",
   "DioxideLite.module.demo.bind": "Extra Bind",
   "DioxideLite.module.demo.action": "Run Action",
+
   "DioxideLite.module.speed": "Speed",
   "DioxideLite.module.speed.mode": "Mode",
   "DioxideLite.module.speed.mode.strafe": "Strafe",
@@ -184,6 +191,7 @@
   "DioxideLite.module.speed.strafe_mode.packet_simulation": "45° Packet Simulation (Simulation Test)",
   "DioxideLite.module.speed.strafe_mode.prediction_synchronized": "Prediction Synchronized (Compatible)",
   "DioxideLite.module.speed.turn_speed": "Turn Speed",
+
   "DioxideLite.module.movement_fix": "Movement Fix",
   "DioxideLite.module.movement_fix.mode": "Mode",
   "DioxideLite.module.movement_fix.mode.setting": "Setting",
@@ -194,6 +202,7 @@
   "DioxideLite.module.movement_fix.mode.silent": "Silent",
   "DioxideLite.module.movement_fix.mode.changelook": "Change Look",
   "DioxideLite.module.movement_fix.packet_only": "Packet Only",
+
   "DioxideLite.module.block_highlight": "Block Highlight",
   "DioxideLite.module.block_highlight.mode": "Mode",
   "DioxideLite.module.block_highlight.mode.both": "Both",
@@ -205,6 +214,7 @@
   "DioxideLite.module.block_highlight.color": "Color",
   "DioxideLite.module.block_highlight.line_color": "Line Color",
   "DioxideLite.module.block_highlight.line_width": "Line Width",
+
   "DioxideLite.module.tracers": "Tracers",
   "DioxideLite.module.tracers.target": "Target",
   "DioxideLite.module.tracers.target.players": "Players",
@@ -223,10 +233,12 @@
   "DioxideLite.module.tracers.mob_color": "Mob Color",
   "DioxideLite.module.tracers.animal_color": "Animal Color",
   "DioxideLite.module.tracers.rainbow": "Rainbow",
+
   "DioxideLite.module.item_tag": "Item Tag",
   "DioxideLite.module.item_tag.range": "Range",
   "DioxideLite.module.item_tag.background": "Background",
   "DioxideLite.module.item_tag.text_color": "Text Color",
+
   "DioxideLite.module.compass": "Compass",
   "DioxideLite.module.camera_clip": "Camera Clip",
   "DioxideLite.module.camera_clip.distance": "Distance",
@@ -320,6 +332,7 @@
   "DioxideLite.module.no_render.potion_particles": "Potion Particles",
   "DioxideLite.module.no_render.hurt_cam": "Hurt Cam",
   "DioxideLite.module.no_render.bob_view": "Bob View",
+
   "DioxideLite.module.alt_manager": "Alt Manager",
   "DioxideLite.module.anti_web": "Anti Web",
   "DioxideLite.module.auto_mlg": "Auto MLG",
@@ -424,6 +437,7 @@
   "DioxideLite.module.uhc_detector": "UHC Detector",
   "DioxideLite.module.velocity": "Velocity",
   "DioxideLite.module.xray": "Xray",
+
   "DioxideLite.module.hud": "HUD",
   "DioxideLite.module.hud.team_viewer": "Team Viewer",
   "DioxideLite.module.hud.keybind_overlay": "Keybind Overlay",
@@ -448,6 +462,7 @@
   "DioxideLite.module.watermark_hud.first_character_rainbow": "First Character Rainbow",
   "DioxideLite.module.watermark_hud.logo_anti_alias": "Logo Anti-Alias",
   "DioxideLite.setting.music_hud": "Music HUD",
+
   "DioxideLite.state.enabled": "Enabled",
   "DioxideLite.state.disabled": "Disabled",
   "DioxideLite.gui.title": "DioxideLite ClickGUI",

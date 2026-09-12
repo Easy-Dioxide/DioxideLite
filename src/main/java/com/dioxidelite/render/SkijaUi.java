@@ -50,18 +50,18 @@ public final class SkijaUi {
     private static final Paint TEXT_PAINT = new Paint().setAntiAlias(true);
 
     private static final Typeface REGULAR_TYPEFACE = loadTypeface(
-            "/assets/dioxidelite/tritium/fonts/pf_normal.ttf", FontStyle.NORMAL);
+            "/assets/dioxide-lite/tritium/fonts/pf_normal.ttf", FontStyle.NORMAL);
     private static final Typeface BOLD_TYPEFACE = loadTypeface(
-            "/assets/dioxidelite/tritium/fonts/pf_middleblack.ttf", FontStyle.BOLD);
+            "/assets/dioxide-lite/tritium/fonts/pf_middleblack.ttf", FontStyle.BOLD);
     private static final Typeface TEXT_FALLBACK_TYPEFACE = findTypeface(FontStyle.NORMAL);
     private static final Typeface TRITIUM_CONTROLS_TYPEFACE = loadTypeface(
-            "/assets/dioxidelite/tritium/fonts/icomoon.ttf", FontStyle.NORMAL);
+            "/assets/dioxide-lite/tritium/fonts/icomoon.ttf", FontStyle.NORMAL);
     private static final Typeface TRITIUM_MUSIC_TYPEFACE = loadTypeface(
-            "/assets/dioxidelite/tritium/fonts/music.ttf", FontStyle.NORMAL);
+            "/assets/dioxide-lite/tritium/fonts/music.ttf", FontStyle.NORMAL);
     private static final Typeface CLIENT_ICONS_TYPEFACE = loadTypeface(
-            "/assets/dioxidelite/textures/Font/icon.ttf", FontStyle.NORMAL);
+            "/assets/dioxide-lite/textures/Font/icon.ttf", FontStyle.NORMAL);
     private static final Typeface LUCIDE_ICONS_TYPEFACE = loadTypeface(
-            "/assets/dioxidelite/fonts/lucide/lucide.ttf", FontStyle.NORMAL);
+            "/assets/dioxide-lite/fonts/lucide/lucide.ttf", FontStyle.NORMAL);
     private static final Map<FontKey, Font> TEXT_FONTS = new HashMap<>();
     private static final Map<Integer, Font> TEXT_FALLBACK_FONTS = new HashMap<>();
     private static final Map<String, Typeface> IMPORTED_TYPEFACES = new LinkedHashMap<>();

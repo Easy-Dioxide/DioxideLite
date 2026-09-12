@@ -1,4 +1,4 @@
-package com.DioxideLite.integration.apollo;
+package com.dioxidelite.integration.apollo;
 
 import org.junit.jupiter.api.Test;
 

@@ -29,7 +29,7 @@ final class ScreenBackdrop {
     private static final Paint LINE_PAINT = new Paint().setAntiAlias(true).setStrokeWidth(1.0F);
     private static final Paint IMAGE_PAINT = new Paint().setAntiAlias(true).setDither(true);
     private static final Image MAIN_MENU_BACKGROUND = loadImage(
-            "/assets/dioxidelite/textures/mainmenu/background.png");
+            "/assets/dioxide-lite/textures/mainmenu/background.png");
     private static final long MAX_IMPORT_BYTES = 32L * 1024L * 1024L;
     private static final long MAX_IMPORT_PIXELS = 40_000_000L;
     private static Image customMainMenuBackground;

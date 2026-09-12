@@ -1,4 +1,4 @@
-package com.DioxideLite.event.events;
+package com.dioxidelite.event.events;
 
 import org.junit.jupiter.api.Test;
 

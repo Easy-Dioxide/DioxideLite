@@ -97,7 +97,7 @@ public final class DioxideLiteViaImpl implements DioxideLiteViaBase {
     public void init() {
         DioxideLiteVia.init(INSTANCE);
 
-        final ModMetadata metadata = FabricLoader.getInstance().getModContainer("setsunavia").get().getMetadata();
+        final ModMetadata metadata = FabricLoader.getInstance().getModContainer("dioxide-lite").orElseThrow().getMetadata();
         version = metadata.getVersion().getFriendlyString();
         implVersion = metadata.getCustomValue("setsunavia:implVersion").getAsString();
 
