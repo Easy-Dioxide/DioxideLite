@@ -1,7 +1,33 @@
 # DioxideLite Changelog
 
 > 更新日志合并文件。所有版本记录均收录于此，新版本在上，倒序排列。
-> 兼容环境：Minecraft 1.21.11 · Fabric Loader · Fabric API 0.141.3+
+> v2.0.0 起：Minecraft 26.1.2 · Java 25 · Fabric Loader 0.19.2 · Fabric API 0.150.0+
+> v1.x 系列：Minecraft 1.21.11 · Fabric Loader · Fabric API 0.141.3+
+
+---
+
+## [v2.0.0] - Setsuna 视觉移植版
+
+> 基于 v2.0.0 基线，移植 SetsunaClient 视觉体系，**彻底移除全部自动化模块**。底层为 Skija base（Minecraft 26.1.2）。
+
+### ✨ 新增
+
+- **视觉渲染模块**：ESP / Chams / HoleESP / NameTags / OreTracers / SpawnerFinder / Tracers / TeamViewer / UHCDetector / Xray
+- **TargetHUD**：目标状态 HUD（HealthManager 血量检测 + TargetManager 共享目标选择）
+- **网易云音乐**：MusicScreen 音乐界面 + MusicLyricsHUD 歌词 + 音乐预设预览（tritium 库内置）
+- **HUD 编辑器**：HudEditorModule，支持拖拽布局
+- **Apollo 队伍信息**：队伍消息解析与展示（TeamViewer 配套）
+
+### 🛠 修复
+
+- 修复 viaversion 别名缺失导致的启动空指针崩溃（`provides` 加回 `setsunavia` / `custom` 加回 `setsunavia:implVersion` / `entrypoints` 加回 `setsunavia` 键）
+- 修复资源命名空间大小写错误导致的 `IdentifierException` 崩溃（`DioxideLite:` → `dioxide-lite:`）
+- 修复 Skija Linux native 缺失（补充 `skija-linux-x64` 打包，Windows 包保留）
+
+### 🧹 清理
+
+- **移除全部自动化**：combat / movement / player（除音乐）自动化模块、Lua 脚本系统（script/）、FeatureRuntime、RotationManager、对应自动化 mixin（FlowingFluid / ItemInHand / Entity / LocalPlayer / Player / MultiPlayerGameMode / Inventory / FastBreak / StrafeJumpPacket / ClientInput / ClientCommonPacketListener / AbstractRecipeBookScreen / Minecraft / LivingEntity 等）
+- 保留纯视觉渲染管线
 
 ---
 
