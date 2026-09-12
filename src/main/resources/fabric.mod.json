@@ -1,43 +1,53 @@
 {
   "schemaVersion": 1,
-  "id": "dioxide-lite",
+  "id": "${mod_id}",
   "version": "${version}",
-  "name": "DioxideLite",
-  "description": "A mod that brings many practical small features to high-version Minecraft PVP.",
+  "name": "${mod_name}",
+  "description": "${description}",
   "authors": [
-    "Nachoneko_miao",
-    "yajiyi114514"
+    "DioxideLite"
   ],
-  "contact": {
-    "homepage": "https://space.bilibili.com/3546915648047958"
-  },
-  "license": "GPL-3.0-only",
-  "icon": "assets/dioxide-lite/icon.png",
-  "environment": "*",
+  "license": "${license}",
+  "environment": "client",
   "entrypoints": {
-    "main": [
-      "com.dioxidelite.DioxideLite"
-    ],
     "client": [
       "com.dioxidelite.DioxideLiteClient"
+    ],
+    "setsunavia": [
+      "com.viaversion.setsunavia.visuals.DioxideLiteViaVisuals"
+    ],
+    "dioxide-litevia": [
+      "com.viaversion.setsunavia.visuals.DioxideLiteViaVisuals"
     ]
   },
   "mixins": [
-    "dioxide-lite.mixins.json",
-    {
-      "config": "dioxide-lite.client.mixins.json",
-      "environment": "client"
-    }
+    "${mod_id}.mixins.json",
+    "${mod_id}.fabric.mixins.json",
+    "dioxide-litevia.mixins.json",
+    "dioxide-litevia-visuals.mixins.json"
   ],
-  "accessWidener": "dioxide-lite.accesswidener",
+  "accessWidener": "${mod_id}.accesswidener",
   "depends": {
-    "fabricloader": ">=0.18.4",
-    "minecraft": "1.21.11",
-    "java": ">=21",
-    "fabric-api": "*"
+    "fabricloader": ">=${fabric_loader_version}",
+    "fabric-api": "*",
+    "minecraft": "~${minecraft_version}",
+    "java": ">=${java_version}"
   },
-  "suggests": {
-    "sodium": "*",
-    "immediatelyfast": "*"
-  }
+  "breaks": {
+    "viafabric": "*"
+  },
+  "custom": {
+    "setsunavia:implVersion": "${version}+DioxideLite",
+    "dioxide-litevia:implVersion": "${version}+DioxideLite"
+  },
+  "provides": [
+    "setsunavia",
+    "setsunavia-api",
+    "setsunavia-visuals",
+    "dioxide-litevia",
+    "dioxide-litevia-api",
+    "dioxide-litevia-visuals",
+    "viaversion",
+    "viabackwards"
+  ]
 }
