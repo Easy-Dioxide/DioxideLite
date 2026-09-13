@@ -22,8 +22,8 @@ import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
 
 /**
  * Connects DioxideLite's visual runtime to Minecraft's client tick/render loop.
- * No gameplay automation is installed here: only visual event dispatch,
- * title branding, Skija screen rendering and HUD overlay rendering are kept.
+ * This mixin only connects the rendering/event lifecycle; gameplay modules such
+ * as Sprint subscribe through the normal module event bus.
  */
 @Mixin(Minecraft.class)
 public class MinecraftMixin implements MinecraftSessionAccessor {

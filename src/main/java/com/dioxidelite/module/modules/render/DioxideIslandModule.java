@@ -10,5 +10,6 @@ public final class DioxideIslandModule extends Module {
 
     private DioxideIslandModule() {
         super("Dynamic Island", Category.RENDER);
+        setEnabled(true);
     }
 }

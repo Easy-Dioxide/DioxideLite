@@ -1,3 +1,94 @@
+# DioxideLite v2.0.5 — Development Log
+
+## Overview / 概述
+
+v2.0.5 is the "final optimization" pass. It fixes the config-loading timing
+(which caused the in-game HUD / Dynamic Island to intermittently not render),
+adds a fast path for the final in-frame Skija overlay pass, caches blur
+filters, makes the Dynamic Island enabled-by-default, restores the HUD Editor
+and adds a Setsuna-compatible Sprint module.
+
+v2.0.5 是"最终优化"版本：修复配置加载时机（该问题曾导致游戏内 HUD /
+灵动岛偶发不渲染）、为帧内 Skija overlay 末帧增加快路径、缓存模糊滤镜、
+灵动岛默认启用、恢复 HUD Editor，并新增 Setsuna 兼容的 Sprint 模块。
+
+## Verification result (the core question) / 验证结论（核心问题）
+
+**The intermittent "HUD not rendering" issue is fixed.** With a fresh profile
+(no saved config), the Dynamic Island renders by default (compact + expanded),
+the ClickGUI Render category lists Array List / Dynamic Island / Global Blur /
+Watermark HUD / Performance HUD, the name-tag logo (Skija, width-adaptive,
+vertical-aligned) still works, and the new Sprint module appears under
+Movement. Measured 8–20 FPS in the software-rendered (llvmpipe) test
+environment; the overlay fast-path benefits are best measured on real GPU
+hardware.
+
+**"游戏内 HUD 偶发不渲染"问题已修复。** 全新配置（无保存的 profile）下：
+灵动岛默认开启并正常渲染（compact 与 Tab 展开），ClickGUI Render 分类完整
+列出 Array List / Dynamic Island / Global Blur / Watermark HUD / Performance
+HUD，nametag logo（Skija、宽度自适应、垂直对齐）正常，新增 Sprint 出现在
+Movement 分类。软渲染（llvmpipe）测试环境实测 8–20 FPS；overlay 快路径的
+收益需在真实 GPU 上测量。
+
+## Changes / 变更
+
+### Performance / 性能
+- Fast path for the final in-frame Skija overlay pass: removed the full
+  OpenGL state snapshot/restore from every HUD frame.
+- Cached Skija Gaussian blur filters used by glow layers (no repeated native
+  filter alloc/destroy; same blur params and visuals).
+- Full-resolution backdrop blur preserved.
+- 帧内 Skija overlay 末帧快路径：去掉每帧 HUD 的全量 GL 状态快照/恢复。
+- 缓存 glow 层使用的 Skija 高斯模糊滤镜（避免重复的原生滤镜分配/销毁）。
+- 保留全分辨率背景模糊。
+
+### HUD
+- Restored the HUD Editor entry point (Setsuna-side architecture).
+- Fixed HUD fusion size fingerprinting so dynamic element dimensions invalidate
+  layout correctly.
+- 恢复 HUD Editor 入口；修复 HUD fusion 尺寸指纹，使动态元素尺寸正确失效布局。
+
+### Dynamic Island / 灵动岛
+- Enabled-by-default when no saved profile overrides it (fixes the fresh-start
+  case where the island stayed off).
+- Native resource cleanup for the island logo and cached shape.
+- 无保存 profile 覆盖时默认启用（修复全新启动灵动岛保持关闭的问题）。
+- 新增灵动岛 logo 与形状缓存的资源清理。
+
+### IRC
+- Fixed startup config loading: profiles now load after the client starts, so
+  saved IRC host/port settings are actually restored (this is also the root
+  cause fix for the intermittent HUD-not-rendering issue).
+- TCP_NODELAY / keep-alive / reuse-address transport settings; explicit
+  unknown-host diagnostics.
+- Reconnection continues indefinitely with capped exponential backoff (was:
+  stopped permanently after ten failures).
+- 修复启动配置加载时机：profiles 在客户端启动后加载，保存的 IRC
+  host/port 实际恢复（这也是 HUD 偶发不渲染问题的根因修复）。
+- 增加 TCP_NODELAY / keep-alive / reuse-address 传输设置与未知主机诊断。
+- 重连无限持续（指数退避封顶），不再在十次失败后永久停止。
+
+### Movement
+- Added Setsuna-compatible `Sprint` module (ClickGUI Movement, toggleable;
+  restores vanilla sprint key state when disabled).
+- 新增 Setsuna 兼容 Sprint 模块（ClickGUI Movement 分类，可开关；关闭时
+  恢复原版疾跑键状态）。
+
+## Verification / 验证
+- `build` passes; `DioxideLite-2.0.5.jar` (≈91.9 MB).
+- Ran under Xvfb (llvmpipe): main menu 2.0.5; in-game Dynamic Island renders
+  by default (compact: "DioxideLite v2.0.5 · FPS · 0ms"; Tab: player list /
+  server / IRC status / FPS); ClickGUI Render lists Array List + Dynamic Island
+  (enabled); Sprint under Movement; name-tag logo intact.
+
+## Notes / 备注
+- FPS figures (8–20) come from the software-rendered headless environment and
+  are not representative of real hardware; the optimization effect should be
+  measured on the user's machine.
+
+
+---
+
 # DioxideLite v2.0.4 — Development Log
 
 ## Overview / 概述

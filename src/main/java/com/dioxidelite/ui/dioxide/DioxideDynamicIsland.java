@@ -70,6 +70,23 @@ public final class DioxideDynamicIsland {
     /** Last island render duration (ns), for the debug performance HUD. */
     public static volatile long lastIslandRenderNanos;
 
+    /** Releases native Skija resources when the renderer shuts down. */
+    public void close() {
+        if (cachedLogo != null) {
+            try { cachedLogo.close(); } catch (Throwable ignored) {}
+            cachedLogo = null;
+        }
+        if (shapeCache != null) {
+            try { shapeCache.close(); } catch (Throwable ignored) {}
+            shapeCache = null;
+        }
+        shapeCacheW = -1;
+        shapeCacheH = -1;
+        shapeCacheR = -1f;
+        cachedPlayers = List.of();
+        lastIslandRenderNanos = 0L;
+    }
+
     public void render(Canvas canvas, float screenW, float screenH) {
         Minecraft mc = Minecraft.getInstance();
         if (canvas == null || mc == null || mc.player == null || mc.screen != null) return;

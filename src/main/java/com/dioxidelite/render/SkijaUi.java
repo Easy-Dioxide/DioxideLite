@@ -48,6 +48,10 @@ public final class SkijaUi {
     private static final Paint SHAPE_PAINT = new Paint().setAntiAlias(false);
     private static final Paint GRADIENT_PAINT = new Paint().setAntiAlias(true).setDither(true);
     private static final Paint TEXT_PAINT = new Paint().setAntiAlias(true);
+    /** Reused layer paint for glow passes; saveLayer snapshots its state. */
+    private static final Paint GLOW_LAYER_PAINT = new Paint().setAntiAlias(true);
+    /** Blur filters are immutable native resources and are safe to reuse on the render thread. */
+    private static final Map<Integer, ImageFilter> GLOW_FILTERS = new HashMap<>();
 
     private static final Typeface REGULAR_TYPEFACE = loadTypeface(
             "/assets/dioxide-lite/tritium/fonts/pf_normal.ttf", FontStyle.NORMAL);
@@ -239,16 +243,26 @@ public final class SkijaUi {
 
     private static void drawGlowPass(Canvas canvas, Rect bounds, float sigma,
                                      int alpha, BlendMode blendMode, Runnable drawing) {
-        try (ImageFilter filter = ImageFilter.makeBlur(
-                sigma, sigma, FilterTileMode.DECAL);
-             Paint layerPaint = new Paint().setImageFilter(filter)
-                     .setBlendMode(blendMode).setAlpha(Math.max(0, Math.min(255, alpha)))) {
-            int save = canvas.saveLayer(bounds, layerPaint);
-            try {
-                drawing.run();
-            } finally {
-                canvas.restoreToCount(save);
-            }
+        if (canvas == null || drawing == null) return;
+        // Sigma values in the client are drawn from a very small set. Reusing the
+        // native blur filter removes a native allocation/destruction pair from
+        // every glowing HUD element on every frame without changing the filter.
+        int sigmaKey = Float.floatToIntBits(sigma);
+        ImageFilter filter = GLOW_FILTERS.get(sigmaKey);
+        if (filter == null) {
+            filter = ImageFilter.makeBlur(sigma, sigma, FilterTileMode.DECAL);
+            GLOW_FILTERS.put(sigmaKey, filter);
+        }
+        int safeAlpha = Math.max(0, Math.min(255, alpha));
+        GLOW_LAYER_PAINT.setImageFilter(filter)
+                .setBlendMode(blendMode)
+                .setAlpha(safeAlpha);
+        int save = canvas.saveLayer(bounds, GLOW_LAYER_PAINT);
+        try {
+            drawing.run();
+        } finally {
+            canvas.restoreToCount(save);
+            GLOW_LAYER_PAINT.setImageFilter(null).setAlpha(255);
         }
     }
 
@@ -529,6 +543,11 @@ public final class SkijaUi {
         }
         SHAPE_PAINT.close();
         TEXT_PAINT.close();
+        GLOW_LAYER_PAINT.close();
+        for (ImageFilter filter : GLOW_FILTERS.values()) {
+            try { filter.close(); } catch (Throwable ignored) {}
+        }
+        GLOW_FILTERS.clear();
     }
 
     private static void drawText(Canvas canvas, String text, float x, float top, float height, int color,
