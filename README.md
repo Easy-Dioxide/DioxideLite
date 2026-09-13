@@ -22,13 +22,13 @@ DioxideLite 是一个基于 **Skija GPU 渲染**的视觉向 Fabric 客户端：
 
 ## 截图
 
-| 主菜单 | 游戏内 · 灵动岛 |
-|---|---|
-| ![主菜单](docs/screenshots/01-主菜单.png) | ![游戏内灵动岛](docs/screenshots/02-游戏内-灵动岛.png) |
+| 主菜单 | 游戏内 · 灵动岛 + Watermark | 灵动岛 · 展开 |
+|---|---|---|
+| ![主菜单](docs/screenshots/01-main-menu.png) | ![游戏内 HUD](docs/screenshots/05-ingame-hud.png) | ![灵动岛展开](docs/screenshots/06-island-expanded.png) |
 
-| 灵动岛 · 展开 | ClickGUI · 环形 |
-|---|---|
-| ![灵动岛展开](docs/screenshots/03-灵动岛-展开.png) | ![ClickGUI](docs/screenshots/04-ClickGUI-环形.png) |
+| ClickGUI · 环形 | 多人游戏 | Global Blur |
+|---|---|---|
+| ![ClickGUI](docs/screenshots/04-clickgui.png) | ![多人游戏](docs/screenshots/03-multiplayer.png) | ![Global Blur](docs/screenshots/07-global-blur.png) |
 
 ## 构建
 
