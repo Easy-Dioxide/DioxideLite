@@ -76,6 +76,7 @@ public final class SkijaUi {
      *  caches must never grow without bound (GC-friendly long sessions). */
     private static final int WIDTH_CACHE_MAX = 4096;
     private static final int RUN_CACHE_MAX = 2048;
+    private static final int FALLBACK_CACHE_MAX = 4096;
     private static final Map<TextLayoutKey, Float> TEXT_WIDTH_CACHE =
             new LinkedHashMap<>(128, 0.75F, true) {
                 @Override
@@ -90,6 +91,14 @@ public final class SkijaUi {
                 protected boolean removeEldestEntry(
                         Map.Entry<TextLayoutKey, List<TextRun>> eldest) {
                     return size() > RUN_CACHE_MAX;
+                }
+            };
+    private static final Map<TextLayoutKey, Boolean> TEXT_FALLBACK_CACHE =
+            new LinkedHashMap<>(128, 0.75F, true) {
+                @Override
+                protected boolean removeEldestEntry(
+                        Map.Entry<TextLayoutKey, Boolean> eldest) {
+                    return size() > FALLBACK_CACHE_MAX;
                 }
             };
     private static final Map<String, Typeface> IMPORTED_TYPEFACES = new LinkedHashMap<>();
@@ -247,6 +256,9 @@ public final class SkijaUi {
         // Sigma values in the client are drawn from a very small set. Reusing the
         // native blur filter removes a native allocation/destruction pair from
         // every glowing HUD element on every frame without changing the filter.
+        // A slightly tighter glow kernel keeps small HUD edges crisp while
+        // substantially reducing the filtered pixel footprint on iGPUs.
+        sigma *= 0.80F;
         int sigmaKey = Float.floatToIntBits(sigma);
         ImageFilter filter = GLOW_FILTERS.get(sigmaKey);
         if (filter == null) {
@@ -254,6 +266,7 @@ public final class SkijaUi {
             GLOW_FILTERS.put(sigmaKey, filter);
         }
         int safeAlpha = Math.max(0, Math.min(255, alpha));
+        if (safeAlpha <= 0) return;
         GLOW_LAYER_PAINT.setImageFilter(filter)
                 .setBlendMode(blendMode)
                 .setAlpha(safeAlpha);
@@ -462,6 +475,7 @@ public final class SkijaUi {
     public static synchronized void reloadImportedFonts() {
         TEXT_WIDTH_CACHE.clear();
         TEXT_RUN_CACHE.clear();
+        TEXT_FALLBACK_CACHE.clear();
         retireTextFontResources();
         RETIRED_IMPORTED_TYPEFACES.addAll(IMPORTED_TYPEFACES.values());
         IMPORTED_TYPEFACES.clear();
@@ -572,7 +586,13 @@ public final class SkijaUi {
         if (safeText.isEmpty()) return;
         Font primary = font(bold, size, fontName);
         Font fallback = fallbackFont(size);
-        if (!needsFallback(safeText, primary, fallback)) {
+        TextLayoutKey layoutKey = new TextLayoutKey(safeText, Float.floatToIntBits(size),
+                resolveFontName(fontName == null ? activeFont : fontName), bold);
+        Boolean cachedFallback = TEXT_FALLBACK_CACHE.get(layoutKey);
+        boolean requiresFallback = cachedFallback != null
+                ? cachedFallback : needsFallback(safeText, primary, fallback);
+        if (cachedFallback == null) TEXT_FALLBACK_CACHE.put(layoutKey, requiresFallback);
+        if (!requiresFallback) {
             drawTextRun(canvas, safeText, x, top, height, color, primary);
             return;
         }
@@ -731,14 +751,21 @@ public final class SkijaUi {
     private static void retireTextFontResources() {
         TEXT_WIDTH_CACHE.clear();
         TEXT_RUN_CACHE.clear();
+        TEXT_FALLBACK_CACHE.clear();
         RETIRED_TEXT_FONTS.addAll(TEXT_FONTS.values());
         TEXT_FONTS.clear();
         RETIRED_TEXT_FONTS.addAll(TEXT_FALLBACK_FONTS.values());
         TEXT_FALLBACK_FONTS.clear();
     }
 
+    /** True only when a font reload has left native resources waiting for release. */
+    static synchronized boolean hasRetiredFontResources() {
+        return !RETIRED_TEXT_FONTS.isEmpty() || !RETIRED_IMPORTED_TYPEFACES.isEmpty();
+    }
+
     /** Releases fonts retired during a frame only after Skija has submitted that frame. */
     static synchronized void releaseRetiredFontResources() {
+        if (RETIRED_TEXT_FONTS.isEmpty() && RETIRED_IMPORTED_TYPEFACES.isEmpty()) return;
         RETIRED_TEXT_FONTS.forEach(Font::close);
         RETIRED_TEXT_FONTS.clear();
         RETIRED_IMPORTED_TYPEFACES.forEach(Typeface::close);

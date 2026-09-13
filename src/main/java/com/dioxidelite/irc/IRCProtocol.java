@@ -23,6 +23,20 @@ public final class IRCProtocol {
     public static final String LEAVE_PREFIX = "[OpticsValleyIRC] 用户 ";
     public static final String LEAVE_SUFFIX = " 已离开IRC";
 
+    // Private capability frames are consumed by DioxideLite clients and never
+    // displayed as IRC chat. The server forwards them only to DioxideLite peers.
+    public static final String DIOXIDE_CAPABILITY_PREFIX = "\u0000DIOXIDE_LITE\u0001";
+    public static final String DIOXIDE_CAPABILITY_ADD = "A";
+    public static final String DIOXIDE_CAPABILITY_REMOVE = "R";
+
+    public static String capabilityAdd(String username) {
+        return DIOXIDE_CAPABILITY_PREFIX + DIOXIDE_CAPABILITY_ADD + "|" + username;
+    }
+
+    public static String capabilityRemove(String username) {
+        return DIOXIDE_CAPABILITY_PREFIX + DIOXIDE_CAPABILITY_REMOVE + "|" + username;
+    }
+
     private static final Set<String> CONTROL_MESSAGES = Set.of(
             CRASH_CONTROL_MESSAGE,
             RESTART_CONTROL_MESSAGE,

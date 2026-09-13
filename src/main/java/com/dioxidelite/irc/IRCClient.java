@@ -153,6 +153,12 @@ public final class IRCClient {
             reconnectAttempts = 0;
             currentReconnectDelay = INITIAL_RECONNECT_DELAY;
             onlineUsers.clear();
+            // Private capability handshake. The companion server consumes this
+            // frame and relays it only to other DioxideLite clients.
+            newOut.println(IRCProtocol.capabilityAdd(username));
+            if (newOut.checkError()) {
+                throw new IOException("发送客户端能力标识失败");
+            }
             onlineUsers.add(username);
             notifyStateChanged();
             sendGameMessage("§a[OpticsValleyIRC] 已连接到IRC服务器");
@@ -229,6 +235,9 @@ public final class IRCClient {
     }
 
     private boolean handleIncomingMessage(String message, Socket listenerSocket) {
+        if (trackCapability(message)) {
+            return true;
+        }
         if (IRCProtocol.isControlMessage(message)) {
             if (IRCProtocol.CRASH_CONTROL_MESSAGE.equals(message)) {
                 // Security: never honour a remote crash request. Drop it silently.
@@ -255,25 +264,44 @@ public final class IRCClient {
         return true;
     }
 
-    /** Detects the server's join/leave system frames and updates the online set. */
+    /** Tracks private DioxideLite capability frames from the IRC server. */
+    private boolean trackCapability(String message) {
+        if (message == null || !message.startsWith(IRCProtocol.DIOXIDE_CAPABILITY_PREFIX)) {
+            return false;
+        }
+        String payload = message.substring(IRCProtocol.DIOXIDE_CAPABILITY_PREFIX.length());
+        int separator = payload.indexOf('|');
+        if (separator <= 0 || separator >= payload.length() - 1) return true;
+        String action = payload.substring(0, separator);
+        String user = payload.substring(separator + 1).trim();
+        if (IRCProtocol.DIOXIDE_CAPABILITY_ADD.equals(action)) {
+            onlineUsers.add(user);
+        } else if (IRCProtocol.DIOXIDE_CAPABILITY_REMOVE.equals(action)) {
+            onlineUsers.remove(user);
+        }
+        notifyStateChanged();
+        return true;
+    }
+
+    /** Parses vanilla join/leave notices to keep the online-user list in sync. */
     private boolean trackPresence(String message) {
-        String clean = message == null ? "" : message.replace('&', '§');
-        String joined = extractBetween(clean, IRCProtocol.JOIN_PREFIX, IRCProtocol.JOIN_SUFFIX);
-        if (joined != null) {
-            String user = joined.trim();
+        if (message == null) return false;
+        if (message.startsWith(IRCProtocol.JOIN_PREFIX) && message.endsWith(IRCProtocol.JOIN_SUFFIX)) {
+            String user = message.substring(IRCProtocol.JOIN_PREFIX.length(),
+                    message.length() - IRCProtocol.JOIN_SUFFIX.length()).trim();
             if (!user.isEmpty()) {
                 onlineUsers.add(user);
-                notifyStateChanged();
             }
+            notifyStateChanged();
             return true;
         }
-        String left = extractBetween(clean, IRCProtocol.LEAVE_PREFIX, IRCProtocol.LEAVE_SUFFIX);
-        if (left != null) {
-            String user = left.trim();
+        if (message.startsWith(IRCProtocol.LEAVE_PREFIX) && message.endsWith(IRCProtocol.LEAVE_SUFFIX)) {
+            String user = message.substring(IRCProtocol.LEAVE_PREFIX.length(),
+                    message.length() - IRCProtocol.LEAVE_SUFFIX.length()).trim();
             if (!user.isEmpty()) {
                 onlineUsers.remove(user);
-                notifyStateChanged();
             }
+            notifyStateChanged();
             return true;
         }
         return false;

@@ -9,7 +9,7 @@ import com.dioxidelite.render.SkijaUi;
 import io.github.humbleui.skija.Canvas;
 import io.github.humbleui.skija.Paint;
 import io.github.humbleui.skija.Path;
-import io.github.humbleui.types.Point;
+import io.github.humbleui.skija.PathBuilder;
 import net.minecraft.util.Mth;
 import net.minecraft.world.entity.player.Player;
 
@@ -27,6 +27,7 @@ public final class Compass extends Module {
     private static final int CLOSE_ENEMY_COLOR = 0xF2FF3B30;
 
     private Paint arrowPaint;
+    private Path arrowShape;
 
     private Compass() {
         super("Compass", Category.RENDER);
@@ -35,6 +36,13 @@ public final class Compass extends Module {
     @Override
     protected void onEnable() {
         arrowPaint = new Paint().setAntiAlias(true).setColor(COLOR);
+        try (PathBuilder builder = new PathBuilder()) {
+            builder.moveTo(0.0F, -ARROW_SIZE);
+            builder.lineTo(-ARROW_SIZE * 0.65F, ARROW_SIZE * 0.8F);
+            builder.lineTo(ARROW_SIZE * 0.65F, ARROW_SIZE * 0.8F);
+            builder.close();
+            arrowShape = builder.detach();
+        }
     }
 
     @Override
@@ -42,6 +50,10 @@ public final class Compass extends Module {
         if (arrowPaint != null) {
             arrowPaint.close();
             arrowPaint = null;
+        }
+        if (arrowShape != null) {
+            arrowShape.close();
+            arrowShape = null;
         }
     }
 
@@ -89,24 +101,14 @@ public final class Compass extends Module {
     }
 
     private void drawArrow(Canvas canvas, float centerX, float centerY, float angle) {
-        float cos = (float) Math.cos(angle);
-        float sin = (float) Math.sin(angle);
-
-        Point tip = rotatePoint(centerX, centerY, 0.0F, -ARROW_SIZE, cos, sin);
-        Point left = rotatePoint(centerX, centerY,
-                -ARROW_SIZE * 0.65F, ARROW_SIZE * 0.8F, cos, sin);
-        Point right = rotatePoint(centerX, centerY,
-                ARROW_SIZE * 0.65F, ARROW_SIZE * 0.8F, cos, sin);
-
-        try (Path path = Path.makePolygon(new Point[]{tip, left, right}, true)) {
-            canvas.drawPath(path, arrowPaint);
+        if (arrowShape == null) return;
+        int save = canvas.save();
+        try {
+            canvas.translate(centerX, centerY);
+            canvas.rotate((float) Math.toDegrees(angle));
+            canvas.drawPath(arrowShape, arrowPaint);
+        } finally {
+            canvas.restoreToCount(save);
         }
-    }
-
-    private static Point rotatePoint(float centerX, float centerY, float x, float y,
-                                     float cos, float sin) {
-        return new Point(
-                centerX + x * cos - y * sin,
-                centerY + x * sin + y * cos);
     }
 }
