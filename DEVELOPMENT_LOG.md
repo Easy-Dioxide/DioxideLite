@@ -1,3 +1,91 @@
+# DioxideLite v2.0.7 — Development Log
+
+## Overview / 概述
+
+v2.0.7 is the performance root-cause pass. The most expensive CPU/driver path
+was not Skija text or the Dynamic Island — it was the Minecraft-font Array List
+background, which triggered a full `GlState.capture/restore` (dozens of
+synchronous `glGet*` calls) every HUD frame. v2.0.7 removes that path, tunes
+the blur passes per render profile, and adds a private IRC capability frame so
+nametag logos only show for real DioxideLite peers.
+
+v2.0.7 是渲染性能的"根因修复"版本。最耗 CPU/驱动的路径不是 Skija 文字、
+也不是灵动岛，而是走 Minecraft 字体的 Array List 背景——它每帧触发全量
+`GlState.capture/restore`（数十次同步 `glGet*` 调用）。v2.0.7 移除了这条
+路径，按渲染档位调节模糊开销，并新增 IRC 私有 capability 帧，让 nametag
+logo 只对真实的 DioxideLite 对端显示。
+
+## Build fixes in this pass / 本次构建修复
+
+The supplied source did not compile as-is; two fixes were applied before build:
+- `SkijaRenderer.drawBlurredBackdrop`: a dangling `} catch (Throwable)` had no
+  matching `try` — wrapped the draw body so blur failures degrade gracefully.
+- `IRCClient`: `trackPresence(...)` was called but never defined — added the
+  JOIN/LEAVE parser that keeps `onlineUsers` in sync.
+
+原始源码无法直接编译，本次构建前修复两处：
+- `SkijaRenderer.drawBlurredBackdrop`：悬空的 `} catch (Throwable)` 缺少对应
+  `try` —— 补上包裹绘制体的 try，模糊失败时优雅降级。
+- `IRCClient`：调用了未定义的 `trackPresence(...)` —— 补全 JOIN/LEAVE
+  解析，维护 `onlineUsers` 在线列表。
+
+## Changes / 变更
+
+### Rendering performance / 渲染性能
+- **Root cause fix**: Array List background/icon geometry is now prepared in the
+  vanilla-font pass and composited once in the final Skija overlay — the
+  per-frame full OpenGL state snapshot/restore is gone from normal HUD
+  rendering (biggest iGPU frame-time spike).
+- Watermark logo: removed the 0.32-sigma direct blur; glow kernel tightened to
+  80% of previous sigma.
+- Backdrop blur: downsampled only for the backdrop source (iGPU 0.67x,
+  balanced 0.75x, quality native) — text stays at native Skija resolution;
+  iGPU/balanced cap blur strength.
+- Dynamic Island / nametag logos: Mitchell sampling + shared Paint (no
+  per-draw allocation); island body stays cached, animation still per-frame.
+- Compass: triangle Path built once at module enable instead of per player per
+  frame.
+- Skija fallback-font detection cached by text/font/size/bold key.
+- **根因修复**：Array List 背景/图标几何改为在 vanilla 字体 pass 中准备、
+  最终 Skija overlay 一次性合成——常规 HUD 渲染不再有每帧全量 GL 状态
+  快照/恢复（iGPU 上最大的帧时间尖峰）。
+- Watermark logo 去掉 0.32-sigma 直接模糊；glow 内核收紧为原 80%。
+- 背景模糊：仅对 backdrop 源降采样（iGPU 0.67x / balanced 0.75x / quality
+  原生）——文字保持原生 Skija 分辨率；iGPU/balanced 档位限制模糊强度。
+- 灵动岛/nametag logo：Mitchell 采样 + 复用 Paint；灵动岛 body 保持缓存。
+
+### IRC
+- Private capability frame: after the normal username handshake, DioxideLite
+  announces its capability; the companion server never broadcasts it as chat
+  and forwards capability add/remove only between DioxideLite clients.
+- Nametag logos and the Dynamic Island tab set are shown only for peers
+  currently identified as DioxideLite; vanilla/other IRC clients never receive
+  these frames.
+- Companion server source: `tools/OpticsValleyIRC-server/`.
+- 新增私有 capability 帧：正常用户名握手后，DioxideLite 声明自身能力；
+  配套服务器不将其作为聊天广播，只在 DioxideLite 客户端间转发能力
+  增/删。nametag logo 与灵动岛 Tab 列表只对当前识别为 DioxideLite 的对端
+  显示。服务器源码见 `tools/OpticsValleyIRC-server/`。
+
+## Verification / 验证
+
+- `build` passes after the two fixes; `DioxideLite-2.0.7.jar` (≈91.9 MB).
+- Ran under Xvfb (llvmpipe): main menu "DIOXIDELITE 2.0.7"; in-game Dynamic
+  Island renders by default (compact "DioxideLite v2.0.7 · FPS · 0ms"; Tab
+  shows player list / server / IRC status / FPS); ClickGUI Render lists
+  Array List + Dynamic Island (enabled) + Global Blur / Watermark HUD /
+  Performance HUD / Session Info; name-tag logo intact.
+
+## Notes / 备注
+
+- FPS (6–22) is from the software-rendered headless environment (llvmpipe) and
+  is not representative of real hardware; the Array List state-capture removal
+  is the biggest win for integrated GPUs and should be measured on the user's
+  machine.
+
+
+---
+
 # DioxideLite v2.0.5 — Development Log
 
 ## Overview / 概述

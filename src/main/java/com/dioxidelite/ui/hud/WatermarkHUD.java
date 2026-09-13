@@ -138,7 +138,7 @@ public final class WatermarkHUD extends EpsilonHudModule {
                         Rect.makeXYWH(0, 0, staticCache.getWidth(), staticCache.getHeight()),
                         Rect.makeXYWH(dx, dy,
                                 staticCache.getWidth(), staticCache.getHeight()),
-                        SamplingMode.LINEAR, blit, true);
+                        SamplingMode.DEFAULT, blit, true);
             }
             return;
         }
@@ -260,12 +260,11 @@ public final class WatermarkHUD extends EpsilonHudModule {
             canvas.drawImageRect(image, source, bounds, SamplingMode.DEFAULT, LOGO_PAINT, true);
             return;
         }
-        try (ImageFilter filter = ImageFilter.makeBlur(0.32F, 0.32F, FilterTileMode.DECAL)) {
-            LOGO_PAINT.setImageFilter(filter);
-            canvas.drawImageRect(image, source, bounds, SamplingMode.MITCHELL, LOGO_PAINT, true);
-        } finally {
-            LOGO_PAINT.setImageFilter(null).setAlpha(255);
-        }
+        // Tiny blur on a small logo makes the mark visibly soft. Mitchell
+        // sampling provides clean minification without a filter pass.
+        LOGO_PAINT.setImageFilter(null);
+        canvas.drawImageRect(image, source, bounds, SamplingMode.MITCHELL, LOGO_PAINT, true);
+        LOGO_PAINT.setAlpha(255);
     }
 
     private static void drawLogoShadow(Canvas canvas, Image image, Rect bounds, float scale,

@@ -50,6 +50,7 @@ public final class DioxideDynamicIsland {
     private String cachedCompactRightText = "";
     private String cachedCompactRightWidthKey = "";
     private SkijaRenderer.BorrowedImage cachedLogo;
+    private static final Paint LOGO_PAINT = new Paint().setAntiAlias(true);
 
     /** Pre-rendered island body (glow+gradient+outline+gloss) cache. */
     private Image shapeCache;
@@ -241,6 +242,11 @@ public final class DioxideDynamicIsland {
             int color = info.getGameMode() == GameType.SPECTATOR ? 0xFF758193 : 0xFFE5EDF7;
             float tx = x + 11f + col * cellW;
             float ty = gridTop + row * 12f;
+            if (IrcModule.isIrcUser(name)) {
+                float logoSize = 8f;
+                drawLogo(canvas, tx, ty + 0.5f, logoSize);
+                tx += logoSize + 3f;
+            }
             SkijaUi.text(canvas, name, tx, ty, 8f, color, 7.5f);
         }
     }
@@ -283,7 +289,7 @@ public final class DioxideDynamicIsland {
         try (Paint cachePaint = new Paint().setAntiAlias(true)) {
             canvas.drawImageRect(shapeCache,
                     Rect.makeXYWH(0, 0, shapeCache.getWidth(), shapeCache.getHeight()),
-                    dst, SamplingMode.LINEAR, cachePaint, true);
+                    dst, SamplingMode.DEFAULT, cachePaint, true);
         }
     }
 
@@ -332,9 +338,8 @@ public final class DioxideDynamicIsland {
             Rect dst = Rect.makeXYWH(x, y, size, size);
             // The logo is tiny and static; LINEAR keeps the same appearance without
             // allocating a new Paint/texture bridge on every frame.
-            try (Paint paint = new Paint().setAntiAlias(true)) {
-                canvas.drawImageRect(image, src, dst, SamplingMode.LINEAR, paint, true);
-            }
+            LOGO_PAINT.setImageFilter(null).setAlpha(255);
+            canvas.drawImageRect(image, src, dst, SamplingMode.MITCHELL, LOGO_PAINT, true);
         } catch (Throwable ignored) {
             if (cachedLogo != null) {
                 try { cachedLogo.close(); } catch (Throwable ignored2) {}

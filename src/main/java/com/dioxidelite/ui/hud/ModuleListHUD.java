@@ -7,7 +7,6 @@ import com.dioxidelite.module.Category;
 import com.dioxidelite.module.Module;
 import com.dioxidelite.i18n.LocalizedText;
 import com.dioxidelite.module.ModuleManager;
-import com.dioxidelite.render.SkijaRenderer;
 import com.dioxidelite.render.SkijaUi;
 import com.dioxidelite.setting.settings.BooleanSetting;
 import com.dioxidelite.setting.settings.ColorSetting;
@@ -82,6 +81,16 @@ public final class ModuleListHUD extends EpsilonHudModule {
 
     private final Map<Module, Float> visibility = new IdentityHashMap<>();
 
+    // Prepared by the vanilla-font pass and consumed once by the final Skija
+    // overlay pass. This avoids collecting rows/advancing animation twice per frame.
+    private List<RowLayout> vanillaOverlayLayouts = List.of();
+    private float vanillaOverlayRowHeight;
+    private float vanillaOverlayBlockWidth;
+    private float vanillaOverlayBlockX;
+    private float vanillaOverlayBlockY;
+    private boolean vanillaOverlayRight;
+    private int vanillaOverlayRowCount;
+
     private ModuleListHUD() {
         // Category.RENDER so the module list appears inside the ClickGUI Render
         // category (the HUD category is not shown in the ClickGUI tabs).
@@ -93,7 +102,11 @@ public final class ModuleListHUD extends EpsilonHudModule {
 
     @Override
     protected void renderHud(Render2DEvent event) {
-        if (noPlayer() || isMinecraftFont()) return;
+        if (noPlayer()) return;
+        if (isMinecraftFont()) {
+            renderMinecraftBackgroundOverlay(event);
+            return;
+        }
         float s = scale.get().floatValue();
         float fontSize = 10.0F * s;
         float rowHeight = fontSize * 1.35F;
@@ -191,6 +204,7 @@ public final class ModuleListHUD extends EpsilonHudModule {
 
         List<Row> rows = collectRows();
         if (rows.isEmpty()) {
+            vanillaOverlayLayouts = List.of();
             updateBounds(defaultWidth(), defaultHeight());
             return;
         }
@@ -240,26 +254,13 @@ public final class ModuleListHUD extends EpsilonHudModule {
             offsetY += (rowHeight + spacing.get()) * alpha;
         }
 
-        if (background.get()) {
-            int color = applyOpacity(withAlpha(backgroundColor.argb(), maxAlpha(layouts)));
-            SkijaRenderer.renderMainTarget(canvas -> {
-                int save = canvas.save();
-                try {
-                    canvas.translate(blockX, blockY);
-                    canvas.scale(s, s);
-                    drawBackground(canvas, layouts, rowHeight, 1.0F, right, color, true);
-                    if (bar.get()) {
-                        drawBar(canvas, layouts, rowHeight, 1.0F, right,
-                                right ? blockWidth : 0.0F, rows.size(), true);
-                    }
-                    if (iconsEnabled()) {
-                        drawCategoryIcons(canvas, layouts, rowHeight, rows.size(), true);
-                    }
-                } finally {
-                    canvas.restoreToCount(save);
-                }
-            });
-        }
+        vanillaOverlayLayouts = List.copyOf(layouts);
+        vanillaOverlayRowHeight = rowHeight;
+        vanillaOverlayBlockWidth = blockWidth;
+        vanillaOverlayBlockX = blockX;
+        vanillaOverlayBlockY = blockY;
+        vanillaOverlayRight = right;
+        vanillaOverlayRowCount = rows.size();
 
         GuiGraphicsExtractor graphics = event.graphics();
         graphics.pose().pushMatrix();
@@ -276,6 +277,41 @@ public final class ModuleListHUD extends EpsilonHudModule {
             }
         }
         graphics.pose().popMatrix();
+    }
+
+    /**
+     * Minecraft-font background/icon pass for the final Skija overlay.
+     *
+     * The previous implementation called SkijaRenderer.renderMainTarget() from
+     * VanillaHudRenderEvent. That path captures/restores dozens of GL states
+     * with synchronous glGet* calls every frame. On integrated GPUs this was
+     * one of the largest CPU/driver stalls in the client. The background is
+     * visually equivalent when composited in the final overlay, while the
+     * vanilla glyphs themselves remain on Minecraft's native font path.
+     */
+    private void renderMinecraftBackgroundOverlay(Render2DEvent event) {
+        if (!background.get() || vanillaOverlayLayouts.isEmpty()) return;
+        Canvas canvas = event.canvas();
+        int color = applyOpacity(withAlpha(backgroundColor.argb(), maxAlpha(vanillaOverlayLayouts)));
+        int save = canvas.save();
+        try {
+            canvas.translate(vanillaOverlayBlockX, vanillaOverlayBlockY);
+            canvas.scale(scale.get().floatValue(), scale.get().floatValue());
+            drawBackground(canvas, vanillaOverlayLayouts, vanillaOverlayRowHeight, 1.0F,
+                    vanillaOverlayRight, color, true);
+            if (bar.get()) {
+                drawBar(canvas, vanillaOverlayLayouts, vanillaOverlayRowHeight, 1.0F,
+                        vanillaOverlayRight,
+                        vanillaOverlayRight ? vanillaOverlayBlockWidth : 0.0F,
+                        vanillaOverlayRowCount, true);
+            }
+            if (iconsEnabled()) {
+                drawCategoryIcons(canvas, vanillaOverlayLayouts, vanillaOverlayRowHeight,
+                        vanillaOverlayRowCount, true);
+            }
+        } finally {
+            canvas.restoreToCount(save);
+        }
     }
 
     private void drawBackground(Canvas canvas, List<RowLayout> layouts,

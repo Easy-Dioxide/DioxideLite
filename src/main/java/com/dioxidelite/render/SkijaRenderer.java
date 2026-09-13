@@ -48,6 +48,8 @@ import org.lwjgl.system.MemoryStack;
 
 import java.nio.ByteBuffer;
 import java.nio.IntBuffer;
+import java.util.HashMap;
+import java.util.Map;
 
 /** Draws Skija UI into the presented window framebuffer before buffer swap. */
 public final class SkijaRenderer
@@ -91,6 +93,11 @@ public final class SkijaRenderer
 
     private static final RenderProfile RENDER_PROFILE = detectProfile();
 
+    /** Cached blur filters; creating native ImageFilter objects per HUD per frame is expensive on iGPUs. */
+    private static final Map<Integer, ImageFilter> BACKDROP_BLUR_FILTERS = new HashMap<>();
+    /** Reused paint for backdrop blits; creating a native Paint per HUD blur was needless. */
+    private static final Paint BACKDROP_PAINT = new Paint().setAntiAlias(true);
+
     /** Cached GL renderer string for diagnostics (HUD overlay). */
     private static final String RENDERER_STRING = detectRendererString();
 
@@ -110,11 +117,20 @@ public final class SkijaRenderer
         }
     }
 
-    /** Blur backdrop renders at full resolution (1.0). Downsampling the blur
-     *  source made the glass/edge look grainy and soft, so quality wins here;
-     *  per-frame cost is kept in check by the GlobalBlur strength slider and
-     *  the fact that blur only draws when that module is enabled. */
-    private static final float BACKDROP_DOWNSAMPLE = 1.0F;
+    /**
+     * Blur source scale is intentionally reduced only for the backdrop pass.
+     * HUD text/borders are still rendered at native GUI resolution, so they stay
+     * crisp while the expensive blur work scales with fewer pixels.
+     *
+     * IGPU: 0.50x, balanced: 0.67x, discrete GPU: native resolution.
+     */
+    // Do not rasterize the whole framebuffer into a second downsampled image.
+    // On iGPUs that extra full-frame copy/snapshot can cost more than the blur.
+    private static final float BACKDROP_DOWNSAMPLE = switch (RENDER_PROFILE) {
+        case IGPU -> 0.67F;
+        case BALANCED -> 0.75F;
+        case QUALITY -> 1.0F;
+    };
 
     public static RenderProfile renderProfile() {
         return RENDER_PROFILE;
@@ -163,7 +179,10 @@ public final class SkijaRenderer
         float scaledWidth = window.getGuiScaledWidth();
         float scaledHeight = window.getGuiScaledHeight();
         double guiScale = window.getGuiScale();
-        boolean captureBackdrop = backdropRequested;
+        // A disabled global blur must never trigger a framebuffer snapshot.
+        // Clear the request before the pass; blur calls made by this pass schedule
+        // the next frame's snapshot, keeping the source immutable for all HUDs.
+        boolean captureBackdrop = GlobalBlurModule.INSTANCE.isEnabled() && backdropRequested;
         backdropRequested = false;
         long t0 = System.nanoTime();
         paintOverlay(canvas -> {
@@ -247,7 +266,7 @@ public final class SkijaRenderer
             if (captureBackdrop) {
                 backdrop = surface.makeImageSnapshot();
                 frameBackdropSnapshot = backdrop;
-                backdropDownsampled = BACKDROP_DOWNSAMPLE < 1.0F
+                backdropDownsampled = RENDER_PROFILE == RenderProfile.IGPU
                         ? downsampleBackdrop(backdrop) : null;
             }
 
@@ -261,7 +280,9 @@ public final class SkijaRenderer
                 canvas.restoreToCount(save);
             }
             context.flushAndSubmit(surface);
-            SkijaUi.releaseRetiredFontResources();
+            if (SkijaUi.hasRetiredFontResources()) {
+                SkijaUi.releaseRetiredFontResources();
+            }
         } catch (Throwable throwable) {
             failed = true;
             DioxideLite.LOGGER.error("Skija overlay renderer failed; disabling it for this session", throwable);
@@ -335,7 +356,7 @@ public final class SkijaRenderer
             if (captureBackdrop) {
                 backdrop = surface.makeImageSnapshot();
                 frameBackdropSnapshot = backdrop;
-                backdropDownsampled = BACKDROP_DOWNSAMPLE < 1.0F
+                backdropDownsampled = RENDER_PROFILE == RenderProfile.IGPU
                         ? downsampleBackdrop(backdrop) : null;
             }
             Canvas canvas = surface.getCanvas();
@@ -347,7 +368,9 @@ public final class SkijaRenderer
                 canvas.restoreToCount(save);
             }
             context.flushAndSubmit(surface);
-            SkijaUi.releaseRetiredFontResources();
+            if (SkijaUi.hasRetiredFontResources()) {
+                SkijaUi.releaseRetiredFontResources();
+            }
         } catch (Throwable throwable) {
             failed = true;
             DioxideLite.LOGGER.error("Skija renderer failed; disabling it for this session", throwable);
@@ -365,7 +388,7 @@ public final class SkijaRenderer
     }
 
     /** Downscales the backdrop snapshot for cheap HUD blur. Falls back to null
-     *  (full-resolution blur) if anything fails. */
+     *  (native-resolution blur) if anything fails. */
     private static Image downsampleBackdrop(Image src) {
         if (src == null) return null;
         int dw = Math.max(48, Math.round(src.getWidth() * BACKDROP_DOWNSAMPLE));
@@ -435,10 +458,18 @@ public final class SkijaRenderer
                                             java.util.function.Consumer<Canvas> clipper,
                                             float x, float y, float width, float height,
                                             float strength) {
-        // Global blur master switch (ClickGUI Render category). When disabled no
-        // HUD backdrop blur is drawn and the backdrop snapshot is skipped too.
+        // Global blur master switch (ClickGUI -> Render). Disabled means both
+        // the blur draw and its expensive source snapshot are skipped.
         if (!GlobalBlurModule.INSTANCE.isEnabled()) return;
         strength = GlobalBlurModule.INSTANCE.strength.get().floatValue();
+        if (strength <= 0.01F) return;
+        // Keep the glass character while preventing large-radius Gaussian blur
+        // from dominating an integrated GPU frame.
+        if (RENDER_PROFILE == RenderProfile.IGPU) {
+            strength = Math.min(strength, 4.0F);
+        } else if (RENDER_PROFILE == RenderProfile.BALANCED) {
+            strength = Math.min(strength, 5.0F);
+        }
         if (backdropBlurFailed || canvas == null || clipper == null
                 || strength <= 0.01F
                 || width <= 1.0F || height <= 1.0F || targetWidth <= 0 || targetHeight <= 0) {
@@ -456,8 +487,9 @@ public final class SkijaRenderer
         float scaleY = targetHeight / guiHeight;
         float padding = Math.max(2.0F, strength * 2.5F);
 
-        Image blurSource = backdropDownsampled != null ? backdropDownsampled : frameBackdropSnapshot;
-        float ds = backdropDownsampled != null ? BACKDROP_DOWNSAMPLE : 1.0F;
+        try {
+            Image blurSource = backdropDownsampled != null ? backdropDownsampled : frameBackdropSnapshot;
+            float ds = backdropDownsampled != null ? BACKDROP_DOWNSAMPLE : 1.0F;
         int left = Math.max(0, (int) Math.floor((x - padding) * scaleX * ds));
         int top = Math.max(0, (int) Math.floor((y - padding) * scaleY * ds));
         int right = Math.min(blurSource.getWidth(),
@@ -466,8 +498,15 @@ public final class SkijaRenderer
                 (int) Math.ceil((y + height + padding) * scaleY * ds));
         if (right <= left || bottom <= top) return;
 
-        try (ImageFilter filter = ImageFilter.makeBlur(strength * ds, strength * ds, FilterTileMode.CLAMP);
-             Paint paint = new Paint().setAntiAlias(true).setImageFilter(filter)) {
+        float sigma = Math.max(0.1F, strength * ds);
+        int filterKey = Float.floatToIntBits(sigma);
+        ImageFilter filter = BACKDROP_BLUR_FILTERS.get(filterKey);
+        if (filter == null) {
+            filter = ImageFilter.makeBlur(sigma, sigma, FilterTileMode.CLAMP);
+            BACKDROP_BLUR_FILTERS.put(filterKey, filter);
+        }
+        BACKDROP_PAINT.setAntiAlias(true).setImageFilter(filter).setAlpha(255);
+        try {
             Rect source = Rect.makeLTRB(left, top, right, bottom);
             Rect destination = Rect.makeLTRB(
                     left / (scaleX * ds), top / (scaleY * ds),
@@ -476,10 +515,13 @@ public final class SkijaRenderer
             try {
                 clipper.accept(canvas);
                 canvas.drawImageRect(blurSource, source, destination,
-                        SamplingMode.LINEAR, paint, true);
+                        SamplingMode.LINEAR, BACKDROP_PAINT, true);
             } finally {
                 canvas.restoreToCount(save);
             }
+        } finally {
+            BACKDROP_PAINT.setImageFilter(null).setAlpha(255);
+        }
         } catch (Throwable throwable) {
             backdropBlurFailed = true;
             DioxideLite.LOGGER.warn("Framebuffer snapshot blur is unavailable; disabling HUD blur for this session",
@@ -534,6 +576,10 @@ public final class SkijaRenderer
             themedFramebuffer = -1;
             themedColorTexture = -1;
         }
+        for (ImageFilter filter : BACKDROP_BLUR_FILTERS.values()) {
+            try { filter.close(); } catch (Throwable ignored) {}
+        }
+        BACKDROP_BLUR_FILTERS.clear();
         DioxideDynamicIsland.getInstance().close();
         SkijaUi.close();
         context.close();
