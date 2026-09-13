@@ -30,7 +30,7 @@ public final class HUD extends Module {
                     .visibleWhen(() -> colorMode.is(ColorMode.FADE)));
     public final BooleanSetting whiteMode = add(new BooleanSetting("White Mode", false));
 
-    public final BooleanSetting watermark = control("Watermark", true, WatermarkHUD.INSTANCE);
+    public final BooleanSetting watermark = control("Watermark", false, WatermarkHUD.INSTANCE);
     public final BooleanSetting arrayList = control("Array List", true, ModuleListHUD.INSTANCE);
     public final BooleanSetting fps = control("FPS", false, FPSHUD.INSTANCE);
     public final BooleanSetting bps = control("BPS", false, BPSHUD.INSTANCE);

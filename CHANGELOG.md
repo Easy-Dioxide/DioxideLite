@@ -1,5 +1,27 @@
 # DioxideLite Changelog
 
+## v2.0.2 (2026-09-13) — Global Blur & Built-in Optimisers
+
+### 新增 / New
+- **全局模糊控制（Global Blur）**：ClickGUI → Render 分类新增 `Global Blur` 模块，**默认关闭**。关闭时完全不绘制任何 HUD 背景模糊并跳过每帧 backdrop 快照（视觉全锐利、零模糊开销）；开启后统一接管所有 HUD 背景模糊，`Blur Strength` 滑块（1–16，默认 6）覆盖各 HUD 自身强度。
+- **内置主流优化模组（jar-in-jar）**：随主 jar 打包 Sodium 0.8.12 + Lithium 0.24.7 + FerriteCore 9.0.0（fabric.mod.json `jars` 自动注入），免去单独安装，实测三模组正常加载、无 mixin 冲突。
+- **视觉 HUD 三件套模块化**：Performance HUD、Watermark、灵动岛全部纳入 ClickGUI Render 分类，可独立开关，**默认全部关闭**。
+
+### 优化 / Optimised
+- **HudFusionManager 布局指纹缓存**：按屏幕尺寸与各 HUD enabled/位置/尺寸异或指纹缓存融合布局，消除每帧 O(n²) 碰撞 BFS，所有带背景融合的 HUD 受益。
+- **文本缓存 LRU 上限**：`TEXT_WIDTH_CACHE`/`TEXT_RUN_CACHE` 由无界 HashMap 改为有界 LRU（4096/2048），杜绝 FPS/Ping 文本长期换 key 造成的内存无限增长。
+- **弃用分辨率/降采样手段**：blur 背景降采样（BACKDROP_DOWNSAMPLE）彻底停用并条件化（1.0 时不执行降采样），HUD 保持全分辨率矢量渲染，字体不糊。
+
+### 修复 / Fixed
+- 修复模块启用/关闭时右上角通知文字 **baseline 错位字符重叠**（"Dynamic Island" 渲染成乱码）：fallback 分段绘制统一使用主字体单一 baseline。
+- **模块状态通知默认关闭**：启用/关闭模块不再弹出右上角 "Dynamic Island / Enabled" 等通知（ClickGUI 可重新开启）。
+- 修复用户自改源码的全量编译错误：`DioxideDynamicIsland` 重复字段、`repackage/**`（javazoom mp3、processing sound）与 `tritium/**`（ncm 解密）第三方死代码编译失败（146+ 错误）→ 编译排除，源码保留。
+
+### 版本 / Version
+- gradle.properties `version=2.0.2`；`DioxideLite.VERSION=2.0.2`；窗口标题 DioxideLite 2.0.2。
+
+---
+
 ## v2.0.1 (2026-09-12) — OPAI Dynamic Island
 
 ### 新增 / New

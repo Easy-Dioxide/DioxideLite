@@ -23,8 +23,10 @@ public final class Notifications extends EpsilonHudModule {
 
     public enum Position { TOP_CENTER, TOP_RIGHT, TOP_LEFT, BOTTOM_RIGHT, BOTTOM_LEFT, CUSTOM }
 
-    public final BooleanSetting moduleState = add(new BooleanSetting("Module State", true));
-    public final BooleanSetting moduleActions = add(new BooleanSetting("Module Actions", true));
+    // Off by default: enabling/disabling modules must not spam the top-right
+    // corner. Users can re-enable from the ClickGUI.
+    public final BooleanSetting moduleState = add(new BooleanSetting("Module State", false));
+    public final BooleanSetting moduleActions = add(new BooleanSetting("Module Actions", false));
     public final IntSetting duration = add(new IntSetting("Display Time", 2000, 500, 5000, 100));
     public final IntSetting maxVisible = add(new IntSetting("Max Visible", 4, 1, 6, 1));
     public final EnumSetting<Position> position = add(new EnumSetting<>("Position", Position.TOP_CENTER));

@@ -40,8 +40,12 @@ public class WaveStreamObuffer extends Obuffer {
     private final short[] buffer;
     private final short[] bufferP;
     private final int channels;
-    @Getter
     private final WaveStream outWave;
+
+    /** Manual accessor (lombok @Getter is not applied under this toolchain). */
+    public WaveStream getOutWave() {
+        return outWave;
+    }
 
     /**
      * Creates a new WareFileObuffer instance.

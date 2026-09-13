@@ -64,6 +64,30 @@ public final class SkijaUi {
             "/assets/dioxide-lite/fonts/lucide/lucide.ttf", FontStyle.NORMAL);
     private static final Map<FontKey, Font> TEXT_FONTS = new HashMap<>();
     private static final Map<Integer, Font> TEXT_FALLBACK_FONTS = new HashMap<>();
+
+    /** Text layout caches: measured widths and fallback runs keyed by (text,size,font,bold). */
+    private record TextLayoutKey(String text, int sizeBits, String fontName, boolean bold) {
+    }
+    /** Bounded LRU caches: FPS/ping text churns keys every second, so the
+     *  caches must never grow without bound (GC-friendly long sessions). */
+    private static final int WIDTH_CACHE_MAX = 4096;
+    private static final int RUN_CACHE_MAX = 2048;
+    private static final Map<TextLayoutKey, Float> TEXT_WIDTH_CACHE =
+            new LinkedHashMap<>(128, 0.75F, true) {
+                @Override
+                protected boolean removeEldestEntry(
+                        Map.Entry<TextLayoutKey, Float> eldest) {
+                    return size() > WIDTH_CACHE_MAX;
+                }
+            };
+    private static final Map<TextLayoutKey, List<TextRun>> TEXT_RUN_CACHE =
+            new LinkedHashMap<>(128, 0.75F, true) {
+                @Override
+                protected boolean removeEldestEntry(
+                        Map.Entry<TextLayoutKey, List<TextRun>> eldest) {
+                    return size() > RUN_CACHE_MAX;
+                }
+            };
     private static final Map<String, Typeface> IMPORTED_TYPEFACES = new LinkedHashMap<>();
     private static final Map<String, Path> IMPORTED_FILES = new LinkedHashMap<>();
     private static final List<Font> RETIRED_TEXT_FONTS = new ArrayList<>();
@@ -301,15 +325,24 @@ public final class SkijaUi {
                                                boolean bold) {
         String safeText = text == null ? "" : text;
         if (safeText.isEmpty()) return 0.0F;
+        TextLayoutKey key = new TextLayoutKey(safeText,
+                Float.floatToIntBits(Math.max(1.0F, size)), resolveFontName(fontName), bold);
+        Float cached = TEXT_WIDTH_CACHE.get(key);
+        if (cached != null) {
+            return cached;
+        }
         Font primary = font(bold, size, fontName);
         Font fallback = fallbackFont(size);
+        float width;
         if (!needsFallback(safeText, primary, fallback)) {
-            return primary.measureTextWidth(safeText);
+            width = primary.measureTextWidth(safeText);
+        } else {
+            width = 0.0F;
+            for (TextRun run : fallbackRunsCached(key, safeText, primary, fallback)) {
+                width += run.font().measureTextWidth(run.text());
+            }
         }
-        float width = 0.0F;
-        for (TextRun run : fallbackRuns(safeText, primary, fallback)) {
-            width += run.font().measureTextWidth(run.text());
-        }
+        TEXT_WIDTH_CACHE.put(key, width);
         return width;
     }
 
@@ -413,6 +446,8 @@ public final class SkijaUi {
     }
 
     public static synchronized void reloadImportedFonts() {
+        TEXT_WIDTH_CACHE.clear();
+        TEXT_RUN_CACHE.clear();
         retireTextFontResources();
         RETIRED_IMPORTED_TYPEFACES.addAll(IMPORTED_TYPEFACES.values());
         IMPORTED_TYPEFACES.clear();
@@ -522,11 +557,22 @@ public final class SkijaUi {
             drawTextRun(canvas, safeText, x, top, height, color, primary);
             return;
         }
+        // Use ONE baseline (from the primary font) for every run so mixed-font
+        // segments never stack on top of each other vertically.
+        FontMetrics primaryMetrics = primary.getMetrics();
+        float textHeight = primaryMetrics.getDescent() - primaryMetrics.getAscent();
+        float baseline = top + (height - textHeight) * 0.5F - primaryMetrics.getAscent();
         float cursorX = x;
         for (TextRun run : fallbackRuns(safeText, primary, fallback)) {
-            drawTextRun(canvas, run.text(), cursorX, top, height, color, run.font());
+            drawTextRunAt(canvas, run.text(), cursorX, baseline, color, run.font());
             cursorX += run.font().measureTextWidth(run.text());
         }
+    }
+
+    private static void drawTextRunAt(Canvas canvas, String text, float x, float baseline,
+                                      int color, Font font) {
+        TEXT_PAINT.setColor(color);
+        canvas.drawString(text, x, baseline, font, TEXT_PAINT);
     }
 
     private static void drawTextRun(Canvas canvas, String text, float x, float top,
@@ -536,6 +582,19 @@ public final class SkijaUi {
         float baseline = top + (height - textHeight) * 0.5F - metrics.getAscent();
         TEXT_PAINT.setColor(color);
         canvas.drawString(text, x, baseline, font, TEXT_PAINT);
+    }
+
+    private static List<TextRun> fallbackRunsCached(TextLayoutKey key, String safeText,
+                                                     Font primary, Font fallback) {
+        List<TextRun> cached = TEXT_RUN_CACHE.get(key);
+        if (cached != null) {
+            return cached;
+        }
+        List<TextRun> runs = fallbackRuns(safeText, primary, fallback);
+        if (runs.size() <= 8) {
+            TEXT_RUN_CACHE.put(key, runs);
+        }
+        return runs;
     }
 
     private static List<TextRun> fallbackRuns(String safeText, Font primary, Font fallback) {
@@ -651,6 +710,8 @@ public final class SkijaUi {
     }
 
     private static void retireTextFontResources() {
+        TEXT_WIDTH_CACHE.clear();
+        TEXT_RUN_CACHE.clear();
         RETIRED_TEXT_FONTS.addAll(TEXT_FONTS.values());
         TEXT_FONTS.clear();
         RETIRED_TEXT_FONTS.addAll(TEXT_FALLBACK_FONTS.values());

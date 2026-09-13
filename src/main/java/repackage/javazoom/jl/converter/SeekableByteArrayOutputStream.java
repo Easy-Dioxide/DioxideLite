@@ -169,6 +169,11 @@ public class SeekableByteArrayOutputStream extends OutputStream {
         }
     }
 
+    /** Write cursor position (used by the Riff writer). */
+    public int getWritePointer() {
+        return writePointer;
+    }
+
     public void seek(long pos) {
         this.writePointer = Math.toIntExact(pos);
     }

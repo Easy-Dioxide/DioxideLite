@@ -36,6 +36,13 @@ public final class HudFusionManager {
             new IdentityHashMap<>();
     private Render2DEvent preparedEvent;
 
+    /** Layout fingerprint cache (perf): groups are only recomputed when the
+     *  screen size or any HUD's enabled/position/size state changes. */
+    private long layoutFingerprint = Long.MIN_VALUE;
+    private int cachedScreenW = -1;
+    private int cachedScreenH = -1;
+    private List<Group> cachedGroups = List.of();
+
     private HudFusionManager() {
     }
 
@@ -138,6 +145,40 @@ public final class HudFusionManager {
     }
 
     private List<Group> groups(float screenWidth, float screenHeight) {
+        long fingerprint = fingerprint(screenWidth, screenHeight);
+        if (fingerprint == layoutFingerprint
+                && cachedScreenW == (int) screenWidth
+                && cachedScreenH == (int) screenHeight) {
+            return cachedGroups;
+        }
+        layoutFingerprint = fingerprint;
+        cachedScreenW = (int) screenWidth;
+        cachedScreenH = (int) screenHeight;
+        cachedGroups = computeGroups(screenWidth, screenHeight);
+        return cachedGroups;
+    }
+
+    /**
+     * Cheap structural fingerprint: XOR of every HUD's enabled flag plus its
+     * four layout ints, folded with the screen size. Recomputing this per frame
+     * is far cheaper than the O(n^2) group BFS it guards.
+     */
+    private static long fingerprint(float screenWidth, float screenHeight) {
+        long fp = (31L * (long) Float.floatToIntBits(screenWidth)
+                + (long) Float.floatToIntBits(screenHeight)) * 1315423911L;
+        for (Module module : ModuleManager.INSTANCE.modules()) {
+            if (!(module instanceof EpsilonHudModule hud)) continue;
+            long h = (hud.isEnabled() ? 1L : 0L)
+                    ^ ((long) hud.xPosition.get() * 0x9E3779B97F4A7C15L)
+                    ^ ((long) hud.yPosition.get() * 0xC2B2AE3D27D4EB4FL)
+                    ^ ((long) Float.floatToIntBits(hud.hudWidth(0.0F)) * 0x165667B19E3779F9L)
+                    ^ ((long) Float.floatToIntBits(hud.hudHeight(0.0F)) * 0x85EBCA77C2B2AE63L);
+            fp ^= h;
+        }
+        return fp;
+    }
+
+    private List<Group> computeGroups(float screenWidth, float screenHeight) {
         List<EpsilonHudModule> candidates = candidates();
         Set<EpsilonHudModule> visited = Collections.newSetFromMap(new IdentityHashMap<>());
         List<Group> result = new ArrayList<>();
