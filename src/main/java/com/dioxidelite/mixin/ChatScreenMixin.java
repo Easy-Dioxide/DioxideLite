@@ -3,6 +3,7 @@ package com.dioxidelite.mixin;
 import com.llamalad7.mixinextras.injector.wrapoperation.Operation;
 import com.llamalad7.mixinextras.injector.wrapoperation.WrapOperation;
 import com.dioxidelite.command.CommandManager;
+import com.dioxidelite.irc.IrcChatHandler;
 import net.minecraft.client.gui.components.EditBox;
 import net.minecraft.client.gui.screens.ChatScreen;
 import net.minecraft.client.input.KeyEvent;
@@ -28,7 +29,7 @@ public abstract class ChatScreenMixin {
                     target = "Lnet/minecraft/client/multiplayer/ClientPacketListener;sendChat(Ljava/lang/String;)V"))
     private void DioxideLite$handleClientCommand(ClientPacketListener listener, String message,
                                             Operation<Void> original) {
-        if (!CommandManager.INSTANCE.handle(message)) {
+        if (!CommandManager.INSTANCE.handle(message) && !IrcChatHandler.handle(message)) {
             original.call(listener, message);
         }
     }

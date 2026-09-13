@@ -7,6 +7,7 @@ import com.dioxidelite.event.events.KeyInputEvent;
 import com.dioxidelite.event.events.MouseButtonEvent;
 import com.dioxidelite.module.modules.ClickGui;
 import com.dioxidelite.module.modules.FontModule;
+import com.dioxidelite.module.modules.player.IrcModule;
 import com.dioxidelite.module.modules.render.FullBright;
 import com.dioxidelite.module.modules.render.BlockHighlight;
 import com.dioxidelite.module.modules.render.CameraClip;
@@ -77,6 +78,7 @@ public final class ModuleManager {
         }
         register(ClickGui.INSTANCE);
         register(FontModule.INSTANCE);
+        register(IrcModule.INSTANCE);
         register(FullBright.INSTANCE);
         register(BlockHighlight.INSTANCE);
         register(CameraClip.INSTANCE);
