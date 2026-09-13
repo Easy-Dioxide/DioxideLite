@@ -1,6 +1,6 @@
 # DioxideLite
 
-**Minecraft 1.21.11 · Fabric · 纯视觉 / QoL PvP 客户端**
+**Minecraft 26.1.2 · Fabric · 纯视觉 / QoL PvP 客户端**
 
 DioxideLite 是一个基于 **Skija GPU 渲染**的视觉向 Fabric 客户端：主菜单主题、ClickGUI、灵动岛、HUD 与各类视觉增强全部走共享 Skija 渲染管线。**不含任何自动化/作弊模块**——没有 combat/movement 自动化、发包操作、反作弊绕过或脚本指令。
 
@@ -8,7 +8,9 @@ DioxideLite 是一个基于 **Skija GPU 渲染**的视觉向 Fabric 客户端：
 
 - **主菜单**：DIOXIDELITE 品牌主菜单，角色 + 羽毛动画背景，单机/联机入口
 - **ClickGUI**：右 Shift 打开；Pop 环形 / Drop 窗口两种模式；F6 热切换 **Liquid Glass / Minimal / Signature** 三种主题（无需重启）
-- **灵动岛（v2.0.1 新增）**：OPAI 风格暗色玻璃胶囊，顶部居中；紧凑态显示 LOGO/版本/FPS/延迟，按住 Tab 展开玩家列表与服务器信息
+- **灵动岛**：OPAI 风格暗色玻璃胶囊，顶部居中；紧凑态显示 LOGO/版本/FPS/延迟，按住 Tab 展开玩家列表与服务器信息
+- **Global Blur（v2.0.2 新增）**：HUD 背景模糊总开关，默认关闭；开启后统一调节全部 HUD 模糊强度
+- **内置优化模组（v2.0.2 新增）**：jar-in-jar 内置 Sodium + Lithium + FerriteCore，免单独安装
 - **视觉增强**：Watermark、模块列表、动态背景、渲染增强等 24 个纯视觉/QoL 模块
 - **无自动化**：模块列表经核验仅含视觉/HUD/UI 功能
 
@@ -16,6 +18,7 @@ DioxideLite 是一个基于 **Skija GPU 渲染**的视觉向 Fabric 客户端：
 
 | 版本 | 说明 |
 |---|---|
+| v2.0.2 | Global Blur 全局模糊；内置 Sodium/Lithium/FerriteCore；弃用降采样；通知默认关闭 |
 | v2.0.1 | OPAI 灵动岛重构；修复 Skija 采样 API |
 | v2.0.0 | Skija 新架构；视觉对齐修复（viaversion/Skia native/命名空间/字体路径） |
 | v1.8.2 | 渲染性能优化（Skija 字体补丁） |
@@ -42,7 +45,7 @@ DioxideLite 是一个基于 **Skija GPU 渲染**的视觉向 Fabric 客户端：
 
 ## 运行
 
-- Minecraft **1.21.11（26.1.2）** · Fabric Loader **0.19.2** · Fabric API **0.150.0+**
+- Minecraft **26.1.2** · Fabric Loader **0.19.2** · Fabric API **0.150.0+**
 - 将 jar 放入 `mods/` 目录，用 Fabric 启动即可
 
 ## 许可
