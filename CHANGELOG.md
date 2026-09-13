@@ -1,67 +1,72 @@
 # DioxideLite Changelog
 
-## [2.0.4] - 2026-09-13
-### Added / 新增
-- Name tag client logo now rendered via Skija (`NameTagLogoRenderer`): the
-  same 256×256 Dynamic-Island logo is drawn next to the name tag for the local
-  player (Client Logo, default on) and IRC online users (IRC Logo, default on).
-  Vanilla name tags cannot render the custom bitmap glyph, so the logo is
-  projected from the entity head anchor into GUI space every frame.
-- nametag 客户端 logo 改为 Skija 渲染：本地玩家（Client Logo，默认开）与
-  IRC 在线用户（IRC Logo，默认开）的 nametag 旁绘制灵动岛同款 256×256 logo。
-- `LegendWatch` adds `Client Logo Size` (IntSetting, 6–20, default 10).
-
-### Changed / 变更
-- Module List (`Array List`) moved into the ClickGUI **Render** category (was
-  invisible: defaulted to non-GUI `Category.HUD`), default enabled.
-- Module List（Array List）移入 ClickGUI Render 分类（原为不可见的 HUD 分类），
-  默认开启。
-- `SkijaRenderer.BACKDROP_DOWNSAMPLE` 0.5 → 1.0: full-resolution backdrop for
-  Global Blur (was 0.5 for iGPU).
-- 背景降采样恢复为全分辨率（Global Blur 开启时生效）。
+## [2.0.5] - 2026-09-13
+### Performance / 性能
+- Fast path for the final in-frame Skija overlay pass: removed the full OpenGL
+  state snapshot/restore from every HUD frame.
+- Cached Skija Gaussian blur filters for glow layers (no repeated native
+  alloc/destroy).
+- 帧内 overlay 末帧快路径；模糊滤镜缓存。
 
 ### Fixed / 修复
-- Blurry watermark / Dynamic Island edges: static-cache blits now snap to
-  integer pixels (no sub-pixel sampling).
-- 修复 Watermark / 灵动岛边缘模糊：静态缓存 blit 对齐整像素。
-- Dynamic Island text too small/blurry: font sizes raised (compact 9.5/8.5/8.5;
-  expanded 10/8.5/8/8.5/7.5/7.5).
-- 灵动岛字号上调，文字更清晰。
-- Third-person name-tag logo vertical offset: mirror vanilla FOV expansion
-  (×1.28) so the logo aligns with the text.
-- 修复第三人称 nametag logo 高度偏移（对齐原版 FOV 扩展）。
+- **HUD not rendering intermittently**: profiles now load after the client
+  starts, so saved module states (incl. Dynamic Island / HUD) are actually
+  restored. Verified: fresh profile renders Dynamic Island by default.
+- **修复 HUD 偶发不渲染**：配置在客户端启动后加载，模块状态真正恢复。
+- HUD fusion size fingerprinting fixed (dynamic element dimensions invalidate
+  layout).
+- IRC: unknown-host diagnostics; reconnect continues indefinitely with capped
+  exponential backoff.
+
+### Added / 新增
+- Dynamic Island enabled-by-default (Render category) when no profile
+  overrides it; native resource cleanup for island logo/shape cache.
+- HUD Editor entry point restored.
+- `Sprint` module (Movement category, Setsuna-compatible; restores vanilla
+  sprint key when disabled).
+- IRC transport: TCP_NODELAY / keep-alive / reuse-address.
+
+---
+
+## [2.0.4] - 2026-09-13
+### Added / 新增
+- Name tag client logo rendered via Skija (`NameTagLogoRenderer`): local player
+  (Client Logo, default on) and IRC users (IRC Logo, default on); FOV-corrected
+  third-person projection, width-adaptive x, vertical alignment.
+- `LegendWatch` adds `Client Logo Size` (6–20, default 10).
+
+### Changed / 变更
+- Module List (`Array List`) moved into ClickGUI **Render** category (was
+  invisible on non-GUI HUD category), default enabled.
+- `BACKDROP_DOWNSAMPLE` 0.5 → 1.0 (full-resolution backdrop for Global Blur).
+
+### Fixed / 修复
+- Blurry watermark / Dynamic Island edges (integer-pixel blits).
+- Dynamic Island text too small (fonts raised).
+- Third-person name-tag logo vertical offset (mirror vanilla FOV expansion).
 
 ### Removed / 移除
 - Obsolete bitmap-glyph name-tag logo (IrcNameTagUtil, nametag_logo.json,
   dioxide_logo_16.png).
-- 移除失效的位图字形 nametag logo 方案。
 
 ---
 
 ## [2.0.3] - 2026-09-12
 ### Added / 新增
-- OpticsValleyIRC integration: IRC connection module under ClickGUI **Player**
-  category (default on), server auto-reconnect, `#dioxide-lite` channel chat
-  mirroring, online-user detection (`isIrcUser`), online list in the Dynamic
-  Island expanded view and Tab list.
-- 接入 OpticsValleyIRC：ClickGUI Player 分类 IRC 模块（默认开启）、自动重连、
-  频道聊天互通、在线用户识别（灵动岛展开与 Tab 列表显示）。
-- F6 theme-switch crash fix and ClickGUI live theme switching (no restart).
-- F6 主题切换崩溃修复；ClickGUI 实时切换主题（无需重启）。
-- Backdrop downsampling 0.5 for iGPU budget; removed module toasts.
-- 背景降采样 0.5 以降低核显压力；移除模块 toast。
+- OpticsValleyIRC integration (Player category, default on; auto-reconnect;
+  chat mirroring; online-user detection; island Tab online list).
+- F6 theme-switch crash fix; live theme switching (no restart).
+- Backdrop downsampling 0.5 for iGPU; removed module toasts.
 
 ---
 
 ## [2.0.2] - 2026-09-12
 ### Added / 新增
-- Global Blur module (Render category, default off, Blur Strength 1–16).
-- HUD pipeline optimizations (backdrop snapshot reuse, blur source reuse).
-- Perf panel: Skija / Island render timings, Profile mode.
+- Global Blur module (Render category, default off, strength 1–16).
+- HUD pipeline optimizations; Perf panel (Skija/Island timings, Profile mode).
 
 ### Fixed / 修复
 - Watermark rendering pipeline rework (static cache).
-- Various rendering fixes.
 
 ---
 
@@ -81,17 +86,10 @@
 ---
 
 ## [1.8.x] - 2026-09-11
-### Changed / 变更
-- Skija + OpenGL rendering pipeline; Setsuna theme rework; rendering fixes.
-
----
+Skija + OpenGL pipeline; Setsuna theme rework; rendering fixes.
 
 ## [1.7.x] - 2026-09-10
-### Added / 新增
-- LiquidGlass theme, Setsuna boot theme, ClickGUI theme switching.
-
----
+LiquidGlass theme, Setsuna boot theme, ClickGUI theme switching.
 
 ## [1.6.x] - 2026-09-09
-### Added / 新增
-- pvputils-based visual client foundation.
+pvputils-based visual client foundation.

@@ -166,7 +166,7 @@ public final class SkijaRenderer
         boolean captureBackdrop = backdropRequested;
         backdropRequested = false;
         long t0 = System.nanoTime();
-        paint(canvas -> {
+        paintOverlay(canvas -> {
             EventBus.INSTANCE.post(new Render2DEvent(canvas, scaledWidth, scaledHeight, guiScale));
             if (DioxideIslandModule.INSTANCE.isEnabled()) {
                 DioxideDynamicIsland.getInstance().render(canvas, scaledWidth, scaledHeight);
@@ -219,6 +219,62 @@ public final class SkijaRenderer
                 window.getGuiScaledWidth(), window.getGuiScaledHeight(),
                 canvas -> VanillaScreenTheme.drawSkijaBackdrop(canvas,
                         window.getGuiScaledWidth(), window.getGuiScaledHeight(), mouseX, mouseY));
+    }
+
+    /**
+     * Fast path for the final in-frame overlay pass. Minecraft calls this
+     * immediately after blitting the main framebuffer to the screen, so a full
+     * glGet* state snapshot would only add dozens of synchronous driver calls
+     * per frame. The next Minecraft frame rebinds its own render state before
+     * drawing; custom Skija screens use the normal state-safe path below.
+     */
+    private static void paintOverlay(java.util.function.Consumer<Canvas> painter,
+                                     boolean captureBackdrop) {
+        if (failed) return;
+        Image backdrop = null;
+        try {
+            Minecraft minecraft = Minecraft.getInstance();
+            Window window = minecraft.getWindow();
+            int width = window.getWidth();
+            int height = window.getHeight();
+            if (width <= 0 || height <= 0) return;
+
+            GL30.glBindFramebuffer(GL30.GL_FRAMEBUFFER, 0);
+            canonicalizePixelStore();
+            ensureSurface(width, height, 0, 0, 0);
+            context.resetGLAll();
+
+            if (captureBackdrop) {
+                backdrop = surface.makeImageSnapshot();
+                frameBackdropSnapshot = backdrop;
+                backdropDownsampled = BACKDROP_DOWNSAMPLE < 1.0F
+                        ? downsampleBackdrop(backdrop) : null;
+            }
+
+            Canvas canvas = surface.getCanvas();
+            int save = canvas.save();
+            try {
+                canvas.scale(width / window.getGuiScaledWidth(),
+                        height / window.getGuiScaledHeight());
+                painter.accept(canvas);
+            } finally {
+                canvas.restoreToCount(save);
+            }
+            context.flushAndSubmit(surface);
+            SkijaUi.releaseRetiredFontResources();
+        } catch (Throwable throwable) {
+            failed = true;
+            DioxideLite.LOGGER.error("Skija overlay renderer failed; disabling it for this session", throwable);
+        } finally {
+            frameBackdropSnapshot = null;
+            if (backdropDownsampled != null) {
+                try { backdropDownsampled.close(); } catch (Throwable ignored) {}
+                backdropDownsampled = null;
+            }
+            if (backdrop != null) {
+                backdrop.close();
+            }
+        }
     }
 
     /**
@@ -478,6 +534,7 @@ public final class SkijaRenderer
             themedFramebuffer = -1;
             themedColorTexture = -1;
         }
+        DioxideDynamicIsland.getInstance().close();
         SkijaUi.close();
         context.close();
         context = null;

@@ -171,8 +171,8 @@ public final class HudFusionManager {
             long h = (hud.isEnabled() ? 1L : 0L)
                     ^ ((long) hud.xPosition.get() * 0x9E3779B97F4A7C15L)
                     ^ ((long) hud.yPosition.get() * 0xC2B2AE3D27D4EB4FL)
-                    ^ ((long) Float.floatToIntBits(hud.hudWidth(0.0F)) * 0x165667B19E3779F9L)
-                    ^ ((long) Float.floatToIntBits(hud.hudHeight(0.0F)) * 0x85EBCA77C2B2AE63L);
+                    ^ ((long) Float.floatToIntBits(hud.hudWidth(screenWidth)) * 0x165667B19E3779F9L)
+                    ^ ((long) Float.floatToIntBits(hud.hudHeight(screenHeight)) * 0x85EBCA77C2B2AE63L);
             fp ^= h;
         }
         return fp;

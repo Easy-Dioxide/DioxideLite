@@ -13,6 +13,7 @@ import java.net.ConnectException;
 import java.net.InetSocketAddress;
 import java.net.Socket;
 import java.net.SocketException;
+import java.net.UnknownHostException;
 import java.nio.charset.StandardCharsets;
 import java.util.Collections;
 import java.util.LinkedHashSet;
@@ -35,7 +36,6 @@ public final class IRCClient {
 
     private static final int INITIAL_RECONNECT_DELAY = 2000;
     private static final int MAX_RECONNECT_DELAY = 30000;
-    private static final int MAX_RECONNECT_ATTEMPTS = 10;
 
     private final String username;
     private final IRCClientConfig config;
@@ -119,6 +119,11 @@ public final class IRCClient {
         }
         Socket newSocket = new Socket();
         try {
+            // These are transport-only optimisations; they do not change the
+            // wire protocol or message ordering.
+            newSocket.setTcpNoDelay(true);
+            newSocket.setKeepAlive(true);
+            newSocket.setReuseAddress(true);
             newSocket.connect(new InetSocketAddress(config.host(), config.port()),
                     config.connectTimeoutMillis());
             PrintWriter newOut = new PrintWriter(
@@ -152,6 +157,9 @@ public final class IRCClient {
             notifyStateChanged();
             sendGameMessage("§a[OpticsValleyIRC] 已连接到IRC服务器");
             startMessageListener(newSocket, newIn);
+        } catch (UnknownHostException e) {
+            closeQuietly(null, null, newSocket);
+            handleConnectionFailure("无法解析服务器地址: " + config.host());
         } catch (ConnectException e) {
             closeQuietly(null, null, newSocket);
             handleConnectionFailure("无法连接到服务器: " + e.getMessage());
@@ -169,15 +177,14 @@ public final class IRCClient {
         reconnectAttempts++;
         notifyStateChanged();
 
-        if (reconnectAttempts <= MAX_RECONNECT_ATTEMPTS && shouldReconnect) {
+        if (shouldReconnect) {
+            // Keep retrying indefinitely with a capped exponential backoff. A
+            // temporary DNS/network outage must not permanently disable IRC.
             sendGameMessage("§c[OpticsValleyIRC] " + errorMessage);
             sendGameMessage("§e[OpticsValleyIRC] 将在" + (currentReconnectDelay / 1000)
-                    + "秒后重试... (尝试 " + reconnectAttempts + "/" + MAX_RECONNECT_ATTEMPTS + ")");
+                    + "秒后重试... (第 " + reconnectAttempts + " 次)");
             scheduleReconnect(currentReconnectDelay);
             currentReconnectDelay = Math.min(currentReconnectDelay * 2, MAX_RECONNECT_DELAY);
-        } else if (reconnectAttempts > MAX_RECONNECT_ATTEMPTS) {
-            sendGameMessage("§4[OpticsValleyIRC] 多次重连失败，请使用/irc connect手动重连");
-            shouldReconnect = false;
         }
     }
 

@@ -9,6 +9,7 @@ import com.dioxidelite.module.modules.ClickGui;
 import com.dioxidelite.module.modules.FontModule;
 import com.dioxidelite.module.modules.player.IrcModule;
 import com.dioxidelite.module.modules.render.FullBright;
+import com.dioxidelite.module.modules.render.HudEditorModule;
 import com.dioxidelite.module.modules.render.BlockHighlight;
 import com.dioxidelite.module.modules.render.CameraClip;
 import com.dioxidelite.module.modules.render.Compass;
@@ -18,6 +19,7 @@ import com.dioxidelite.module.modules.render.GlobalBlurModule;
 import com.dioxidelite.module.modules.render.KillEffect;
 import com.dioxidelite.module.modules.render.DeltaForceStyle;
 import com.dioxidelite.module.modules.render.LegendWatch;
+import com.dioxidelite.module.modules.movement.Sprint;
 import com.dioxidelite.module.modules.render.NoRender;
 import com.dioxidelite.render.NameTagLogoRenderer;
 import com.dioxidelite.ui.hud.BPSHUD;
@@ -79,6 +81,8 @@ public final class ModuleManager {
         }
         register(ClickGui.INSTANCE);
         register(FontModule.INSTANCE);
+        register(HudEditorModule.INSTANCE);
+        register(Sprint.INSTANCE);
         register(IrcModule.INSTANCE);
         register(FullBright.INSTANCE);
         register(BlockHighlight.INSTANCE);
