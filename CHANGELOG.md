@@ -1,114 +1,99 @@
-# DioxideLite Changelog
+# 更新日志（CHANGELOG）
 
-## [2.0.7] - 2026-09-13
-### Performance / 性能（根因修复）
-- **Root cause fix**: Array List background/icon geometry moved out of the
-  per-frame `GlState.capture/restore` path (the biggest iGPU frame-time spike);
-  prepared in the vanilla-font pass, composited once in the final Skija overlay.
-- Backdrop blur downsampled only for the backdrop source (iGPU 0.67x /
-  balanced 0.75x / quality native); text stays at native Skija resolution.
-- iGPU/balanced profiles cap blur strength; glow kernel tightened to 80%.
-- Dynamic Island / nametag logos: Mitchell sampling + shared Paint;
-  island body stays cached. Compass path built once per enable.
-- Skija fallback-font detection cached per key.
-- **根因修复**：Array List 背景脱离每帧 GL 状态快照路径；背景模糊按档位
-  降采样（文字原生分辨率）；灵动岛/nametag logo 复用 Paint；Compass 路径
-  构建一次。
-
-### Added / 新增
-- IRC private capability frame: DioxideLite announces capability after
-  username handshake; companion server forwards add/remove only between
-  DioxideLite clients; nametag logos / island tab set only for DioxideLite
-  peers (`tools/OpticsValleyIRC-server/`).
-- IRC JOIN/LEAVE presence tracking (online-user list sync).
-- IRC 私有 capability 帧（仅 DioxideLite 客户端间显示 nametag logo）；新增
-  JOIN/LEAVE 在线状态跟踪。
-
-### Fixed / 修复
-- Source compile fixes: dangling catch in `SkijaRenderer.drawBlurredBackdrop`;
-  missing `trackPresence` in `IRCClient`.
+本文件汇总 DioxideLite 各版本更新记录。最新版本见顶部。
 
 ---
 
-## [2.0.5] - 2026-09-13
-### Performance / 性能
-- Fast path for the final in-frame Skija overlay pass: removed the full OpenGL
-  state snapshot/restore from every HUD frame.
-- Cached Skija Gaussian blur filters for glow layers (no repeated native
-  alloc/destroy).
-- 帧内 overlay 末帧快路径；模糊滤镜缓存。
+## v2.0.8（2026-09-13）
 
-### Fixed / 修复
-- **HUD not rendering intermittently**: profiles now load after the client
-  starts, so saved module states (incl. Dynamic Island / HUD) are actually
-  restored. Verified: fresh profile renders Dynamic Island by default.
-- **修复 HUD 偶发不渲染**：配置在客户端启动后加载，模块状态真正恢复。
-- HUD fusion size fingerprinting fixed.
-- IRC: unknown-host diagnostics; reconnect continues indefinitely with capped
-  exponential backoff.
+### 修复
+- **渲染异常（"都扁了"）**：SkijaRenderer 引入紧凑 GL 状态守卫 `FastGlState`，外层绘制不再做每帧全量 GL 快照（旧 `GlState.capture()` 在部分驱动上会残留错误的视口/投影状态，导致画面比例异常）。
+- ClickGUI 打开时每帧只保留一次 Skija 提交，避免重复提交造成的性能损耗。
 
-### Added / 新增
-- Dynamic Island enabled-by-default (Render category); native resource cleanup.
-- HUD Editor entry point restored.
-- `Sprint` module (Movement category, Setsuna-compatible).
-- IRC transport: TCP_NODELAY / keep-alive / reuse-address.
+### IRC（关键改动）
+- **握手协议对齐原版 OpticsValleyIRC**：连接后仅发送玩家名（不再发送 capability 私有帧），兼容原版服务器，解决"无法连接"问题。
+- 新增 JOIN/LEAVE 在线状态解析：从服务器广播的加入/离开消息维护 IRC 在线玩家列表（Nametag Logo 与灵动岛在线状态依赖此列表）。
+- `trackCapability` 接收处理保留原样（收到私有帧仍可解析，兼容 companion 服务器）。
+- 安全策略不变：忽略远程 CRASH 控制帧，服务器无法远程关闭客户端。
+
+### 性能
+- 保留 v2.0.7 的根因修复（移除 Array List 路径每帧 GL 状态捕获）。
+- 内嵌 Sodium / Lithium / FerriteCore 优化模组。
 
 ---
 
-## [2.0.4] - 2026-09-13
-### Added / 新增
-- Name tag client logo via Skija (`NameTagLogoRenderer`): local player + IRC
-  users; FOV-corrected third-person projection, width-adaptive x, vertical
-  alignment. `LegendWatch` adds `Client Logo Size` (6–20).
-### Changed / 变更
-- Module List (`Array List`) moved into ClickGUI **Render** category; default
-  enabled. `BACKDROP_DOWNSAMPLE` 0.5 → 1.0.
-### Fixed / 修复
-- Blurry watermark / Dynamic Island edges (integer-pixel blits); island text
-  size raised; third-person logo vertical offset.
-### Removed / 移除
-- Obsolete bitmap-glyph nametag logo (IrcNameTagUtil, nametag_logo.json,
-  dioxide_logo_16.png).
+## v2.0.7（2026-09-13）
+
+### 修复
+- **性能根因**：移除渲染热路径中每帧全量 `GlState.capture()`，改为按需保存，解决核显/软渲染下 HUD 渲染导致的帧率骤降。
+- README 重写为客户端介绍（联系方式：QQ 81622964）。
+- 清理仓库杂项文档，更新日志合并为单一 `CHANGELOG.md`。
+
+### 功能
+- IRC capability 私有帧（服务端需配套支持）。
+- HUD/Watermark/灵动岛锐化优化。
 
 ---
 
-## [2.0.3] - 2026-09-12
-### Added / 新增
-- OpticsValleyIRC integration (Player category, default on; auto-reconnect;
-  chat mirroring; online-user detection; island Tab online list).
-- F6 theme-switch crash fix; live theme switching (no restart).
-- Backdrop downsampling 0.5 for iGPU; removed module toasts.
+## v2.0.5（2026-09-13）
+
+- **最终优化**：Overlay 快速路径、HUD 渲染修复、灵动岛默认开启、Sprint 优化。
+- 修复 Watermark 无内容问题（默认显示 DioxideLite 品牌）。
+- 修复 Nametag Logo 模糊问题（改为 Skija 渲染）。
+- 优化 GC / 对象池，减少渲染期分配。
 
 ---
 
-## [2.0.2] - 2026-09-12
-### Added / 新增
-- Global Blur module (Render category, default off, strength 1–16).
-- HUD pipeline optimizations; Perf panel (Skija/Island timings, Profile mode).
-### Fixed / 修复
-- Watermark rendering pipeline rework (static cache).
+## v2.0.4（2026-09-12）
+
+- **Nametag Logo**：IRC 在线玩家名字左侧渲染 DioxideLite Logo（Skija）。
+- Module List 加入 ClickGUI 视觉模块。
+- 锐化修复：灵动岛 / Watermark 边缘与字体清晰度优化。
+- IRC 联动完善：灵动岛 Tab 面板展示 IRC 在线用户。
 
 ---
 
-## [2.0.1] - 2026-09-12
-### Added / 新增
-- OPAI-style Dynamic Island (compact + expanded, Tab to expand, player list,
-  FPS/ping/server, IRC status). Watermark with custom name/logo.
+## v2.0.3（2026-09-11）
+
+- **IRC Link**：接入 OpticsValleyIRC 聊天联动（Player 分类，默认开启）。
+- **Nametag 模块**：原版 Nametag 无法渲染客户端 Logo，改为 Skija 渲染层。
 
 ---
 
-## [2.0.0] - 2026-09-11
-### Changed / 变更
-- Rebased from pvputils-base; removed automation modules (hard constraint).
-- D logo identity, main menu rework, Setsuna-style visuals.
+## v2.0.2（2026-09-11）
+
+- 优化渲染管线，降低 HUD 分辨率依赖。
+- 修复 ClickGUI 主题切换崩溃（F6 热切换）。
+- 灵动岛右上角多余文字移除。
 
 ---
 
-## [1.8.x] - 2026-09-11
-Skija + OpenGL pipeline; Setsuna theme rework; rendering fixes.
+## v2.0.1（2026-09-11）
 
-## [1.7.x] - 2026-09-10
-LiquidGlass theme, Setsuna boot theme, ClickGUI theme switching.
+- **OPAI Dynamic Island**：灵动岛视觉重构。
+- 核显性能优化（Skija 管线优化）。
+- 全局 Blur 调节（ClickGUI 视觉模块，默认关闭）。
 
-## [1.6.x] - 2026-09-09
-pvputils-based visual client foundation.
+---
+
+## v2.0.0（2026-09-10）
+
+- **全量重构**：脱离 pvputilsbase，独立 Base。
+- D Logo 品牌视觉。
+- 移除 pvputils 开源协议依赖，改为 GPL-3.0 / Apache-2.0 双许可。
+- 多主题 ClickGUI（含 Setsuna 主题 / LiquidGlass）。
+
+---
+
+## 历史版本（节选）
+
+### v1.8.2
+- Skija + OpenGL 渲染适配，修复 Windows 下 ClickGUI 空白问题。
+- 字体补丁（Setsuna 字体渲染适配）。
+
+### v1.7.4
+- Setsuna 启动主题、LiquidGlass 默认主题。
+- ClickGUI 主题热切换（无需重启游戏）。
+
+### v1.6
+- pvputilsbase 初始版本，视觉模块基础框架。

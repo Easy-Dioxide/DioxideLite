@@ -1,0 +1,17 @@
+# OpticsValley IRC server configuration
+server.bind-address=0.0.0.0
+server.port=16688
+server.max-clients=100
+server.gui=true
+
+username.max-length=32
+message.max-length=80
+
+connection.handshake-timeout-millis=10000
+connection.outbound-queue-capacity=100
+
+rate-limit.messages-per-second=5.0
+rate-limit.burst=10
+rate-limit.max-violations=20
+
+storage.ban-file=bans.json

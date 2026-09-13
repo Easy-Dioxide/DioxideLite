@@ -6,7 +6,6 @@ import com.dioxidelite.event.EventBus;
 import com.dioxidelite.event.events.TickEvent;
 import com.dioxidelite.render.SkijaRenderer;
 import com.dioxidelite.ui.SkijaScreen;
-import com.dioxidelite.ui.clickgui.PopClickGuiScreen;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.User;
 import net.minecraft.client.gui.screens.LoadingOverlay;
@@ -73,10 +72,9 @@ public class MinecraftMixin implements MinecraftSessionAccessor {
                     : -1.0F;
             SkijaRenderer.renderLoading(progress);
         } else if (minecraft.screen instanceof SkijaScreen skijaScreen) {
-            // Pop GUI needs the normal HUD snapshot for its blurred background.
-            if (minecraft.screen instanceof PopClickGuiScreen) {
-                SkijaRenderer.renderOverlay();
-            }
+            // One Skija submission per frame. PopClickGuiScreen gets its background
+            // blur from vanilla's extraction pipeline, so there is no reason to
+            // submit a separate HUD Skija pass before the GUI pass.
             SkijaRenderer.render(skijaScreen);
         } else if (minecraft.screen == null) {
             SkijaRenderer.renderOverlay();
