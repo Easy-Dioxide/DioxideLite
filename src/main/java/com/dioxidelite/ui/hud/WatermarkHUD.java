@@ -130,9 +130,13 @@ public final class WatermarkHUD extends EpsilonHudModule {
         }
         if (staticCache != null) {
             try (Paint blit = new Paint().setAntiAlias(true)) {
+                // Snap to whole GUI pixels so the cached raster (text edges,
+                // border, logo) is not blurred by half-pixel sampling.
+                float dx = Math.round(x - pad);
+                float dy = Math.round(y - pad);
                 event.canvas().drawImageRect(staticCache,
                         Rect.makeXYWH(0, 0, staticCache.getWidth(), staticCache.getHeight()),
-                        Rect.makeXYWH(x - pad, y - pad,
+                        Rect.makeXYWH(dx, dy,
                                 staticCache.getWidth(), staticCache.getHeight()),
                         SamplingMode.LINEAR, blit, true);
             }

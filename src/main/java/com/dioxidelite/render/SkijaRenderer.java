@@ -110,10 +110,11 @@ public final class SkijaRenderer
         }
     }
 
-    /** Blur backdrop downsampling is intentionally disabled (1.0 = full
-     *  resolution). Resolution scaling is a visual tradeoff; the client keeps
-     *  quality and gains speed through caching and object reuse instead. */
-    private static final float BACKDROP_DOWNSAMPLE = 0.5F;
+    /** Blur backdrop renders at full resolution (1.0). Downsampling the blur
+     *  source made the glass/edge look grainy and soft, so quality wins here;
+     *  per-frame cost is kept in check by the GlobalBlur strength slider and
+     *  the fact that blur only draws when that module is enabled. */
+    private static final float BACKDROP_DOWNSAMPLE = 1.0F;
 
     public static RenderProfile renderProfile() {
         return RENDER_PROFILE;
