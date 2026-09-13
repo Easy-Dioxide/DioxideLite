@@ -251,6 +251,7 @@ public final class SkijaRenderer
                                      boolean captureBackdrop) {
         if (failed) return;
         Image backdrop = null;
+        FastGlState previous = FastGlState.capture();
         try {
             Minecraft minecraft = Minecraft.getInstance();
             Window window = minecraft.getWindow();
@@ -295,6 +296,7 @@ public final class SkijaRenderer
             if (backdrop != null) {
                 backdrop.close();
             }
+            previous.restore();
         }
     }
 
@@ -312,7 +314,8 @@ public final class SkijaRenderer
             return;
         }
 
-        GlState previous = GlState.capture();
+        // The nested paint(...) already owns the state guard. Keeping only one
+        // guard here avoids a second full GL snapshot for every Skija screen.
         try {
             Minecraft minecraft = Minecraft.getInstance();
             Window window = minecraft.getWindow();
@@ -327,8 +330,6 @@ public final class SkijaRenderer
         } catch (Throwable throwable) {
             failed = true;
             DioxideLite.LOGGER.error("Skija renderer failed; disabling it for this session", throwable);
-        } finally {
-            previous.restore();
         }
     }
 
@@ -487,9 +488,8 @@ public final class SkijaRenderer
         float scaleY = targetHeight / guiHeight;
         float padding = Math.max(2.0F, strength * 2.5F);
 
-        try {
-            Image blurSource = backdropDownsampled != null ? backdropDownsampled : frameBackdropSnapshot;
-            float ds = backdropDownsampled != null ? BACKDROP_DOWNSAMPLE : 1.0F;
+        Image blurSource = backdropDownsampled != null ? backdropDownsampled : frameBackdropSnapshot;
+        float ds = backdropDownsampled != null ? BACKDROP_DOWNSAMPLE : 1.0F;
         int left = Math.max(0, (int) Math.floor((x - padding) * scaleX * ds));
         int top = Math.max(0, (int) Math.floor((y - padding) * scaleY * ds));
         int right = Math.min(blurSource.getWidth(),
@@ -505,8 +505,8 @@ public final class SkijaRenderer
             filter = ImageFilter.makeBlur(sigma, sigma, FilterTileMode.CLAMP);
             BACKDROP_BLUR_FILTERS.put(filterKey, filter);
         }
-        BACKDROP_PAINT.setAntiAlias(true).setImageFilter(filter).setAlpha(255);
         try {
+            BACKDROP_PAINT.setAntiAlias(true).setImageFilter(filter).setAlpha(255);
             Rect source = Rect.makeLTRB(left, top, right, bottom);
             Rect destination = Rect.makeLTRB(
                     left / (scaleX * ds), top / (scaleY * ds),
@@ -519,13 +519,12 @@ public final class SkijaRenderer
             } finally {
                 canvas.restoreToCount(save);
             }
-        } finally {
-            BACKDROP_PAINT.setImageFilter(null).setAlpha(255);
-        }
         } catch (Throwable throwable) {
             backdropBlurFailed = true;
             DioxideLite.LOGGER.warn("Framebuffer snapshot blur is unavailable; disabling HUD blur for this session",
                     throwable);
+        } finally {
+            BACKDROP_PAINT.setImageFilter(null).setAlpha(255);
         }
     }
 
@@ -688,6 +687,125 @@ public final class SkijaRenderer
         GL11.glPixelStorei(GL12.GL_UNPACK_IMAGE_HEIGHT, 0);
         GL11.glPixelStorei(GL12.GL_UNPACK_SKIP_IMAGES, 0);
         GL11.glPixelStorei(GL11.GL_UNPACK_ALIGNMENT, 1);
+    }
+
+    /**
+     * Compact state guard for the post-blit overlay. Skija still needs the GL
+     * interop boundary, but there is no reason to query all 12 texture units,
+     * both stencil faces and every pixel-store field just to draw the final HUD.
+     * Restoring the state that Skija can actually disturb prevents the world from
+     * inheriting Skija's viewport/program/VAO/blend state on the next frame while
+     * keeping the hot path much cheaper than the old full GlState.capture().
+     */
+    private record FastGlState(
+            int program,
+            int vertexArray,
+            int arrayBuffer,
+            int elementArrayBuffer,
+            int drawFramebuffer,
+            int readFramebuffer,
+            int activeTexture,
+            int texture2d,
+            int sampler,
+            int[] viewport,
+            int[] scissorBox,
+            boolean blend,
+            boolean depthTest,
+            boolean scissorTest,
+            boolean stencilTest,
+            boolean cullFace,
+            boolean framebufferSrgb,
+            int blendSrcRgb,
+            int blendDstRgb,
+            int blendSrcAlpha,
+            int blendDstAlpha,
+            int blendEquationRgb,
+            int blendEquationAlpha,
+            boolean depthMask,
+            int depthFunc,
+            int cullFaceMode,
+            int frontFace,
+            boolean[] colorMask,
+            int packAlignment,
+            int unpackAlignment) {
+
+        private static FastGlState capture() {
+            try (MemoryStack stack = MemoryStack.stackPush()) {
+                IntBuffer viewport = stack.mallocInt(4);
+                IntBuffer scissor = stack.mallocInt(4);
+                ByteBuffer colorMask = stack.malloc(4);
+                GL11.glGetIntegerv(GL11.GL_VIEWPORT, viewport);
+                GL11.glGetIntegerv(GL11.GL_SCISSOR_BOX, scissor);
+                GL11.glGetBooleanv(GL11.GL_COLOR_WRITEMASK, colorMask);
+                int activeTexture = GL11.glGetInteger(GL13.GL_ACTIVE_TEXTURE);
+                int texture2d;
+                int sampler;
+                GL13.glActiveTexture(GL13.GL_TEXTURE0);
+                texture2d = GL11.glGetInteger(GL11.GL_TEXTURE_BINDING_2D);
+                sampler = GL11.glGetInteger(GL33.GL_SAMPLER_BINDING);
+                GL13.glActiveTexture(activeTexture);
+                return new FastGlState(
+                        GL11.glGetInteger(GL20.GL_CURRENT_PROGRAM),
+                        GL11.glGetInteger(GL30.GL_VERTEX_ARRAY_BINDING),
+                        GL11.glGetInteger(GL15.GL_ARRAY_BUFFER_BINDING),
+                        GL11.glGetInteger(GL15.GL_ELEMENT_ARRAY_BUFFER_BINDING),
+                        GL11.glGetInteger(GL30.GL_DRAW_FRAMEBUFFER_BINDING),
+                        GL11.glGetInteger(GL30.GL_READ_FRAMEBUFFER_BINDING),
+                        activeTexture, texture2d, sampler,
+                        new int[]{viewport.get(0), viewport.get(1), viewport.get(2), viewport.get(3)},
+                        new int[]{scissor.get(0), scissor.get(1), scissor.get(2), scissor.get(3)},
+                        GL11.glIsEnabled(GL11.GL_BLEND),
+                        GL11.glIsEnabled(GL11.GL_DEPTH_TEST),
+                        GL11.glIsEnabled(GL11.GL_SCISSOR_TEST),
+                        GL11.glIsEnabled(GL11.GL_STENCIL_TEST),
+                        GL11.glIsEnabled(GL11.GL_CULL_FACE),
+                        GL11.glIsEnabled(GL30.GL_FRAMEBUFFER_SRGB),
+                        GL11.glGetInteger(GL14.GL_BLEND_SRC_RGB),
+                        GL11.glGetInteger(GL14.GL_BLEND_DST_RGB),
+                        GL11.glGetInteger(GL14.GL_BLEND_SRC_ALPHA),
+                        GL11.glGetInteger(GL14.GL_BLEND_DST_ALPHA),
+                        GL11.glGetInteger(GL20.GL_BLEND_EQUATION_RGB),
+                        GL11.glGetInteger(GL20.GL_BLEND_EQUATION_ALPHA),
+                        GL11.glGetBoolean(GL11.GL_DEPTH_WRITEMASK),
+                        GL11.glGetInteger(GL11.GL_DEPTH_FUNC),
+                        GL11.glGetInteger(GL11.GL_CULL_FACE_MODE),
+                        GL11.glGetInteger(GL11.GL_FRONT_FACE),
+                        new boolean[]{colorMask.get(0) != 0, colorMask.get(1) != 0,
+                                colorMask.get(2) != 0, colorMask.get(3) != 0},
+                        GL11.glGetInteger(GL11.GL_PACK_ALIGNMENT),
+                        GL11.glGetInteger(GL11.GL_UNPACK_ALIGNMENT));
+            }
+        }
+
+        private void restore() {
+            GL30.glBindFramebuffer(GL30.GL_DRAW_FRAMEBUFFER, drawFramebuffer);
+            GL30.glBindFramebuffer(GL30.GL_READ_FRAMEBUFFER, readFramebuffer);
+            GL20.glUseProgram(program);
+            GL30.glBindVertexArray(vertexArray);
+            GL15.glBindBuffer(GL15.GL_ARRAY_BUFFER, arrayBuffer);
+            GL15.glBindBuffer(GL15.GL_ELEMENT_ARRAY_BUFFER, elementArrayBuffer);
+            GL13.glActiveTexture(GL13.GL_TEXTURE0);
+            GL11.glBindTexture(GL11.GL_TEXTURE_2D, texture2d);
+            GL33.glBindSampler(0, sampler);
+            GL13.glActiveTexture(activeTexture);
+            GL11.glViewport(viewport[0], viewport[1], viewport[2], viewport[3]);
+            GL11.glScissor(scissorBox[0], scissorBox[1], scissorBox[2], scissorBox[3]);
+            GL14.glBlendFuncSeparate(blendSrcRgb, blendDstRgb, blendSrcAlpha, blendDstAlpha);
+            GL20.glBlendEquationSeparate(blendEquationRgb, blendEquationAlpha);
+            GL11.glDepthMask(depthMask);
+            GL11.glDepthFunc(depthFunc);
+            GL11.glCullFace(cullFaceMode);
+            GL11.glFrontFace(frontFace);
+            GL11.glColorMask(colorMask[0], colorMask[1], colorMask[2], colorMask[3]);
+            GL11.glPixelStorei(GL11.GL_PACK_ALIGNMENT, packAlignment);
+            GL11.glPixelStorei(GL11.GL_UNPACK_ALIGNMENT, unpackAlignment);
+            setEnabled(GL11.GL_BLEND, blend);
+            setEnabled(GL11.GL_DEPTH_TEST, depthTest);
+            setEnabled(GL11.GL_SCISSOR_TEST, scissorTest);
+            setEnabled(GL11.GL_STENCIL_TEST, stencilTest);
+            setEnabled(GL11.GL_CULL_FACE, cullFace);
+            setEnabled(GL30.GL_FRAMEBUFFER_SRGB, framebufferSrgb);
+        }
     }
 
     private record GlState(

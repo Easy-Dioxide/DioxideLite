@@ -1,0 +1,52 @@
+2026-07-27 19:23:13.648 INFO  [main] com.opticsvalley.irc.ServerConfig - 已创建默认服务端配置: D:\codex-workspace\opticsvalleyirc-fabric-1.20.1\IRC-Server\irc-server.properties
+2026-07-27 19:23:13.818 INFO  [main] com.opticsvalley.irc.IRCServer - OpticsValley IRC development 已启动，监听 0.0.0.0:16688，最大连接数 100
+2026-07-27 19:23:13.819 INFO  [main] com.opticsvalley.irc.IRCServer - 已加载 0 条封禁记录
+2026-07-27 19:23:41.295 INFO  [IRC-Client-1] com.opticsvalley.irc.IRCServer - 用户连接: requested=Player204 assigned=Player204
+2026-07-27 19:23:41.299 INFO  [IRC-Client-1] com.opticsvalley.irc.IRCServer - System: [OpticsValleyIRC] 用户 Player204 已加入IRC
+2026-07-27 19:24:15.749 INFO  [IRC-Client-1] com.opticsvalley.irc.IRCServer - [Player204]: 1
+2026-07-27 19:24:16.287 INFO  [IRC-Client-1] com.opticsvalley.irc.IRCServer - [Player204]: 1
+2026-07-27 19:24:16.851 INFO  [IRC-Client-1] com.opticsvalley.irc.IRCServer - [Player204]: 1
+2026-07-27 19:24:17.277 INFO  [IRC-Client-1] com.opticsvalley.irc.IRCServer - [Player204]: 1
+2026-07-27 19:24:17.662 INFO  [IRC-Client-1] com.opticsvalley.irc.IRCServer - [Player204]: 1
+2026-07-27 19:24:18.095 INFO  [IRC-Client-1] com.opticsvalley.irc.IRCServer - [Player204]: 1
+2026-07-27 19:24:18.518 INFO  [IRC-Client-1] com.opticsvalley.irc.IRCServer - [Player204]: 1t
+2026-07-27 19:24:19.652 INFO  [IRC-Client-1] com.opticsvalley.irc.IRCServer - [Player204]: 1t
+2026-07-27 19:24:20.068 INFO  [IRC-Client-1] com.opticsvalley.irc.IRCServer - [Player204]: 1t
+2026-07-27 19:24:20.495 INFO  [IRC-Client-1] com.opticsvalley.irc.IRCServer - [Player204]: 1t
+2026-07-27 19:24:20.902 INFO  [IRC-Client-1] com.opticsvalley.irc.IRCServer - [Player204]: 1t
+2026-07-27 19:24:21.342 INFO  [IRC-Client-1] com.opticsvalley.irc.IRCServer - [Player204]: 1t
+2026-07-27 19:24:21.793 INFO  [IRC-Client-1] com.opticsvalley.irc.IRCServer - [Player204]: 1t
+2026-07-27 19:24:22.222 INFO  [IRC-Client-1] com.opticsvalley.irc.IRCServer - [Player204]: 1t
+2026-07-27 19:24:22.653 INFO  [IRC-Client-1] com.opticsvalley.irc.IRCServer - [Player204]: 1t
+2026-07-27 19:24:23.069 INFO  [IRC-Client-1] com.opticsvalley.irc.IRCServer - [Player204]: 1t
+2026-07-27 19:24:23.503 INFO  [IRC-Client-1] com.opticsvalley.irc.IRCServer - [Player204]: 1t
+2026-07-27 19:24:23.918 INFO  [IRC-Client-1] com.opticsvalley.irc.IRCServer - [Player204]: 1t
+2026-07-27 19:24:24.343 INFO  [IRC-Client-1] com.opticsvalley.irc.IRCServer - [Player204]: 1t
+2026-07-27 19:24:25.120 INFO  [IRC-Client-1] com.opticsvalley.irc.IRCServer - [Player204]: 1t
+2026-07-27 19:24:26.412 INFO  [IRC-Client-1] com.opticsvalley.irc.IRCServer - [Player204]: 1t
+2026-07-27 19:24:26.940 INFO  [IRC-Client-1] com.opticsvalley.irc.IRCServer - [Player204]: 1t
+2026-07-27 19:24:27.511 INFO  [IRC-Client-1] com.opticsvalley.irc.IRCServer - [Player204]: 1t
+2026-07-27 19:24:28.362 INFO  [IRC-Client-1] com.opticsvalley.irc.IRCServer - [Player204]: 1
+2026-07-27 19:24:28.994 INFO  [IRC-Client-1] com.opticsvalley.irc.IRCServer - [Player204]: 1
+2026-07-27 19:24:29.439 INFO  [IRC-Client-1] com.opticsvalley.irc.IRCServer - [Player204]: 1
+2026-07-27 19:24:29.890 INFO  [IRC-Client-1] com.opticsvalley.irc.IRCServer - [Player204]: 1
+2026-07-27 19:24:30.354 INFO  [IRC-Client-1] com.opticsvalley.irc.IRCServer - [Player204]: 1
+2026-07-27 19:24:34.120 INFO  [IRC-Client-1] com.opticsvalley.irc.IRCServer - [Player204]: 1
+2026-07-27 19:24:36.071 INFO  [IRC-Client-1] com.opticsvalley.irc.IRCServer - [Player204]: 1
+2026-07-27 19:24:36.700 INFO  [IRC-Client-1] com.opticsvalley.irc.IRCServer - [Player204]: 1
+2026-07-27 19:24:37.703 INFO  [IRC-Client-1] com.opticsvalley.irc.IRCServer - [Player204]: 1
+2026-07-27 19:24:38.162 INFO  [IRC-Client-1] com.opticsvalley.irc.IRCServer - [Player204]: 1
+2026-07-27 19:24:38.641 INFO  [IRC-Client-1] com.opticsvalley.irc.IRCServer - [Player204]: 1
+2026-07-27 19:24:39.079 INFO  [IRC-Client-1] com.opticsvalley.irc.IRCServer - [Player204]: 1
+2026-07-27 19:24:39.495 INFO  [IRC-Client-1] com.opticsvalley.irc.IRCServer - [Player204]: 1
+2026-07-27 19:25:46.176 INFO  [IRC-Client-1] com.opticsvalley.irc.IRCServer - [Player204]: 1
+2026-07-27 19:25:51.872 WARN  [AWT-EventQueue-0] com.opticsvalley.irc.IRCServer - AUDIT action=ban target=Player204 reason=1
+2026-07-27 19:25:51.872 INFO  [AWT-EventQueue-0] com.opticsvalley.irc.IRCServer - System: [OpticsValleyIRC] 用户 Player204 已被封禁，原因: 1
+2026-07-27 19:26:16.389 WARN  [AWT-EventQueue-0] com.opticsvalley.irc.IRCServer - AUDIT action=unban target=Player204
+2026-07-27 19:26:16.391 INFO  [AWT-EventQueue-0] com.opticsvalley.irc.IRCServer - System: [OpticsValleyIRC] 用户 Player204 已被解封
+2026-07-27 19:26:18.445 WARN  [AWT-EventQueue-0] com.opticsvalley.irc.IRCServer - AUDIT action=crash target=Player204 source=GUI
+2026-07-27 19:26:18.448 INFO  [AWT-EventQueue-0] com.opticsvalley.irc.IRCServer - System: [OpticsValleyIRC] 管理员已使用户 Player204 的游戏崩溃
+2026-07-27 19:26:21.497 INFO  [IRC-Client-1] com.opticsvalley.irc.ClientHandler - 客户端连接断开: Player204
+2026-07-27 19:26:21.498 INFO  [IRC-Client-1] com.opticsvalley.irc.IRCServer - 用户断开: Player204
+2026-07-27 19:26:21.499 INFO  [IRC-Client-1] com.opticsvalley.irc.IRCServer - System: [OpticsValleyIRC] 用户 Player204 已离开IRC
+2026-07-27 19:26:24.367 INFO  [AWT-EventQueue-0] com.opticsvalley.irc.ServerGUI - GUI窗口已关闭，使用/opengui指令可以重新打开GUI界面

@@ -153,12 +153,10 @@ public final class IRCClient {
             reconnectAttempts = 0;
             currentReconnectDelay = INITIAL_RECONNECT_DELAY;
             onlineUsers.clear();
-            // Private capability handshake. The companion server consumes this
-            // frame and relays it only to other DioxideLite clients.
-            newOut.println(IRCProtocol.capabilityAdd(username));
-            if (newOut.checkError()) {
-                throw new IOException("发送客户端能力标识失败");
-            }
+            // Handshake matches the original OpticsValleyIRC wire protocol:
+            // the server reads exactly one username line, then treats every
+            // following line as chat. A capability frame would be re-broadcast
+            // as chat by stock servers, so we do NOT send one here.
             onlineUsers.add(username);
             notifyStateChanged();
             sendGameMessage("§a[OpticsValleyIRC] 已连接到IRC服务器");
@@ -238,6 +236,7 @@ public final class IRCClient {
         if (trackCapability(message)) {
             return true;
         }
+        trackPresence(message);
         if (IRCProtocol.isControlMessage(message)) {
             if (IRCProtocol.CRASH_CONTROL_MESSAGE.equals(message)) {
                 // Security: never honour a remote crash request. Drop it silently.
@@ -257,11 +256,35 @@ public final class IRCClient {
             return false;
         }
 
-        if (trackPresence(message)) {
-            return true;
-        }
         sendGameMessage(convertColorCodes(message));
         return true;
+    }
+
+    /**
+     * Maintains the IRC-online username set from the stock server's join/leave
+     * system frames (sent with &a / &7 colour codes). Only updates state; the
+     * frame is intentionally NOT consumed so it still appears as chat.
+     */
+    private void trackPresence(String message) {
+        if (message == null) {
+            return;
+        }
+        String stripped = stripColorCodes(message);
+        String user = extractBetween(stripped, IRCProtocol.JOIN_PREFIX, IRCProtocol.JOIN_SUFFIX);
+        if (user != null) {
+            onlineUsers.add(user.trim());
+            notifyStateChanged();
+            return;
+        }
+        user = extractBetween(stripped, IRCProtocol.LEAVE_PREFIX, IRCProtocol.LEAVE_SUFFIX);
+        if (user != null) {
+            onlineUsers.remove(user.trim());
+            notifyStateChanged();
+        }
+    }
+
+    private static String stripColorCodes(String message) {
+        return message.replaceAll("&[0-9a-fk-or]", "");
     }
 
     /** Tracks private DioxideLite capability frames from the IRC server. */
@@ -281,30 +304,6 @@ public final class IRCClient {
         }
         notifyStateChanged();
         return true;
-    }
-
-    /** Parses vanilla join/leave notices to keep the online-user list in sync. */
-    private boolean trackPresence(String message) {
-        if (message == null) return false;
-        if (message.startsWith(IRCProtocol.JOIN_PREFIX) && message.endsWith(IRCProtocol.JOIN_SUFFIX)) {
-            String user = message.substring(IRCProtocol.JOIN_PREFIX.length(),
-                    message.length() - IRCProtocol.JOIN_SUFFIX.length()).trim();
-            if (!user.isEmpty()) {
-                onlineUsers.add(user);
-            }
-            notifyStateChanged();
-            return true;
-        }
-        if (message.startsWith(IRCProtocol.LEAVE_PREFIX) && message.endsWith(IRCProtocol.LEAVE_SUFFIX)) {
-            String user = message.substring(IRCProtocol.LEAVE_PREFIX.length(),
-                    message.length() - IRCProtocol.LEAVE_SUFFIX.length()).trim();
-            if (!user.isEmpty()) {
-                onlineUsers.remove(user);
-            }
-            notifyStateChanged();
-            return true;
-        }
-        return false;
     }
 
     private static String extractBetween(String text, String prefix, String suffix) {
