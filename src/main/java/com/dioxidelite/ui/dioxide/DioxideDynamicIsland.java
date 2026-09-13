@@ -1,5 +1,6 @@
 package com.dioxidelite.ui.dioxide;
 
+import com.dioxidelite.module.modules.player.IrcModule;
 import com.dioxidelite.DioxideLite;
 import com.dioxidelite.render.SkijaRenderer;
 import com.dioxidelite.render.SkijaUi;
@@ -87,7 +88,7 @@ public final class DioxideDynamicIsland {
                 : Math.min(screenW - 24f, Math.max(176f,
                         SkijaUi.textWidth(DioxideLite.NAME + " " + DioxideLite.VERSION, 8.5f) + 82f));
         float targetH = expanded
-                ? Math.min(screenH - 24f, 72f + Math.max(0, ((players.size() + 5) / 6) - 1) * 14f)
+                ? Math.min(screenH - 24f, 84f + Math.max(0, ((players.size() + 5) / 6) - 1) * 14f)
                 : 30f;
 
         float dt = Math.min(0.05f, Math.max(0f,
@@ -160,6 +161,25 @@ public final class DioxideDynamicIsland {
         SkijaUi.text(canvas, right, x + w - rw - 10f, y + 9f, 9f, 0xFFD7E4F2, 7.5f);
     }
 
+    private static String ircStatusText() {
+        IrcModule module = IrcModule.INSTANCE;
+        if (!module.isEnabled()) {
+            return "IRC  Off";
+        }
+        if (module.isConnected()) {
+            return "IRC  Online  \u00B7  " + IrcModule.ircOnlineUsers().size() + " online";
+        }
+        return "IRC  Connecting...";
+    }
+
+    private static int ircStatusColor() {
+        IrcModule module = IrcModule.INSTANCE;
+        if (!module.isEnabled()) {
+            return 0xFF69788A;
+        }
+        return module.isConnected() ? 0xFF7FD6A8 : 0xFFE8C96A;
+    }
+
     private void drawExpanded(Canvas canvas, Minecraft mc, List<PlayerInfo> players,
                               String server, int ping, float x, float y, float w, float h) {
         float iconSize = 24f;
@@ -181,15 +201,19 @@ public final class DioxideDynamicIsland {
         SkijaUi.text(canvas, fps, x + w - fpsW - 11f, y + 10f, 9f,
                 0xFF8BD7FF, 7.5f);
 
+        String ircStatus = ircStatusText();
+        SkijaUi.text(canvas, ircStatus, x + 43f, y + 31f, 9f,
+                ircStatusColor(), 6.8f);
+
         if (players.isEmpty()) {
-            SkijaUi.text(canvas, "NO PLAYERS LISTED", x + 43f, y + 42f, 9f,
+            SkijaUi.text(canvas, "NO PLAYERS LISTED", x + 43f, y + 56f, 9f,
                     0xFF69788A, 6.8f);
             return;
         }
 
         int cols = Math.min(6, Math.max(1, (players.size() + 4) / 5));
         int rows = Math.min(3, (players.size() + cols - 1) / cols);
-        float gridTop = y + 36f;
+        float gridTop = y + 50f;
         float cellW = (w - 22f) / cols;
         for (int i = 0; i < Math.min(players.size(), cols * rows); i++) {
             PlayerInfo info = players.get(i);

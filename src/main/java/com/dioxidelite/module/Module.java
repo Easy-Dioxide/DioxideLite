@@ -98,7 +98,8 @@ public abstract class Module {
             EventBus.INSTANCE.unsubscribe(this);
         }
         afterEnabledStateChange(value, wasEnabled);
-        NotificationManager.INSTANCE.moduleState(name(), enabled);
+        // No automatic module-state toast: enabling/disabling modules must not
+        // spam the screen (e.g. the old top-right "Dynamic Island / Enabled").
     }
 
     /** Invoked for non-toggleable modules when their keybind/button fires. */

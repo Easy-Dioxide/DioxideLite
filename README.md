@@ -11,6 +11,7 @@ DioxideLite 是一个基于 **Skija GPU 渲染**的视觉向 Fabric 客户端：
 - **灵动岛**：OPAI 风格暗色玻璃胶囊，顶部居中；紧凑态显示 LOGO/版本/FPS/延迟，按住 Tab 展开玩家列表与服务器信息
 - **Global Blur（v2.0.2 新增）**：HUD 背景模糊总开关，默认关闭；开启后统一调节全部 HUD 模糊强度
 - **内置优化模组（v2.0.2 新增）**：jar-in-jar 内置 Sodium + Lithium + FerriteCore，免单独安装
+- **IRC 聊天桥接（v2.0.3 新增）**：ClickGUI → Player 分类 `IRC` 模块（默认开启），本地/私服聊天桥接；IRC 在线玩家 nametag 显示客户端 Logo（Nametag 模块可开关）；灵动岛 Tab 显示 IRC 在线状态；`/irc connect|disconnect|status|send` 聊天命令
 - **视觉增强**：Watermark、模块列表、动态背景、渲染增强等 24 个纯视觉/QoL 模块
 - **无自动化**：模块列表经核验仅含视觉/HUD/UI 功能
 
@@ -18,6 +19,7 @@ DioxideLite 是一个基于 **Skija GPU 渲染**的视觉向 Fabric 客户端：
 
 | 版本 | 说明 |
 |---|---|
+| v2.0.3 | IRC 聊天桥接（Player 模块默认开 + nametag Logo + 灵动岛 Tab 状态）；F6 主题切换崩溃修复；移除模块状态通知；恢复 backdrop 降采样 |
 | v2.0.2 | Global Blur 全局模糊；内置 Sodium/Lithium/FerriteCore；弃用降采样；通知默认关闭 |
 | v2.0.1 | OPAI 灵动岛重构；修复 Skija 采样 API |
 | v2.0.0 | Skija 新架构；视觉对齐修复（viaversion/Skia native/命名空间/字体路径） |

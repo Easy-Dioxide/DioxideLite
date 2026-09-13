@@ -1,5 +1,28 @@
 # DioxideLite Changelog
 
+## v2.0.3 (2026-09-13) — IRC Link & Name Tag Module
+
+### 新增 / New
+- **IRC 接入（Player 分类，默认开启）**：移植 OpticsValleyIRC 1.20 客户端协议至 26.1.2（明文 TCP、`localhost:16688` 默认配置、`Host`/`Port` 设置项）。模块在 ClickGUI → Player 分类中可开关，**默认启用**；连接状态、在线用户名单实时维护。**无任何自动化能力**：纯聊天桥接，且刻意忽略远程 CRASH 控制指令（防远程杀进程）。
+- **Nametag IRC Logo（挂在 Nametag 视觉模块）**：IRC 在线玩家的 nametag 前缀显示客户端 Logo 字形（bitmap 字体 ``），第三人称下自己的 nametag 同样显示；Logo 显示开关位于 ClickGUI → Render → Legend Watch（Nametag 模块）→ `IRC Logo`，默认开启。
+- **灵动岛 Tab 状态行**：按住 Tab 展开灵动岛时，顶部新增 IRC 状态行——`IRC Off` / `IRC Connecting...` / `IRC Online · N online`（灰/琥珀/绿），展开面板高度随玩家数自适应。
+- **聊天栏 IRC 消息与 `/irc` 命令**：IRC 服务器消息经颜色转换进入聊天栏；`/irc connect|disconnect|status|send <消息>` 聊天命令（走聊天栏拦截链路，不依赖 Fabric command API）。
+
+### 优化 / Optimised
+- **恢复 backdrop 降采样**：`BACKDROP_DOWNSAMPLE` 回到 0.5，全局模糊/背景模糊在软渲染与核显场景下压力更小（HUD 本体仍全分辨率矢量渲染，不糊字）。
+
+### 修复 / Fixed
+- **F6 主题切换崩溃**：ClickGUI 打开时按 F6 热切换主题不再崩溃（多主题往返切换实测稳定）。
+- **模块状态通知残留**：彻底移除 `Module.setEnabled` 自动弹右上角 "Dynamic Island / Enabled" 通知的调用，开关模块不再刷屏。
+- **26.1.2 自己 nametag 不显示**：MC 26.1.2 不再为本地玩家填充 `EntityRenderState.nameTag`，Nametag 模块装饰无法生效——现在由 `EntityRendererMixin` 补填（含位置附件），nametag 模块（传奇后缀 + IRC Logo）可正常装饰自己的名字。
+
+### 版本 / Version
+- gradle.properties `version=2.0.3`；`DioxideLite.VERSION=2.0.3`；窗口标题 DioxideLite 2.0.3。
+
+---
+
+# DioxideLite Changelog
+
 ## v2.0.2 (2026-09-13) — Global Blur & Built-in Optimisers
 
 ### 新增 / New

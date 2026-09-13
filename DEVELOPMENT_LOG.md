@@ -1,3 +1,58 @@
+# DioxideLite v2.0.3 Development Log / 开发日志
+
+## English
+
+### v2.0.3 — IRC Link & Name Tag Module
+
+**Goal**: Bring the OpticsValleyIRC 1.20 chat link into 26.1.2 (Player-category module, ON by default), surface the client logo on name tags of IRC-online players (via the existing name-tag module), add IRC status to the Dynamic Island tab, keep the client free of automation, and close out the F6 theme-switch crash plus the leftover module-state toasts.
+
+**What changed**
+- `irc/` package ported from `opticsvalleyirc-fabric-1.20.1`: `IRCProtocol`, `IRCClientConfig`, `IRCClient` (socket client with reconnect backoff, online-user set maintained from the server's join/leave frames, state listeners), `IrcNameTagUtil`, `IrcChatHandler`. The legacy remote CRASH control is deliberately ignored.
+- `IrcModule` (ClickGUI → Player, `setEnabled(true)` by default) with `Host`/`Port` settings; registered in `ModuleManager`.
+- Name tags: `EntityRendererMixin` fills the local player's `nameTag`/attachment (26.1.2 leaves it null), then `LegendSuffixUtil.appendIfLegendary` → `IrcNameTagUtil.appendLogoIfIrc` (bitmap font glyph `\uE101` prepended with a space). The logo toggle lives on the name-tag module (Render → Legend Watch → `IRC Logo`, default ON).
+- Dynamic Island expanded state gained an IRC status line (`IRC Off` / `Connecting...` / `Online · N online`) and a taller panel.
+- `ChatScreenMixin` intercepts `/irc ...` before sending to the server (Fabric client command v2 API is unavailable in this environment).
+- `Module.setEnabled` no longer auto-posts module-state toasts.
+- `SkijaRenderer.BACKDROP_DOWNSAMPLE` restored to 0.5.
+
+**Bugs fixed**
+- F6 theme cycling while ClickGUI is open no longer crashes (verified over several cycles).
+- Right-top "Dynamic Island / Enabled" toasts gone.
+- Own name tag now renders in third person with the IRC logo (MC 26.1.2 leaves local `nameTag` null — forced fill + attachment).
+
+**Verification**
+- Built `DioxideLite-2.0.3.jar` + `-sources.jar`; ran under Xvfb (`:98`) with a local IRC simulator (`16688`): `Player540 joined`, chat bridge alive.
+- Screenshots: main menu 2.0.3 / single player / multi player / in-game watermark / ClickGUI (Player → IRC ON, Render → Dynamic Island) / island Tab with `IRC Online · 1 online` / third-person name tag `logo Player540` / chat `[OpticsValleyIRC] 已连接到IRC服务器`.
+- F6 ×3 while ClickGUI open: no crash. Module toggles: no top-right toasts.
+
+---
+
+## 中文
+
+### v2.0.3 — IRC 接入与 Nametag 模块
+
+**目标**：把 OpticsValleyIRC 1.20 的聊天链路移植到 26.1.2（Player 分类模块、默认开启）；通过现有 Nametag 视觉模块在 IRC 在线玩家 nametag 上显示客户端 Logo；灵动岛 Tab 增加 IRC 状态；保持客户端无自动化能力；收尾 F6 主题切换崩溃与模块状态通知残留。
+
+**改动**
+- 新建 `irc/` 包（移植自 opticsvalleyirc-fabric-1.20.1）：协议、配置、`IRCClient`（Socket 客户端，重连退避、由服务端 join/leave 帧维护在线名单、状态监听）、nametag 工具、聊天命令处理。**刻意忽略远程 CRASH 控制指令**。
+- `IrcModule`（ClickGUI → Player，构造即 `setEnabled(true)` 默认开）带 `Host`/`Port` 设置，注册进 `ModuleManager`。
+- Nametag：`EntityRendererMixin` 补填本地玩家 `nameTag` 与位置附件（26.1.2 默认留空），随后传奇后缀 → IRC Logo（bitmap 字形 `` + 空格前置）；Logo 开关在 Nametag 模块（Render → Legend Watch → `IRC Logo`，默认开）。
+- 灵动岛展开态新增 IRC 状态行（`IRC Off` / `Connecting...` / `Online · N online`）并加高面板。
+- `ChatScreenMixin` 拦截 `/irc ...`（本环境 Fabric client command v2 API 不可用）。
+- `Module.setEnabled` 不再自动弹模块状态通知。
+- `SkijaRenderer.BACKDROP_DOWNSAMPLE` 恢复 0.5。
+
+**修复**
+- ClickGUI 打开时 F6 循环切换主题不再崩溃（多轮实测）。
+- 右上角 "Dynamic Island / Enabled" 通知消失。
+- 第三人称自己的 nametag 正常渲染并带 IRC Logo（26.1.2 本地玩家 nameTag 为 null → 强制填充 + 附件）。
+
+**验证**
+- 构建 `DioxideLite-2.0.3.jar` + `-sources.jar`；Xvfb `:98` + 本地 IRC 模拟服务器（`16688`）运行：`Player540 joined`，聊天桥接正常。
+- 截图：主菜单 2.0.3 / 单人 / 多人 / 游戏内 watermark / ClickGUI（Player → IRC 开，Render → Dynamic Island 开）/ 灵动岛 Tab `IRC Online · 1 online` / 第三人称 nametag `logo Player540` / 聊天栏 `[OpticsValleyIRC] 已连接到IRC服务器`。
+- ClickGUI 打开时 F6 ×3：不崩溃；模块开关：右上角无通知。
+
+---
 # DioxideLite v2.0.2 Development Log / 开发日志
 
 ## English

@@ -34,6 +34,7 @@ public final class LegendWatch extends Module {
             .visibleWhen(() -> icons.get()));
     public final BooleanSetting predicted = add(new BooleanSetting("Predicted", true));
     public final BooleanSetting vanillaNameTags = add(new BooleanSetting("Vanilla Name Tags", true));
+    public final BooleanSetting ircLogo = add(new BooleanSetting("IRC Logo", true));
     public final BooleanSetting customNameTags = add(new BooleanSetting("Name Tags", true));
     public final BooleanSetting tabList = add(new BooleanSetting("Tab List", true));
     public final BooleanSetting geraldTracking = add(new BooleanSetting("Gerald Tracking", true));
@@ -79,6 +80,10 @@ public final class LegendWatch extends Module {
 
     public boolean predictedEnabled() {
         return predicted.get();
+    }
+
+    public boolean ircLogoEnabled() {
+        return ircLogo.get();
     }
 
     public boolean vanillaNameTagsEnabled() {
