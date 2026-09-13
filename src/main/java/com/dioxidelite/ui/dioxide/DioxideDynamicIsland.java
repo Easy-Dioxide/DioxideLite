@@ -6,6 +6,7 @@ import com.dioxidelite.render.SkijaUi;
 import io.github.humbleui.skija.Canvas;
 import io.github.humbleui.skija.Image;
 import io.github.humbleui.skija.Paint;
+import io.github.humbleui.skija.Surface;
 import io.github.humbleui.skija.SamplingMode;
 import io.github.humbleui.types.Rect;
 import net.minecraft.client.Minecraft;
@@ -34,7 +35,30 @@ public final class DioxideDynamicIsland {
     private float height = 30f;
     private float radius = 15f;
     private long lastNs = System.nanoTime();
+    private long lastDataNs;
     private float time;
+    private int cachedFps;
+    private int cachedPing = -1;
+    private String cachedServer = "Singleplayer";
+    private List<PlayerInfo> cachedPlayers = List.of();
+    private boolean cachedExpanded;
+    private float cachedTitleWidth = -1f;
+    private float cachedVersionWidth = -1f;
+    private float cachedCompactRightWidth = -1f;
+    private String cachedFpsText = "";
+    private String cachedCompactRightText = "";
+    private String cachedCompactRightWidthKey = "";
+    private SkijaRenderer.BorrowedImage cachedLogo;
+
+    /** Pre-rendered island body (glow+gradient+outline+gloss) cache. */
+    private Image shapeCache;
+    private boolean shapeCacheExpanded;
+    private int shapeCacheW = -1;
+    private int shapeCacheH = -1;
+    private float shapeCacheR = -1f;
+
+    /** Padding around the island body for glow spill; baked into the cache. */
+    private static final float GLOW_PAD = 14f;
 
     private DioxideDynamicIsland() {}
 
@@ -42,16 +66,21 @@ public final class DioxideDynamicIsland {
         return INSTANCE;
     }
 
+    /** Last island render duration (ns), for the debug performance HUD. */
+    public static volatile long lastIslandRenderNanos;
+
     public void render(Canvas canvas, float screenW, float screenH) {
         Minecraft mc = Minecraft.getInstance();
         if (canvas == null || mc == null || mc.player == null || mc.screen != null) return;
+        long t0 = System.nanoTime();
+        try {
 
-        List<PlayerInfo> players = tabPlayers(mc);
         boolean expanded = mc.options != null && mc.options.keyPlayerList.isDown();
-
-        String server = serverName(mc);
-        String fps = mc.getFps() + " FPS";
-        int ping = playerPing(mc);
+        updateDataCache(mc, expanded);
+        List<PlayerInfo> players = expanded ? cachedPlayers : List.of();
+        String server = cachedServer;
+        String fps = cachedFpsText;
+        int ping = cachedPing;
 
         float targetW = expanded
                 ? Math.min(screenW - 24f, Math.max(340f, Math.min(470f, 300f + players.size() * 2f)))
@@ -73,12 +102,45 @@ public final class DioxideDynamicIsland {
         float x = (screenW - width) * 0.5f;
         float y = 7f + (float) Math.sin(time * 1.7f) * 0.25f;
 
-        drawIsland(canvas, x, y, width, height, radius);
+        drawIsland(canvas, x, y, width, height, radius, expanded);
 
         if (expanded) {
             drawExpanded(canvas, mc, players, server, ping, x, y, width, height);
         } else {
             drawCompact(canvas, mc, server, fps, ping, x, y, width, height);
+        }
+        } finally {
+            lastIslandRenderNanos = System.nanoTime() - t0;
+        }
+    }
+
+    /**
+     * Keeps the animation fully frame-rate driven, while relatively expensive
+     * Minecraft data lookups are refreshed at ~10 Hz. This is intentionally
+     * separate from animation timing so the island never becomes choppy.
+     */
+    private void updateDataCache(Minecraft mc, boolean expanded) {
+        long now = System.nanoTime();
+        if (now - lastDataNs < 100_000_000L && expanded == cachedExpanded) return;
+        lastDataNs = now;
+        cachedExpanded = expanded;
+        cachedFps = mc.getFps();
+        cachedPing = playerPing(mc);
+        cachedServer = serverName(mc);
+        cachedFpsText = cachedFps + " FPS";
+        cachedCompactRightText = cachedPing >= 0
+                ? cachedFpsText + "  " + cachedPing + "ms"
+                : cachedFpsText;
+        if (!cachedCompactRightText.equals(cachedCompactRightWidthKey)) {
+            cachedCompactRightWidthKey = cachedCompactRightText;
+            cachedCompactRightWidth = SkijaUi.textWidth(cachedCompactRightText, 7.5f);
+        }
+        if (expanded) cachedPlayers = tabPlayers(mc);
+        else cachedPlayers = List.of();
+
+        if (cachedTitleWidth < 0f) {
+            cachedTitleWidth = SkijaUi.textWidth(DioxideLite.NAME, 8.5f);
+            cachedVersionWidth = SkijaUi.textWidth("v" + DioxideLite.VERSION, 7.5f);
         }
     }
 
@@ -90,11 +152,11 @@ public final class DioxideDynamicIsland {
         String title = DioxideLite.NAME;
         String version = "v" + DioxideLite.VERSION;
         SkijaUi.boldText(canvas, title, x + 34f, y + 8f, 10f, 0xFFF5F8FF, 8.5f);
-        SkijaUi.text(canvas, version, x + 34f + SkijaUi.textWidth(title, 8.5f) + 5f,
+        SkijaUi.text(canvas, version, x + 34f + cachedTitleWidth + 5f,
                 y + 8f, 10f, 0xFF91A0B4, 7.5f);
 
-        String right = ping >= 0 ? fps + "  " + ping + "ms" : fps;
-        float rw = SkijaUi.textWidth(right, 7.5f);
+        String right = cachedCompactRightText;
+        float rw = cachedCompactRightWidth;
         SkijaUi.text(canvas, right, x + w - rw - 10f, y + 9f, 9f, 0xFFD7E4F2, 7.5f);
     }
 
@@ -114,7 +176,7 @@ public final class DioxideDynamicIsland {
         SkijaUi.text(canvas, truncate(status, 46), x + 43f, y + 20f, 9f,
                 0xFFB9C7D8, 7.2f);
 
-        String fps = mc.getFps() + " FPS";
+        String fps = cachedFps + " FPS";
         float fpsW = SkijaUi.textWidth(fps, 7.5f);
         SkijaUi.text(canvas, fps, x + w - fpsW - 11f, y + 10f, 9f,
                 0xFF8BD7FF, 7.5f);
@@ -143,8 +205,61 @@ public final class DioxideDynamicIsland {
         }
     }
 
-    /** OPAI-like glass pill: glow, deep-black body, inner white edge, top gloss. */
-    private void drawIsland(Canvas canvas, float x, float y, float w, float h, float r) {
+    /**
+     * OPAI-like glass pill: glow, deep-black body, inner white edge, top gloss.
+     * The whole static body (including its glow layers) is pre-rendered into an
+     * off-screen cache per collapsed/expanded state; animation only repositions
+     * or scales the cached texture instead of re-running blur passes every frame.
+     */
+    private void drawIsland(Canvas canvas, float x, float y, float w, float h, float r,
+                            boolean expanded) {
+        int cw = Math.round(w + GLOW_PAD * 2f);
+        int ch = Math.round(h + GLOW_PAD * 2f);
+        boolean shapeChanged = shapeCache == null
+                || shapeCacheExpanded != expanded
+                || Math.abs(shapeCacheW - cw) > 12
+                || Math.abs(shapeCacheH - ch) > 12
+                || Math.abs(shapeCacheR - r) > 3f;
+        if (shapeChanged) {
+            if (shapeCache != null) {
+                try { shapeCache.close(); } catch (Throwable ignored) {}
+            }
+            shapeCache = renderIslandShape(cw, ch, r, expanded);
+            shapeCacheW = cw;
+            shapeCacheH = ch;
+            shapeCacheR = r;
+            shapeCacheExpanded = expanded;
+        }
+        if (shapeCache == null) {
+            // Fallback: draw the body directly (should not normally happen).
+            drawIslandDirect(canvas, x, y, w, h, r);
+            return;
+        }
+        Rect dst = Rect.makeXYWH(x - GLOW_PAD, y - GLOW_PAD, cw, ch);
+        try (Paint cachePaint = new Paint().setAntiAlias(true)) {
+            canvas.drawImageRect(shapeCache,
+                    Rect.makeXYWH(0, 0, shapeCache.getWidth(), shapeCache.getHeight()),
+                    dst, SamplingMode.LINEAR, cachePaint, true);
+        }
+    }
+
+    private static Image renderIslandShape(int cw, int ch, float r, boolean expanded) {
+        try (Surface surface = Surface.makeRasterN32Premul(cw, ch);
+             Paint paint = new Paint().setAntiAlias(true)) {
+            Canvas canvas = surface.getCanvas();
+            float x = GLOW_PAD;
+            float y = GLOW_PAD;
+            float w = cw - GLOW_PAD * 2f;
+            float h = ch - GLOW_PAD * 2f;
+            drawIslandDirect(canvas, x, y, w, h, r);
+            return surface.makeImageSnapshot();
+        } catch (Throwable ignored) {
+            return null;
+        }
+    }
+
+    /** The actual island body drawing, used by the shape cache and the fallback. */
+    private static void drawIslandDirect(Canvas canvas, float x, float y, float w, float h, float r) {
         SkijaUi.glowLayer(canvas, x, y, w, h, 7f, 5, () -> {
             SkijaUi.rounded(canvas, x - 1f, y - 1f, w + 2f, h + 2f, r + 1f, 0x263BD8FF);
         });
@@ -165,16 +280,22 @@ public final class DioxideDynamicIsland {
     }
 
     private void drawLogo(Canvas canvas, float x, float y, float size) {
-        try (SkijaRenderer.BorrowedImage borrowed = SkijaRenderer.borrowTexture(LOGO)) {
-            if (borrowed == null) return;
-            Image image = borrowed.image();
+        try {
+            if (cachedLogo == null) cachedLogo = SkijaRenderer.borrowTexture(LOGO);
+            if (cachedLogo == null) return;
+            Image image = cachedLogo.image();
             Rect src = Rect.makeXYWH(0, 0, image.getWidth(), image.getHeight());
             Rect dst = Rect.makeXYWH(x, y, size, size);
+            // The logo is tiny and static; LINEAR keeps the same appearance without
+            // allocating a new Paint/texture bridge on every frame.
             try (Paint paint = new Paint().setAntiAlias(true)) {
                 canvas.drawImageRect(image, src, dst, SamplingMode.LINEAR, paint, true);
             }
         } catch (Throwable ignored) {
-            // Decorative only; the island must remain usable if the texture fails.
+            if (cachedLogo != null) {
+                try { cachedLogo.close(); } catch (Throwable ignored2) {}
+                cachedLogo = null;
+            }
         }
     }
 

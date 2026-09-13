@@ -35,6 +35,7 @@ repositories {
     maven("https://repo.viaversion.com")
     maven("https://maven.lenni0451.net/everything")
     maven("https://maven.terraformersmc.com/releases")
+    maven("https://api.modrinth.com/maven")
     maven("https://jitpack.io") {
         content {
             includeGroup("com.github.oryxel1")
@@ -62,6 +63,7 @@ repositories {
 }
 
 sourceSets.named("main") {
+    java.exclude("repackage/**", "tritium/**")
     val vendoredSetsunaViaDir = setsunaViaDir.asFile
     java.srcDirs(
             vendoredSetsunaViaDir.resolve("main/java"),
@@ -74,7 +76,13 @@ dependencies {
     minecraft("com.mojang:minecraft:${minecraftVersion}")
     implementation("net.fabricmc:fabric-loader:${project.property("fabric_loader_version")}")
     implementation("net.fabricmc.fabric-api:fabric-api:${project.property("fabric_version")}")
-    compileOnly("net.caffeinemc:sodium-fabric:0.8.12+mc26.1.2")
+    // Bundled optimisation mods (jar-in-jar). All publish with named (mojmap)
+    // mappings, so plain implementation + include is equivalent to modImplementation.
+    // Sodium/Lithium are LGPL-3.0, FerriteCore is MIT — compatible with the
+    // project's GPL-3.0/Apache-2.0 dual licence.
+    include(implementation("net.caffeinemc:sodium-fabric:0.8.12+mc26.1.2")!!)
+    include(implementation("maven.modrinth:lithium:mc26.1.2-0.24.7-fabric")!!)
+    include(implementation("maven.modrinth:ferrite-core:9.0.0-fabric")!!)
     compileOnly("org.projectlombok:lombok:1.18.42")
     annotationProcessor("org.projectlombok:lombok:1.18.42")
     implementation("com.google.zxing:core:3.5.1")

@@ -8,6 +8,8 @@ import com.dioxidelite.event.EventBus;
 import com.dioxidelite.event.events.Render2DEvent;
 import com.dioxidelite.ui.SkijaScreen;
 import com.dioxidelite.ui.screen.LoadingScreenDrawer;
+import com.dioxidelite.module.modules.render.DioxideIslandModule;
+import com.dioxidelite.module.modules.render.GlobalBlurModule;
 import com.dioxidelite.ui.dioxide.DioxideDynamicIsland;
 
 import com.dioxidelite.ui.screen.VanillaScreenTheme;
@@ -48,7 +50,24 @@ import java.nio.ByteBuffer;
 import java.nio.IntBuffer;
 
 /** Draws Skija UI into the presented window framebuffer before buffer swap. */
-public final class SkijaRenderer {
+public final class SkijaRenderer
+{
+    /**
+     * Fast-path state for low-end/iGPU systems.
+     *
+     * The animation clock is never throttled here; this gate only avoids
+     * submitting an empty Skija frame. Visual timing therefore remains
+     * identical when there is content to render.
+     */
+    private static boolean DioxideLite$frameHasVisualWork = true;
+
+    public static void DioxideLite$setFrameHasVisualWork(boolean value) {
+        DioxideLite$frameHasVisualWork = value;
+    }
+
+    public static boolean DioxideLite$frameHasVisualWork() {
+        return DioxideLite$frameHasVisualWork;
+    }
 
     private static DirectContext context;
     private static BackendRenderTarget renderTarget;
@@ -62,7 +81,66 @@ public final class SkijaRenderer {
     private static int themedFramebuffer = -1;
     private static int themedColorTexture = -1;
     private static Image frameBackdropSnapshot;
+    private static Image backdropDownsampled;
     private static boolean backdropRequested;
+
+    /** GPU performance profile: QUALITY for discrete GPUs, IGPU for low-end
+     *  integrated graphics. Only affects the intensity of cached/off-screen
+     *  work; animation rate and visual style are never changed. */
+    public enum RenderProfile { QUALITY, BALANCED, IGPU }
+
+    private static final RenderProfile RENDER_PROFILE = detectProfile();
+
+    /** Cached GL renderer string for diagnostics (HUD overlay). */
+    private static final String RENDERER_STRING = detectRendererString();
+
+    /** Last full overlay pass duration (ns), for the debug performance HUD. */
+    public static volatile long lastOverlayNanos;
+
+    public static String rendererString() {
+        return RENDERER_STRING;
+    }
+
+    private static String detectRendererString() {
+        try {
+            String r = GL11.glGetString(GL11.GL_RENDERER);
+            return r == null ? "unknown" : r;
+        } catch (Throwable ignored) {
+            return "unknown";
+        }
+    }
+
+    /** Blur backdrop downsampling is intentionally disabled (1.0 = full
+     *  resolution). Resolution scaling is a visual tradeoff; the client keeps
+     *  quality and gains speed through caching and object reuse instead. */
+    private static final float BACKDROP_DOWNSAMPLE = 1.0F;
+
+    public static RenderProfile renderProfile() {
+        return RENDER_PROFILE;
+    }
+
+    /** Reads the GL renderer string once at startup and picks a sensible default. */
+    private static RenderProfile detectProfile() {
+        String renderer = null;
+        try {
+            renderer = GL11.glGetString(GL11.GL_RENDERER);
+        } catch (Throwable ignored) {
+            // Some drivers may not expose a renderer string; fall through.
+        }
+        if (renderer == null) return RenderProfile.BALANCED;
+        String r = renderer.toLowerCase();
+        if (r.contains("nvidia") || r.contains("rtx") || r.contains("gtx")
+                || r.contains("radeon rx") || r.contains("apple") || r.contains("adreno")) {
+            return RenderProfile.QUALITY;
+        }
+        if (r.contains("intel") || r.contains("uhd") || r.contains("iris")
+                || r.contains("hd graphics") || r.contains("vega")
+                || r.contains("radeon") || r.contains("llvmpipe")
+                || r.contains("mesa") || r.contains("software")) {
+            return RenderProfile.IGPU;
+        }
+        return RenderProfile.BALANCED;
+    }
 
     private static boolean failed;
     private static boolean backdropBlurFailed;
@@ -86,10 +164,14 @@ public final class SkijaRenderer {
         double guiScale = window.getGuiScale();
         boolean captureBackdrop = backdropRequested;
         backdropRequested = false;
+        long t0 = System.nanoTime();
         paint(canvas -> {
             EventBus.INSTANCE.post(new Render2DEvent(canvas, scaledWidth, scaledHeight, guiScale));
-            DioxideDynamicIsland.getInstance().render(canvas, scaledWidth, scaledHeight);
+            if (DioxideIslandModule.INSTANCE.isEnabled()) {
+                DioxideDynamicIsland.getInstance().render(canvas, scaledWidth, scaledHeight);
+            }
         }, captureBackdrop);
+        lastOverlayNanos = System.nanoTime() - t0;
     }
 
     /** Draws immediately into Minecraft's main render target in GUI-scaled coordinates. */
@@ -189,10 +271,15 @@ public final class SkijaRenderer {
             canonicalizePixelStore();
             ensureSurface(width, height, framebuffer, 0, 0);
 
+            if (!DioxideLite$frameHasVisualWork) {
+                return;
+            }
             context.resetGLAll();
             if (captureBackdrop) {
                 backdrop = surface.makeImageSnapshot();
                 frameBackdropSnapshot = backdrop;
+                backdropDownsampled = BACKDROP_DOWNSAMPLE < 1.0F
+                        ? downsampleBackdrop(backdrop) : null;
             }
             Canvas canvas = surface.getCanvas();
             int save = canvas.save();
@@ -209,10 +296,34 @@ public final class SkijaRenderer {
             DioxideLite.LOGGER.error("Skija renderer failed; disabling it for this session", throwable);
         } finally {
             frameBackdropSnapshot = null;
+            if (backdropDownsampled != null) {
+                try { backdropDownsampled.close(); } catch (Throwable ignored) {}
+                backdropDownsampled = null;
+            }
             if (backdrop != null) {
                 backdrop.close();
             }
             previous.restore();
+        }
+    }
+
+    /** Downscales the backdrop snapshot for cheap HUD blur. Falls back to null
+     *  (full-resolution blur) if anything fails. */
+    private static Image downsampleBackdrop(Image src) {
+        if (src == null) return null;
+        int dw = Math.max(48, Math.round(src.getWidth() * BACKDROP_DOWNSAMPLE));
+        int dh = Math.max(48, Math.round(src.getHeight() * BACKDROP_DOWNSAMPLE));
+        try (io.github.humbleui.skija.Surface small =
+                     io.github.humbleui.skija.Surface.makeRasterN32Premul(dw, dh);
+             Paint dsPaint = new Paint().setAntiAlias(true)) {
+            Canvas smallCanvas = small.getCanvas();
+            smallCanvas.drawImageRect(src,
+                    Rect.makeXYWH(0, 0, src.getWidth(), src.getHeight()),
+                    Rect.makeXYWH(0, 0, dw, dh),
+                    SamplingMode.LINEAR, dsPaint, true);
+            return small.makeImageSnapshot();
+        } catch (Throwable ignored) {
+            return null;
         }
     }
 
@@ -267,6 +378,10 @@ public final class SkijaRenderer {
                                             java.util.function.Consumer<Canvas> clipper,
                                             float x, float y, float width, float height,
                                             float strength) {
+        // Global blur master switch (ClickGUI Render category). When disabled no
+        // HUD backdrop blur is drawn and the backdrop snapshot is skipped too.
+        if (!GlobalBlurModule.INSTANCE.isEnabled()) return;
+        strength = GlobalBlurModule.INSTANCE.strength.get().floatValue();
         if (backdropBlurFailed || canvas == null || clipper == null
                 || strength <= 0.01F
                 || width <= 1.0F || height <= 1.0F || targetWidth <= 0 || targetHeight <= 0) {
@@ -283,21 +398,27 @@ public final class SkijaRenderer {
         float scaleX = targetWidth / guiWidth;
         float scaleY = targetHeight / guiHeight;
         float padding = Math.max(2.0F, strength * 2.5F);
-        int left = Math.max(0, (int) Math.floor((x - padding) * scaleX));
-        int top = Math.max(0, (int) Math.floor((y - padding) * scaleY));
-        int right = Math.min(targetWidth, (int) Math.ceil((x + width + padding) * scaleX));
-        int bottom = Math.min(targetHeight, (int) Math.ceil((y + height + padding) * scaleY));
+
+        Image blurSource = backdropDownsampled != null ? backdropDownsampled : frameBackdropSnapshot;
+        float ds = backdropDownsampled != null ? BACKDROP_DOWNSAMPLE : 1.0F;
+        int left = Math.max(0, (int) Math.floor((x - padding) * scaleX * ds));
+        int top = Math.max(0, (int) Math.floor((y - padding) * scaleY * ds));
+        int right = Math.min(blurSource.getWidth(),
+                (int) Math.ceil((x + width + padding) * scaleX * ds));
+        int bottom = Math.min(blurSource.getHeight(),
+                (int) Math.ceil((y + height + padding) * scaleY * ds));
         if (right <= left || bottom <= top) return;
 
-        try (ImageFilter filter = ImageFilter.makeBlur(strength, strength, FilterTileMode.CLAMP);
+        try (ImageFilter filter = ImageFilter.makeBlur(strength * ds, strength * ds, FilterTileMode.CLAMP);
              Paint paint = new Paint().setAntiAlias(true).setImageFilter(filter)) {
             Rect source = Rect.makeLTRB(left, top, right, bottom);
             Rect destination = Rect.makeLTRB(
-                    left / scaleX, top / scaleY, right / scaleX, bottom / scaleY);
+                    left / (scaleX * ds), top / (scaleY * ds),
+                    right / (scaleX * ds), bottom / (scaleY * ds));
             int save = canvas.save();
             try {
                 clipper.accept(canvas);
-                canvas.drawImageRect(frameBackdropSnapshot, source, destination,
+                canvas.drawImageRect(blurSource, source, destination,
                         SamplingMode.LINEAR, paint, true);
             } finally {
                 canvas.restoreToCount(save);
@@ -346,6 +467,10 @@ public final class SkijaRenderer {
         }
         backdropRequested = false;
         frameBackdropSnapshot = null;
+        if (backdropDownsampled != null) {
+            try { backdropDownsampled.close(); } catch (Throwable ignored) {}
+            backdropDownsampled = null;
+        }
         closeSurface();
         if (themedFramebuffer != -1) {
             GL30.glDeleteFramebuffers(themedFramebuffer);
@@ -671,4 +796,14 @@ public final class SkijaRenderer {
                                     int writeMask, int stencilFail,
                                     int depthFail, int depthPass) {
     }
+
+    /**
+     * iGPU optimization helper: run the expensive draw/flush body only when
+     * there is visual work. This does not cap or reduce animation FPS.
+     */
+    public static boolean DioxideLite$shouldSubmitFrame(boolean hasVisualWork) {
+        DioxideLite$frameHasVisualWork = hasVisualWork;
+        return hasVisualWork;
+    }
+
 }

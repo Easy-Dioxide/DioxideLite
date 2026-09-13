@@ -1,6 +1,7 @@
 package com.dioxidelite.ui.hud;
 
 import com.dioxidelite.DioxideLite;
+import com.dioxidelite.module.Category;
 import com.dioxidelite.event.events.Render2DEvent;
 import com.dioxidelite.render.SkijaRenderer;
 import com.dioxidelite.render.SkijaUi;
@@ -19,6 +20,7 @@ import io.github.humbleui.skija.Image;
 import io.github.humbleui.skija.ImageFilter;
 import io.github.humbleui.skija.Paint;
 import io.github.humbleui.skija.SamplingMode;
+import io.github.humbleui.skija.Surface;
 import io.github.humbleui.types.Rect;
 import net.minecraft.resources.Identifier;
 
@@ -35,9 +37,13 @@ public final class WatermarkHUD extends EpsilonHudModule {
 
     public static final WatermarkHUD INSTANCE = new WatermarkHUD();
 
+    /** Pre-rendered static watermark (background/border/logo/text) cache. */
+    private Image staticCache;
+    private String cacheKey = "";
+
     public final DoubleSetting scale = add(new DoubleSetting("Scale", 1.0, 0.65, 3.2, 0.05));
     public final BooleanSetting devName = add(new BooleanSetting("Dev Name", false));
-    public final StringSetting rename = add(new StringSetting("Rename", ""));
+    public final StringSetting rename = add(new StringSetting("Rename", "DioxideLite"));
     public final ColorSetting textColor = add(new ColorSetting("Text Color",
             new Color(255, 255, 255), false));
     public final BooleanSetting firstCharacterRainbow = add(
@@ -70,8 +76,7 @@ public final class WatermarkHUD extends EpsilonHudModule {
             .visibleWhen(glow::get));
 
     private WatermarkHUD() {
-        super("Watermark HUD", 4, 4, 90.0F, 14.0F);
-        setEnabled(true);
+        super("Watermark HUD", Category.RENDER, 4, 4, 90.0F, 14.0F);
     }
 
     @Override
@@ -91,62 +96,126 @@ public final class WatermarkHUD extends EpsilonHudModule {
         String displayText = text;
 
         boolean transferLogo = logo.get() && mc.screen instanceof PopClickGuiScreen;
-        SkijaRenderer.BorrowedImage logoImage = null;
-        if (logo.get() && !transferLogo) {
-            try {
-                logoImage = SkijaRenderer.borrowTexture(LOGO_TEXTURE);
-            } catch (Throwable ignored) {
-                // Keep the watermark text visible if the logo resource cannot be loaded.
-            }
-        }
-        try (SkijaRenderer.BorrowedImage borrowed = logoImage) {
-            boolean drawLogo = borrowed != null;
-            boolean hasLogo = drawLogo || transferLogo;
-            float logoSize = textHeight;
-            float logoGap = 3.0F * s;
-            float logoExtra = hasLogo ? logoSize + logoGap : 0.0F;
-            float width = SkijaUi.textWidthWithFallback(displayText, font) + padX * 2.0F + logoExtra;
-            float height = textHeight + padY * 2.0F;
-            float x = renderX(event, width);
-            float y = renderY(event, height);
-            float textX = x + padX + logoExtra;
-            Rect logoBounds = Rect.makeXYWH(x + padX, y + padY, logoSize, logoSize);
-            int color = textColor.argb();
-            int rainbowColor = ColorUtils.rainbow(2600L, (color >>> 24) & 0xFF).getRGB();
-            boolean rainbowFirst = firstCharacterRainbow.get();
-            boolean antialiasLogo = logoAntiAlias.get();
-            float radius = Math.min(borderRadius.get().floatValue() * s, height * 0.5F);
-            updateBounds(width, height);
+        boolean hasLogo = logo.get();
+        float logoSize = textHeight;
+        float logoGap = 3.0F * s;
+        float logoExtra = hasLogo ? logoSize + logoGap : 0.0F;
+        float width = SkijaUi.textWidthWithFallback(displayText, font) + padX * 2.0F + logoExtra;
+        float height = textHeight + padY * 2.0F;
+        float x = renderX(event, width);
+        float y = renderY(event, height);
+        int color = textColor.argb();
+        int rainbowColor = ColorUtils.rainbow(2600L, (color >>> 24) & 0xFF).getRGB();
+        boolean rainbowFirst = firstCharacterRainbow.get();
+        boolean antialiasLogo = logoAntiAlias.get();
+        float radius = Math.min(borderRadius.get().floatValue() * s, height * 0.5F);
+        updateBounds(width, height);
 
-            if (background.get()) {
-                HudRenderUtil.coloredSurface(event.canvas(), x, y, width, height,
-                        radius, backgroundColor.argb(), HudFusionManager.Edges.NONE);
+        // Static cache: the watermark only changes when its text or style settings
+        // change, so the whole body (background/border/logo/text/glow/shadow) is
+        // pre-rendered off-screen once and blitted each frame.
+        String key = displayText + '|' + s + '|' + width + '|' + height + '|'
+                + radius + '|' + color + '|' + rainbowFirst + '|' + antialiasLogo
+                + '|' + background.get() + backgroundColor.argb()
+                + '|' + border.get() + borderMode.get() + borderColor.argb()
+                + borderStart.argb() + borderEnd.argb()
+                + '|' + glow.get() + glowStrength.get()
+                + '|' + shadow.get() + '|' + hasLogo;
+        float pad = glow.get() ? 8.0F * s : 2.0F * s;
+        if (staticCache == null || !cacheKey.equals(key)) {
+            staticCache = renderStatic(displayText, width, height, pad,
+                    s, font, textHeight, padX, padY, radius,
+                    color, rainbowColor, rainbowFirst, antialiasLogo);
+            cacheKey = key;
+        }
+        if (staticCache != null) {
+            try (Paint blit = new Paint().setAntiAlias(true)) {
+                event.canvas().drawImageRect(staticCache,
+                        Rect.makeXYWH(0, 0, staticCache.getWidth(), staticCache.getHeight()),
+                        Rect.makeXYWH(x - pad, y - pad,
+                                staticCache.getWidth(), staticCache.getHeight()),
+                        SamplingMode.LINEAR, blit, true);
             }
-            if (border.get()) {
-                HudRenderUtil.border(event.canvas(), x, y, width, height,
-                        radius, 1.2F * s,
-                        1.0F, borderMode.get(), borderColor.argb(), borderStart.argb(),
-                        borderEnd.argb(), 255);
-            }
-            Runnable drawContent = () -> {
-                if (drawLogo) drawLogo(event.canvas(), borrowed.image(), logoBounds, antialiasLogo);
-                drawWatermarkText(event.canvas(), displayText, textX, y + padY,
-                        textHeight, font, color, rainbowColor, rainbowFirst, false);
-            };
-            if (glow.get()) {
-                SkijaUi.glowLayer(event.canvas(), x, y, width, height,
-                        4.0F * s, glowStrength.get(), drawContent);
-            }
-            if (shadow.get()) {
-                if (drawLogo) {
-                    drawLogoShadow(event.canvas(), borrowed.image(), logoBounds, s, antialiasLogo);
-                    drawLogo(event.canvas(), borrowed.image(), logoBounds, antialiasLogo);
+            return;
+        }
+
+        // Fallback: draw directly (cache creation should not normally fail).
+        drawDirect(event.canvas(), displayText, x, y, width, height,
+                s, font, textHeight, padX, padY, logoExtra, radius,
+                color, rainbowColor, rainbowFirst, antialiasLogo);
+    }
+
+    private Image renderStatic(String displayText, float width, float height, float pad,
+                               float s, float font, float textHeight, float padX, float padY,
+                               float radius, int color, int rainbowColor, boolean rainbowFirst,
+                               boolean antialiasLogo) {
+        int cw = Math.max(8, Math.round(width + pad * 2f));
+        int ch = Math.max(8, Math.round(height + pad * 2f));
+        try (Surface surface = Surface.makeRasterN32Premul(cw, ch);
+             Paint paint = new Paint().setAntiAlias(true)) {
+            Canvas canvas = surface.getCanvas();
+            drawDirect(canvas, displayText, pad, pad, width, height,
+                    s, font, textHeight, padX, padY, logoExtra(), radius,
+                    color, rainbowColor, rainbowFirst, antialiasLogo);
+            return surface.makeImageSnapshot();
+        } catch (Throwable ignored) {
+            return null;
+        }
+    }
+
+    private float logoExtra() {
+        float s = scale.get().floatValue();
+        return (logo.get() ? (11.0F * s * 1.28F + 3.0F * s) : 0.0F);
+    }
+
+    /** Draws the watermark at (x, y) on the given canvas; used by the cache and fallback. */
+    private void drawDirect(Canvas canvas, String displayText, float x, float y,
+                            float width, float height, float s, float font,
+                            float textHeight, float padX, float padY, float logoExtra,
+                            float radius, int color, int rainbowColor,
+                            boolean rainbowFirst, boolean antialiasLogo) {
+        boolean drawLogo = logo.get() && !(mc.screen instanceof PopClickGuiScreen);
+        float textX = x + padX + logoExtra;
+        Rect logoBounds = Rect.makeXYWH(x + padX, y + padY, textHeight, textHeight);
+
+        if (background.get()) {
+            HudRenderUtil.coloredSurface(canvas, x, y, width, height,
+                    radius, backgroundColor.argb(), HudFusionManager.Edges.NONE);
+        }
+        if (border.get()) {
+            HudRenderUtil.border(canvas, x, y, width, height,
+                    radius, 1.2F * s,
+                    1.0F, borderMode.get(), borderColor.argb(), borderStart.argb(),
+                    borderEnd.argb(), 255);
+        }
+        Runnable drawContent = () -> {
+            if (drawLogo) {
+                try (SkijaRenderer.BorrowedImage borrowed = SkijaRenderer.borrowTexture(LOGO_TEXTURE)) {
+                    if (borrowed != null) {
+                        drawLogo(canvas, borrowed.image(), logoBounds, antialiasLogo);
+                    }
                 }
-                drawWatermarkText(event.canvas(), displayText, textX, y + padY,
-                        textHeight, font, color, rainbowColor, rainbowFirst, true);
-            } else {
-                drawContent.run();
             }
+            drawWatermarkText(canvas, displayText, textX, y + padY,
+                    textHeight, font, color, rainbowColor, rainbowFirst, false);
+        };
+        if (glow.get()) {
+            SkijaUi.glowLayer(canvas, x, y, width, height,
+                    4.0F * s, glowStrength.get(), drawContent);
+        }
+        if (shadow.get()) {
+            if (drawLogo) {
+                try (SkijaRenderer.BorrowedImage borrowed = SkijaRenderer.borrowTexture(LOGO_TEXTURE)) {
+                    if (borrowed != null) {
+                        drawLogoShadow(canvas, borrowed.image(), logoBounds, s, antialiasLogo);
+                        drawLogo(canvas, borrowed.image(), logoBounds, antialiasLogo);
+                    }
+                }
+            }
+            drawWatermarkText(canvas, displayText, textX, y + padY,
+                    textHeight, font, color, rainbowColor, rainbowFirst, true);
+        } else {
+            drawContent.run();
         }
     }
 
