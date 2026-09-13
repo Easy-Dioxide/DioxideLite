@@ -1,6 +1,5 @@
 package com.dioxidelite.mixin;
 
-import com.dioxidelite.irc.IrcNameTagUtil;
 import com.dioxidelite.util.legendwatch.LegendSuffixUtil;
 import net.minecraft.client.renderer.entity.EntityRenderer;
 import net.minecraft.client.renderer.entity.state.EntityRenderState;
@@ -28,8 +27,9 @@ public class EntityRendererMixin<T extends Entity, S extends EntityRenderState> 
                         net.minecraft.world.entity.EntityAttachment.NAME_TAG,
                         0, player.getYRot(partialTicks));
             }
+            // The client logo is painted by NameTagLogoRenderer on the shared
+            // Skija canvas; vanilla name tags cannot render the bitmap glyph.
             state.nameTag = LegendSuffixUtil.appendIfLegendary(state.nameTag, rawName);
-            state.nameTag = IrcNameTagUtil.appendLogoIfIrc(state.nameTag, rawName);
         }
     }
 }

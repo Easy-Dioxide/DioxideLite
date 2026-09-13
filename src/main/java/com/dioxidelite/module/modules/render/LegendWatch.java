@@ -7,6 +7,7 @@ import com.dioxidelite.module.Module;
 import com.dioxidelite.setting.settings.BooleanSetting;
 import com.dioxidelite.setting.settings.ButtonSetting;
 import com.dioxidelite.setting.settings.EnumSetting;
+import com.dioxidelite.setting.settings.IntSetting;
 import com.dioxidelite.util.legendwatch.CraftTracker;
 import com.dioxidelite.util.legendwatch.LegendChatParser;
 import net.minecraft.network.protocol.game.ClientboundDisguisedChatPacket;
@@ -34,6 +35,10 @@ public final class LegendWatch extends Module {
             .visibleWhen(() -> icons.get()));
     public final BooleanSetting predicted = add(new BooleanSetting("Predicted", true));
     public final BooleanSetting vanillaNameTags = add(new BooleanSetting("Vanilla Name Tags", true));
+    /** Client logo on the local player's own name tag (third person), IRC-independent. */
+    public final BooleanSetting clientLogo = add(new BooleanSetting("Client Logo", true));
+    public final IntSetting clientLogoSize = add(new IntSetting("Client Logo Size", 10, 6, 20, 1)
+            .visibleWhen(clientLogo::get));
     public final BooleanSetting ircLogo = add(new BooleanSetting("IRC Logo", true));
     public final BooleanSetting customNameTags = add(new BooleanSetting("Name Tags", true));
     public final BooleanSetting tabList = add(new BooleanSetting("Tab List", true));
@@ -80,6 +85,14 @@ public final class LegendWatch extends Module {
 
     public boolean predictedEnabled() {
         return predicted.get();
+    }
+
+    public boolean clientLogoEnabled() {
+        return clientLogo.get();
+    }
+
+    public IntSetting clientLogoSize() {
+        return clientLogoSize;
     }
 
     public boolean ircLogoEnabled() {

@@ -75,7 +75,6 @@ public final class DioxideDynamicIsland {
         if (canvas == null || mc == null || mc.player == null || mc.screen != null) return;
         long t0 = System.nanoTime();
         try {
-
         boolean expanded = mc.options != null && mc.options.keyPlayerList.isDown();
         updateDataCache(mc, expanded);
         List<PlayerInfo> players = expanded ? cachedPlayers : List.of();
@@ -134,14 +133,14 @@ public final class DioxideDynamicIsland {
                 : cachedFpsText;
         if (!cachedCompactRightText.equals(cachedCompactRightWidthKey)) {
             cachedCompactRightWidthKey = cachedCompactRightText;
-            cachedCompactRightWidth = SkijaUi.textWidth(cachedCompactRightText, 7.5f);
+            cachedCompactRightWidth = SkijaUi.textWidth(cachedCompactRightText, 8.5f);
         }
         if (expanded) cachedPlayers = tabPlayers(mc);
         else cachedPlayers = List.of();
 
         if (cachedTitleWidth < 0f) {
-            cachedTitleWidth = SkijaUi.textWidth(DioxideLite.NAME, 8.5f);
-            cachedVersionWidth = SkijaUi.textWidth("v" + DioxideLite.VERSION, 7.5f);
+            cachedTitleWidth = SkijaUi.textWidth(DioxideLite.NAME, 9.5f);
+            cachedVersionWidth = SkijaUi.textWidth("v" + DioxideLite.VERSION, 8.5f);
         }
     }
 
@@ -152,13 +151,13 @@ public final class DioxideDynamicIsland {
 
         String title = DioxideLite.NAME;
         String version = "v" + DioxideLite.VERSION;
-        SkijaUi.boldText(canvas, title, x + 34f, y + 8f, 10f, 0xFFF5F8FF, 8.5f);
+        SkijaUi.boldText(canvas, title, x + 34f, y + 8f, 10f, 0xFFF5F8FF, 9.5f);
         SkijaUi.text(canvas, version, x + 34f + cachedTitleWidth + 5f,
-                y + 8f, 10f, 0xFF91A0B4, 7.5f);
+                y + 8f, 10f, 0xFF91A0B4, 8.5f);
 
         String right = cachedCompactRightText;
         float rw = cachedCompactRightWidth;
-        SkijaUi.text(canvas, right, x + w - rw - 10f, y + 9f, 9f, 0xFFD7E4F2, 7.5f);
+        SkijaUi.text(canvas, right, x + w - rw - 10f, y + 9f, 9f, 0xFFD7E4F2, 8.5f);
     }
 
     private static String ircStatusText() {
@@ -186,28 +185,28 @@ public final class DioxideDynamicIsland {
         drawLogo(canvas, x + 10f, y + 9f, iconSize);
 
         SkijaUi.boldText(canvas, DioxideLite.NAME, x + 43f, y + 8f, 10f,
-                0xFFF7FAFF, 9f);
+                0xFFF7FAFF, 10f);
         String build = "v" + DioxideLite.VERSION;
-        SkijaUi.text(canvas, build, x + 43f + SkijaUi.textWidth(DioxideLite.NAME, 9f) + 6f,
-                y + 9f, 9f, 0xFF9AA9BE, 7.5f);
+        SkijaUi.text(canvas, build, x + 43f + SkijaUi.textWidth(DioxideLite.NAME, 10f) + 6f,
+                y + 9f, 9f, 0xFF9AA9BE, 8.5f);
 
         String status = server;
         if (ping >= 0) status += "  ·  " + ping + "ms";
         SkijaUi.text(canvas, truncate(status, 46), x + 43f, y + 20f, 9f,
-                0xFFB9C7D8, 7.2f);
+                0xFFB9C7D8, 8f);
 
         String fps = cachedFps + " FPS";
-        float fpsW = SkijaUi.textWidth(fps, 7.5f);
+        float fpsW = SkijaUi.textWidth(fps, 8.5f);
         SkijaUi.text(canvas, fps, x + w - fpsW - 11f, y + 10f, 9f,
-                0xFF8BD7FF, 7.5f);
+                0xFF8BD7FF, 8.5f);
 
         String ircStatus = ircStatusText();
         SkijaUi.text(canvas, ircStatus, x + 43f, y + 31f, 9f,
-                ircStatusColor(), 6.8f);
+                ircStatusColor(), 7.5f);
 
         if (players.isEmpty()) {
             SkijaUi.text(canvas, "NO PLAYERS LISTED", x + 43f, y + 56f, 9f,
-                    0xFF69788A, 6.8f);
+                    0xFF69788A, 7.5f);
             return;
         }
 
@@ -225,7 +224,7 @@ public final class DioxideDynamicIsland {
             int color = info.getGameMode() == GameType.SPECTATOR ? 0xFF758193 : 0xFFE5EDF7;
             float tx = x + 11f + col * cellW;
             float ty = gridTop + row * 12f;
-            SkijaUi.text(canvas, name, tx, ty, 8f, color, 6.8f);
+            SkijaUi.text(canvas, name, tx, ty, 8f, color, 7.5f);
         }
     }
 
@@ -259,7 +258,11 @@ public final class DioxideDynamicIsland {
             drawIslandDirect(canvas, x, y, w, h, r);
             return;
         }
-        Rect dst = Rect.makeXYWH(x - GLOW_PAD, y - GLOW_PAD, cw, ch);
+        // Snap to whole GUI pixels so the cached glass body and glow keep crisp
+        // edges instead of half-pixel blur.
+        float dx = Math.round(x - GLOW_PAD);
+        float dy = Math.round(y - GLOW_PAD);
+        Rect dst = Rect.makeXYWH(dx, dy, cw, ch);
         try (Paint cachePaint = new Paint().setAntiAlias(true)) {
             canvas.drawImageRect(shapeCache,
                     Rect.makeXYWH(0, 0, shapeCache.getWidth(), shapeCache.getHeight()),

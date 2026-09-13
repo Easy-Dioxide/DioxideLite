@@ -1,3 +1,87 @@
+# DioxideLite v2.0.4 — Development Log
+
+## Overview / 概述
+
+v2.0.4 focuses on three things: making the Module List reachable from the
+ClickGUI, rendering the client logo on name tags through the Skija canvas (the
+vanilla name-tag pipeline cannot draw a custom high-res logo), and fixing the
+blurry edges/fonts of the Dynamic Island and Watermark.
+
+v2.0.4 聚焦三件事：让 Module List 在 ClickGUI 中可达；通过 Skija 画布在
+nametag 上渲染客户端 logo（原版 nametag 管线无法绘制自定义高清 logo）；
+修复灵动岛与 Watermark 边缘/字体模糊。
+
+## Changes / 变更
+
+### 1. Module List (Array List) in ClickGUI / Module List 进入 ClickGUI
+- `ModuleListHUD` already existed with full features (animated list, Scale /
+  Font / ColorMode / Only Important / Module Info / Shadow / Glow / Background /
+  Bar), but it was constructed with the default `Category.HUD`, which is not one
+  of the six ClickGUI categories → it was invisible in the GUI.
+- Re-constructed with `Category.RENDER` (x=1000, y=16, 132×82) so it now
+  appears under the Render tab, default enabled.
+- 原 `ModuleListHUD` 功能完整（右侧动画列表、Scale/Font/ColorMode/Only
+  Important/Module Info/Shadow/Glow/Background/Bar 等），但构造时用了默认
+  `Category.HUD`，不属于 ClickGUI 六大分类 → 在 GUI 中不可见。已改为
+  `Category.RENDER`，现在出现在 Render 分类下，默认开启。
+
+### 2. Name tag client logo (Skija) / nametag 客户端 logo（Skija）
+- Previous approach injected a bitmap glyph (`nametag_logo.json` +
+  `dioxide_logo_16.png`) into the vanilla name-tag font; vanilla bitmap
+  rendering (NEAREST sampling) could not show the 256×256 logo → removed.
+- New `NameTagLogoRenderer`: listens to `Render2DEvent`, projects each player's
+  head anchor through the camera view-rotation matrix into GUI space, and draws
+  the same 256×256 Dynamic-Island logo next to the name tag via Skija.
+  - Local player: `Client Logo` (Legend Watch, default on)
+  - IRC online users: `IRC Logo` (default on, `IrcModule.isIrcUser`)
+  - 16-block cut-off, same as vanilla name tags.
+- Third-person FOV: vanilla expands FOV in third person; `camera.getFov()` does
+  not include it, so the projected logo landed above the name tag → multiply by
+  1.28 in third person.
+- Logo x position is measured against the exact rendered name-tag text
+  (original name + Legend suffix via `LegendSuffixUtil.appendIfLegendary`) so
+  it always sits left of the text and never overlaps, regardless of name
+  length. y is nudged up ~3px so its optical centre aligns with the text.
+- Removed: `IrcNameTagUtil`, `assets/.../fonts/nametag_logo.json`,
+  `textures/nametags/dioxide_logo_16.png`.
+- 之前的方案是把位图字形（nametag_logo.json + dioxide_logo_16.png）注入
+  原版 nametag 字体；原版位图渲染（NEAREST 采样）无法显示 256×256 logo → 删除。
+- 新增 `NameTagLogoRenderer`：监听 `Render2DEvent`，通过相机视图旋转矩阵把
+  玩家头部锚点投影到 GUI 空间，用 Skija 在 nametag 旁绘制与灵动岛同款
+  256×256 logo。本地玩家（Client Logo，默认开）、IRC 在线用户（IRC Logo，
+  默认开）都显示；16 格距离截止（与原版一致）。
+- 第三人称 FOV：原版第三人称会扩展 FOV，`camera.getFov()` 不含扩展 →
+  logo 投影会偏上 → 第三人称时 ×1.28 修正。
+- logo 的 x 位置按实际渲染文本宽度（原始名 + Legend 后缀）动态测量，
+  始终位于文字左侧不重叠；y 上移约 3px 与文字光学中心对齐。
+
+### 3. Sharpness fixes / 清晰度修复
+- `SkijaRenderer.BACKDROP_DOWNSAMPLE` 0.5 → **1.0**（full-resolution backdrop;
+  only used when Global Blur is enabled）。
+- Watermark static-cache blit now snaps to integer pixels
+  (`Math.round(x-pad)` / `Math.round(y-pad)`) to avoid sub-pixel blur.
+- Dynamic Island shape-cache blit also snaps to integer pixels
+  (`Math.round(x-GLOW_PAD)` / `Math.round(y-GLOW_PAD)`).
+- Island font sizes raised: compact title 9.5 / version 8.5 / right side 8.5;
+  expanded title 10 / version 8.5 / status 8 / FPS 8.5 / IRC 7.5 / player rows 7.5.
+- Fixed a copy-paste brace bug in `updateDataCache` that broke compilation.
+
+## Verification / 验证
+- `compileJava` + `build` pass; jar `DioxideLite-2.0.4.jar` (≈91.9 MB).
+- Ran under Xvfb (llvmpipe software GL): main menu shows DIOXIDELITE 2.0.4;
+  in-game HUD (Watermark / Perf / Dynamic Island) renders; ClickGUI Render tab
+  lists Array List, Dynamic Island, Global Blur, Watermark HUD, Performance HUD;
+  third-person name tag shows the D-logo left of the name, vertically aligned.
+
+## Notes / 备注
+- The interactive session observed one intermittent case where the in-game HUD
+  layer did not draw (the environment/startup timing issue; the same code
+  rendered HUD fully in the previous session). Dynamic Island screenshots were
+  taken from the verified session.
+
+
+---
+
 # DioxideLite v2.0.3 Development Log / 开发日志
 
 ## English

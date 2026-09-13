@@ -19,6 +19,7 @@ import com.dioxidelite.module.modules.render.KillEffect;
 import com.dioxidelite.module.modules.render.DeltaForceStyle;
 import com.dioxidelite.module.modules.render.LegendWatch;
 import com.dioxidelite.module.modules.render.NoRender;
+import com.dioxidelite.render.NameTagLogoRenderer;
 import com.dioxidelite.ui.hud.BPSHUD;
 import com.dioxidelite.ui.hud.CoordinatesHUD;
 import com.dioxidelite.ui.hud.FPSHUD;
@@ -105,6 +106,7 @@ public final class ModuleManager {
         register(Notifications.INSTANCE);
         register(HUD.INSTANCE);
         EventBus.INSTANCE.subscribe(HudFusionManager.INSTANCE);
+        EventBus.INSTANCE.subscribe(NameTagLogoRenderer.INSTANCE);
         EventBus.INSTANCE.subscribe(this);
         initialized = true;
     }

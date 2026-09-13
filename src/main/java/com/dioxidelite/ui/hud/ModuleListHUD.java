@@ -83,7 +83,9 @@ public final class ModuleListHUD extends EpsilonHudModule {
     private final Map<Module, Float> visibility = new IdentityHashMap<>();
 
     private ModuleListHUD() {
-        super("Array List", 1000, 16, 132.0F, 82.0F);
+        // Category.RENDER so the module list appears inside the ClickGUI Render
+        // category (the HUD category is not shown in the ClickGUI tabs).
+        super("Array List", Category.RENDER, 1000, 16, 132.0F, 82.0F);
         setEnabled(true);
     }
 
