@@ -4,6 +4,21 @@
 
 ---
 
+## v2.0.9（2026-09-15）
+
+### 视觉（Setsuna 迁移）
+- 基于 2.0.8 base 迁移 SetsunaClient 完整实体视觉面：**ESP**（玩家/容器描边）、**Chams**（忽略深度渲染 + 发光描边）、**Name Tags**（姓名/生命/队伍旗帜标签，Logo 锚定左缘随相机贴合）、**Target HUD**（可配置 Player Search Distance，纯视觉）、**Scaffold HUD**（方块图标/数量/BPS，无自动化放置）、**Attack Ring**（最近玩家视觉环，不自动攻击）、**Combat Visuals**（第一人称挥剑/格挡动画，仅渲染）、**Team Viewer**（Apollo 队伍 HUD/标记/消息视觉）、**Music**（网易云/QQ 音乐屏幕 + 歌词 HUD）。
+- 新 HUD 组件接入 DioxideLite 模块管理器与 HUD 控制器，可在 ClickGUI 与 HUD Editor 中编辑；HUD Editor 在聊天界面打开时也可通过按键唤起。
+- Watermark 保持原设计意图：Logo 光栅路径改为默认避免 Mitchell 过滤与非必要的抗锯齿 blit，保留可选 Logo / 阴影 / 发光 / 渐变 / 文字行为。
+- 灵动岛（Dynamic Island）实现保持不变，未迁移替换。
+- **边界**：未复制任何战斗/移动自动化逻辑；所有"桥接"功能均为对既有客户端状态/输入/事件的只读视觉反应。
+
+### 修复
+- **构建失败（Music 模块）**：`build.gradle.kts` 的 `sourceSets` 误排除 `tritium/**` 与 `repackage/**`，导致 `MusicLyricsHUD` / `MusicScreen` 引用的 `tritium.ncm.music` 包与音频播放依赖（`repackage.processing.sound`、`JSynFFT`）不可见 —— 移除排除项，音乐视觉模块恢复编译。
+- 保留 v2.0.8 的 FastGlState 渲染状态守卫与单次 Skija 提交优化。
+
+---
+
 ## v2.0.8（2026-09-13）
 
 ### 修复
@@ -48,52 +63,22 @@
 
 - **Nametag Logo**：IRC 在线玩家名字左侧渲染 DioxideLite Logo（Skija）。
 - Module List 加入 ClickGUI 视觉模块。
-- 锐化修复：灵动岛 / Watermark 边缘与字体清晰度优化。
-- IRC 联动完善：灵动岛 Tab 面板展示 IRC 在线用户。
-
----
-
-## v2.0.3（2026-09-11）
-
-- **IRC Link**：接入 OpticsValleyIRC 聊天联动（Player 分类，默认开启）。
-- **Nametag 模块**：原版 Nametag 无法渲染客户端 Logo，改为 Skija 渲染层。
-
----
-
-## v2.0.2（2026-09-11）
-
-- 优化渲染管线，降低 HUD 分辨率依赖。
-- 修复 ClickGUI 主题切换崩溃（F6 热切换）。
-- 灵动岛右上角多余文字移除。
 
 ---
 
 ## v2.0.1（2026-09-11）
 
-- **OPAI Dynamic Island**：灵动岛视觉重构。
-- 核显性能优化（Skija 管线优化）。
-- 全局 Blur 调节（ClickGUI 视觉模块，默认关闭）。
+- **OPAI Dynamic Island**：灵动岛视觉 + 内存优化。
+- **Skija 管线优化**：优化渲染流水线，改善核显下的帧率。
+- **GC / 对象池优化**：减少渲染期分配与垃圾回收停顿。
+- 内置主流优化模组（Sodium / Lithium / FerriteCore）。
 
 ---
 
-## v2.0.0（2026-09-10）
+## v2.0.0（2026-09-11）
 
-- **全量重构**：脱离 pvputilsbase，独立 Base。
-- D Logo 品牌视觉。
-- 移除 pvputils 开源协议依赖，改为 GPL-3.0 / Apache-2.0 双许可。
-- 多主题 ClickGUI（含 Setsuna 主题 / LiquidGlass）。
-
----
-
-## 历史版本（节选）
-
-### v1.8.2
-- Skija + OpenGL 渲染适配，修复 Windows 下 ClickGUI 空白问题。
-- 字体补丁（Setsuna 字体渲染适配）。
-
-### v1.7.4
-- Setsuna 启动主题、LiquidGlass 默认主题。
-- ClickGUI 主题热切换（无需重启游戏）。
-
-### v1.6
-- pvputilsbase 初始版本，视觉模块基础框架。
+- 迁移至自有 Skija GPU 渲染 base（不再基于 pvputils）。
+- ClickGUI：Pop / Drop 双形态，F6 热切换 Liquid Glass / Minimal / Signature 主题。
+- 灵动岛视觉与 IRC 联动接入共享 Skija overlay pass。
+- **移除自动化模块**：删除战斗 / 移动 / 玩家自动化模块树与注入点，不含任何 gameplay 自动化、移动自动化、反作弊绕过或命令脚本自动化。
+- DioxideLite 成为主项目唯一客户端品牌。

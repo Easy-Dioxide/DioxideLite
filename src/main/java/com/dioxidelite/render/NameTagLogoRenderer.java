@@ -4,6 +4,7 @@ import com.dioxidelite.event.Listen;
 import com.dioxidelite.event.events.Render2DEvent;
 import com.dioxidelite.module.modules.player.IrcModule;
 import com.dioxidelite.module.modules.render.LegendWatch;
+import com.dioxidelite.module.modules.render.NameTags;
 import com.dioxidelite.util.legendwatch.LegendSuffixUtil;
 import io.github.humbleui.skija.Canvas;
 import io.github.humbleui.skija.Image;
@@ -91,11 +92,12 @@ public final class NameTagLogoRenderer {
             float gx = (float) (screenWidth * 0.5 + (rel.x / depth) * focal) / (float) guiScale;
             float gy = (float) (screenHeight * 0.5 - (rel.y / depth) * focal) / (float) guiScale;
             float size = LegendWatch.INSTANCE.clientLogoSize().get().floatValue();
-            net.minecraft.network.chat.Component displayed =
-                    LegendSuffixUtil.appendIfLegendary(player.getName(), player.getName().getString());
-            float textHalfWidth = mc.font.width(displayed) * 0.5F;
-            drawLogo(event.canvas(), gx - textHalfWidth - size - 6.0F,
-                    gy - size * 0.5F - 3.0F, size);
+            float tagScale = NameTags.INSTANCE.scale.get().floatValue();
+            float boxWidth = NameTags.INSTANCE.getTagBoxWidth(player);
+            float leftEdge = gx - (boxWidth * 0.5F) * tagScale;
+            float drawSize = size * tagScale;
+            drawLogo(event.canvas(), leftEdge - drawSize - 4.0F * tagScale,
+                    gy - drawSize * 0.5F - 3.0F * tagScale, drawSize);
         }
     }
 

@@ -63,7 +63,6 @@ repositories {
 }
 
 sourceSets.named("main") {
-    java.exclude("repackage/**", "tritium/**")
     val vendoredSetsunaViaDir = setsunaViaDir.asFile
     java.srcDirs(
             vendoredSetsunaViaDir.resolve("main/java"),

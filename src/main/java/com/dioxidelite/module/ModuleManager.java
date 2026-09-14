@@ -21,6 +21,16 @@ import com.dioxidelite.module.modules.render.DeltaForceStyle;
 import com.dioxidelite.module.modules.render.LegendWatch;
 import com.dioxidelite.module.modules.movement.Sprint;
 import com.dioxidelite.module.modules.render.NoRender;
+import com.dioxidelite.module.modules.render.ESP;
+import com.dioxidelite.module.modules.render.Chams;
+import com.dioxidelite.module.modules.render.NameTags;
+import com.dioxidelite.module.modules.render.TeamViewer;
+import com.dioxidelite.module.modules.render.AttackRing;
+import com.dioxidelite.module.modules.render.CombatVisuals;
+import com.dioxidelite.module.modules.player.NetEaseMusicModule;
+import com.dioxidelite.ui.hud.TargetHud;
+import com.dioxidelite.ui.hud.ScaffoldBlockHUD;
+import com.dioxidelite.ui.hud.MusicLyricsHUD;
 import com.dioxidelite.render.NameTagLogoRenderer;
 import com.dioxidelite.ui.hud.BPSHUD;
 import com.dioxidelite.ui.hud.CoordinatesHUD;
@@ -39,6 +49,7 @@ import com.dioxidelite.ui.hud.PerformanceHUD;
 import com.dioxidelite.ui.hud.WatermarkHUD;
 import com.dioxidelite.util.client.InputBind;
 import net.minecraft.client.Minecraft;
+import net.minecraft.client.gui.screens.ChatScreen;
 import org.lwjgl.glfw.GLFW;
 
 import java.util.ArrayList;
@@ -93,6 +104,16 @@ public final class ModuleManager {
         register(KillEffect.INSTANCE);
         register(LegendWatch.INSTANCE);
         register(NoRender.INSTANCE);
+        register(ESP.INSTANCE);
+        register(Chams.INSTANCE);
+        register(NameTags.INSTANCE);
+        register(TeamViewer.INSTANCE);
+        register(AttackRing.INSTANCE);
+        register(CombatVisuals.INSTANCE);
+        register(NetEaseMusicModule.INSTANCE);
+        register(TargetHud.INSTANCE);
+        register(ScaffoldBlockHUD.INSTANCE);
+        register(MusicLyricsHUD.INSTANCE);
         register(DioxideIslandModule.INSTANCE);
         register(GlobalBlurModule.INSTANCE);
         register(WatermarkHUD.INSTANCE);
@@ -179,10 +200,12 @@ public final class ModuleManager {
 
         switch (event.action()) {
             case GLFW.GLFW_PRESS -> {
-                if (mc.screen != null || mc.options.keyDebugModifier.isDown()) {
+                if ((mc.screen != null && !(mc.screen instanceof ChatScreen))
+                        || mc.options.keyDebugModifier.isDown()) {
                     return;
                 }
                 for (Module module : modules) {
+                    if (mc.screen instanceof ChatScreen && module != HudEditorModule.INSTANCE) continue;
                     InputBind bind = module.bind();
                     if (!bind.matchesKey(event.key()) || !bind.matchesModifiers(event.modifiers())) {
                         continue;
