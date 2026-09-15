@@ -1,6 +1,9 @@
 package com.dioxidelite.ui.dioxide;
 
 import com.dioxidelite.module.modules.player.IrcModule;
+import tritium.ncm.music.CloudMusic;
+import tritium.ncm.music.NcmLyrics;
+import tritium.ncm.music.dto.Music;
 import com.dioxidelite.DioxideLite;
 import com.dioxidelite.render.SkijaRenderer;
 import com.dioxidelite.render.SkijaUi;
@@ -38,6 +41,8 @@ public final class DioxideDynamicIsland {
     private long lastNs = System.nanoTime();
     private long lastDataNs;
     private float time;
+    private int lastLyricIndex = -1;
+    private long lyricChangedAt;
     private int cachedFps;
     private int cachedPing = -1;
     private String cachedServer = "Singleplayer";
@@ -90,7 +95,8 @@ public final class DioxideDynamicIsland {
 
     public void render(Canvas canvas, float screenW, float screenH) {
         Minecraft mc = Minecraft.getInstance();
-        if (canvas == null || mc == null || mc.player == null || mc.screen != null) return;
+        if (canvas == null || mc == null || mc.player == null) return;
+        if (mc.screen != null && !(mc.screen instanceof net.minecraft.client.gui.screens.ChatScreen)) return;
         long t0 = System.nanoTime();
         try {
         boolean expanded = mc.options != null && mc.options.keyPlayerList.isDown();
@@ -100,13 +106,15 @@ public final class DioxideDynamicIsland {
         String fps = cachedFpsText;
         int ping = cachedPing;
 
+        String overlayText = compactOverlayText();
         float targetW = expanded
                 ? Math.min(screenW - 24f, Math.max(340f, Math.min(470f, 300f + players.size() * 2f)))
-                : Math.min(screenW - 24f, Math.max(176f,
-                        SkijaUi.textWidth(DioxideLite.NAME + " " + DioxideLite.VERSION, 8.5f) + 82f));
+                : Math.min(screenW - 24f, Math.max(176f, Math.max(
+                        SkijaUi.textWidth(DioxideLite.NAME + " " + DioxideLite.VERSION, 8.5f) + 82f,
+                        overlayText.isBlank() ? 176f : SkijaUi.textWidth(overlayText, 8.0f) + 82f)));
         float targetH = expanded
                 ? Math.min(screenH - 24f, 84f + Math.max(0, ((players.size() + 5) / 6) - 1) * 14f)
-                : 30f;
+                : (overlayText.isBlank() ? 30f : 38f);
 
         float dt = Math.min(0.05f, Math.max(0f,
                 (System.nanoTime() - lastNs) / 1_000_000_000f));
@@ -173,9 +181,48 @@ public final class DioxideDynamicIsland {
         SkijaUi.text(canvas, version, x + 34f + cachedTitleWidth + 5f,
                 y + 8f, 10f, 0xFF91A0B4, 8.5f);
 
+        String overlay = compactOverlayText();
+        if (!overlay.isBlank()) {
+            drawAnimatedCompactText(canvas, overlay, x + 34f, y + 9f, w - 44f);
+            return;
+        }
         String right = cachedCompactRightText;
         float rw = cachedCompactRightWidth;
         SkijaUi.text(canvas, right, x + w - rw - 10f, y + 9f, 9f, 0xFFD7E4F2, 8.5f);
+    }
+
+    private String compactOverlayText() {
+        DynamicIslandBridge bridge = DynamicIslandBridge.getInstance();
+        if (bridge.hasCommandStatus()) return bridge.commandText();
+        Music music = CloudMusic.currentlyPlaying;
+        if (music == null || CloudMusic.player == null) return "";
+        try {
+            NcmLyrics.ensureLoaded(music);
+            float millis = CloudMusic.player.getCurrentTimeMillis();
+            int index = NcmLyrics.currentIndex(millis);
+            NcmLyrics.Line line = NcmLyrics.getCurrentLine(millis);
+            if (line == null) return "♪  " + music.getName();
+            if (index != lastLyricIndex) {
+                lastLyricIndex = index;
+                lyricChangedAt = System.currentTimeMillis();
+            }
+            return "♪  " + line.text();
+        } catch (Throwable ignored) {
+            return "♪  " + music.getName();
+        }
+    }
+
+    private void drawAnimatedCompactText(Canvas canvas, String text, float x, float y, float maxWidth) {
+        long elapsed = System.currentTimeMillis() - lyricChangedAt;
+        float progress = Math.min(1f, Math.max(0f, elapsed / 260f));
+        float eased = 1f - (float)Math.pow(1f - progress, 3);
+        float offset = (1f - eased) * 8f;
+        int alpha = Math.round(255f * (0.35f + 0.65f * eased));
+        String shown = text;
+        while (SkijaUi.textWidth(shown, 8.0f) > maxWidth && shown.length() > 3) {
+            shown = shown.substring(0, shown.length() - 2) + "…";
+        }
+        SkijaUi.text(canvas, shown, x, y + offset, 18f, (alpha << 24) | 0xD7E4F2, 8.0f);
     }
 
     private static String ircStatusText() {

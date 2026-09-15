@@ -31,9 +31,7 @@
     "ParticleEngineMixin",
     "PlayerTabOverlayMixin",
     "ScreenEffectRendererMixin",
-    "AbstractContainerScreenAccessor",
-    "LivingEntityRendererMixin",
-    "ItemInHandRendererMixin"
+    "AbstractContainerScreenAccessor"
   ],
   "injectors": {
     "defaultRequire": 1
