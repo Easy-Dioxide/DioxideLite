@@ -49,7 +49,7 @@ public final class WatermarkHUD extends EpsilonHudModule {
     public final BooleanSetting firstCharacterRainbow = add(
             new BooleanSetting("First Character Rainbow", false));
     public final BooleanSetting logo = add(new BooleanSetting("Logo", false));
-    public final BooleanSetting logoAntiAlias = add(new BooleanSetting("Logo Anti-Alias", false)
+    public final BooleanSetting logoAntiAlias = add(new BooleanSetting("Logo Anti-Alias", true)
             .visibleWhen(logo::get));
     public final BooleanSetting background = add(new BooleanSetting("Background", true));
     public final ColorSetting backgroundColor = add(new ColorSetting("Background Color",
@@ -130,7 +130,7 @@ public final class WatermarkHUD extends EpsilonHudModule {
             cacheKey = key;
         }
         if (staticCache != null) {
-            try (Paint blit = new Paint().setAntiAlias(false)) {
+            try (Paint blit = new Paint().setAntiAlias(true)) {
                 // Snap to whole GUI pixels so the cached raster (text edges,
                 // border, logo) is not blurred by half-pixel sampling.
                 float dx = Math.round(x - pad);
@@ -139,7 +139,7 @@ public final class WatermarkHUD extends EpsilonHudModule {
                         Rect.makeXYWH(0, 0, staticCache.getWidth(), staticCache.getHeight()),
                         Rect.makeXYWH(dx, dy,
                                 staticCache.getWidth(), staticCache.getHeight()),
-                        SamplingMode.DEFAULT, blit, false);
+                        SamplingMode.DEFAULT, blit, true);
             }
             return;
         }
@@ -258,12 +258,13 @@ public final class WatermarkHUD extends EpsilonHudModule {
         LOGO_PAINT.setAntiAlias(antiAlias).setColor(0xFFFFFFFF).setAlpha(255);
         if (!antiAlias) {
             LOGO_PAINT.setImageFilter(null);
-            canvas.drawImageRect(image, source, bounds, SamplingMode.DEFAULT, LOGO_PAINT, false);
+            canvas.drawImageRect(image, source, bounds, SamplingMode.DEFAULT, LOGO_PAINT, true);
             return;
         }
-        // Keep the native raster crisp at HUD scale; no post-filtering.
+        // Tiny blur on a small logo makes the mark visibly soft. Mitchell
+        // sampling provides clean minification without a filter pass.
         LOGO_PAINT.setImageFilter(null);
-        canvas.drawImageRect(image, source, bounds, SamplingMode.DEFAULT, LOGO_PAINT, false);
+        canvas.drawImageRect(image, source, bounds, SamplingMode.MITCHELL, LOGO_PAINT, true);
         LOGO_PAINT.setAlpha(255);
     }
 

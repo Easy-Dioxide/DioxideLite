@@ -76,7 +76,7 @@ public class MinecraftMixin implements MinecraftSessionAccessor {
             // blur from vanilla's extraction pipeline, so there is no reason to
             // submit a separate HUD Skija pass before the GUI pass.
             SkijaRenderer.render(skijaScreen);
-        } else if (minecraft.screen == null) {
+        } else if (minecraft.screen == null || minecraft.screen instanceof net.minecraft.client.gui.screens.ChatScreen) {
             SkijaRenderer.renderOverlay();
         }
     }

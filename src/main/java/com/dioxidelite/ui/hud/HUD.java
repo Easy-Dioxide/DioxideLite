@@ -41,10 +41,6 @@ public final class HUD extends Module {
     public final BooleanSetting radar = control("Radar", false, RadarHUD.INSTANCE);
     public final BooleanSetting scoreboard = control("Scoreboard", false, ScoreboardHUD.INSTANCE);
     public final BooleanSetting notifications = control("Notifications", true, Notifications.INSTANCE);
-    public final BooleanSetting targetHud = control("Target HUD", false, TargetHud.INSTANCE);
-    public final BooleanSetting scaffoldHud = control("Scaffold HUD", false, ScaffoldBlockHUD.INSTANCE);
-    public final BooleanSetting musicLyrics = control("Music Lyrics", false, MusicLyricsHUD.INSTANCE);
-    public final BooleanSetting teamViewer = control("Team Viewer", false, com.dioxidelite.module.modules.render.TeamViewer.INSTANCE);
 
     private boolean synchronizing;
 
@@ -108,10 +104,6 @@ public final class HUD extends Module {
             radar.set(RadarHUD.INSTANCE.isEnabled());
             scoreboard.set(ScoreboardHUD.INSTANCE.isEnabled());
             notifications.set(Notifications.INSTANCE.isEnabled());
-            targetHud.set(TargetHud.INSTANCE.isEnabled());
-            scaffoldHud.set(ScaffoldBlockHUD.INSTANCE.isEnabled());
-            musicLyrics.set(MusicLyricsHUD.INSTANCE.isEnabled());
-            teamViewer.set(com.dioxidelite.module.modules.render.TeamViewer.INSTANCE.isEnabled());
         } finally {
             synchronizing = false;
         }
@@ -129,10 +121,6 @@ public final class HUD extends Module {
         if (module == RadarHUD.INSTANCE) return radar;
         if (module == ScoreboardHUD.INSTANCE) return scoreboard;
         if (module == Notifications.INSTANCE) return notifications;
-        if (module == TargetHud.INSTANCE) return targetHud;
-        if (module == ScaffoldBlockHUD.INSTANCE) return scaffoldHud;
-        if (module == MusicLyricsHUD.INSTANCE) return musicLyrics;
-        if (module == com.dioxidelite.module.modules.render.TeamViewer.INSTANCE) return teamViewer;
         return null;
     }
 
@@ -149,11 +137,7 @@ public final class HUD extends Module {
                 PotionHUD.INSTANCE,
                 RadarHUD.INSTANCE,
                 ScoreboardHUD.INSTANCE,
-                Notifications.INSTANCE,
-                TargetHud.INSTANCE,
-                ScaffoldBlockHUD.INSTANCE,
-                MusicLyricsHUD.INSTANCE,
-                com.dioxidelite.module.modules.render.TeamViewer.INSTANCE
+                Notifications.INSTANCE
         );
     }
 
@@ -178,10 +162,6 @@ public final class HUD extends Module {
         RadarHUD.INSTANCE.setEnabled(radar.get());
         ScoreboardHUD.INSTANCE.setEnabled(scoreboard.get());
         Notifications.INSTANCE.setEnabled(notifications.get());
-        TargetHud.INSTANCE.setEnabled(targetHud.get());
-        ScaffoldBlockHUD.INSTANCE.setEnabled(scaffoldHud.get());
-        MusicLyricsHUD.INSTANCE.setEnabled(musicLyrics.get());
-        com.dioxidelite.module.modules.render.TeamViewer.INSTANCE.setEnabled(teamViewer.get());
     }
 
     private static void disableHudModules() {
@@ -196,10 +176,6 @@ public final class HUD extends Module {
         RadarHUD.INSTANCE.setEnabled(false);
         ScoreboardHUD.INSTANCE.setEnabled(false);
         Notifications.INSTANCE.setEnabled(false);
-        TargetHud.INSTANCE.setEnabled(false);
-        ScaffoldBlockHUD.INSTANCE.setEnabled(false);
-        MusicLyricsHUD.INSTANCE.setEnabled(false);
-        com.dioxidelite.module.modules.render.TeamViewer.INSTANCE.setEnabled(false);
     }
 
     // --- shared HUD accent colouring (ported 1:1 from Remix ColorUtil) ---------

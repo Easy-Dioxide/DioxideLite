@@ -4,18 +4,31 @@
 
 ---
 
+## v2.1.0（2026-09-15）
+
+### 功能
+- **命令系统（Command）**：新增客户端命令注册表骨架（`CommandManager` / `CommandBuilder` / 参数构建 / Tab 补全提供器）。v2 明确不注册任何 gameplay / cheat 命令，未匹配命令默认放行至原版聊天。
+- **聊天 → 灵动岛联动**：聊天输入实时同步到灵动岛（`DynamicIslandBridge.onChatInput` / `onCommandSubmitted`）。
+- **HUD Editor 聊天 overlay**：聊天界面打开时可通过按键唤起 HUD Editor，直接拖拽 / 右键调整 HUD 布局（RESET / DONE）。
+- **IRC 命令分发**：`IrcChatHandler` 接入聊天发送链路，`.` 前缀命令在客户端本地处理，其余消息走原版发送。
+
+### 修复
+- **ChatScreenMixin 崩溃**：`@Inject(method = "charTyped")` 在 MC 26.1.2 的 `ChatScreen` 中不存在（该方法已迁移至 `KeyboardHandler`），导致 Mixin 注入失败无法启动 —— 移除失效的 `charTyped` / `mouseDragged` / `mouseReleased` 注入点（`mouseDragged` / `mouseReleased` 在 26.1.2 `ChatScreen` 中亦不存在），保留有效的 `keyPressed` / `mouseClicked` / `handleChatInput` 注入。
+- **ScaffoldBlockHUD 编译错误**：`(float) stayTime.get()` 对装箱 `Double` 强转不合法 —— 改为 `((Number) stayTime.get()).floatValue()`。
+- **构建排除修复**：`sourceSets` 移除对 `tritium/**` 与 `repackage/**` 的误排除（音乐视觉依赖与音频库参与编译打包）。
+
+---
+
 ## v2.0.9（2026-09-15）
 
 ### 视觉（Setsuna 迁移）
-- 基于 2.0.8 base 迁移 SetsunaClient 完整实体视觉面：**ESP**（玩家/容器描边）、**Chams**（忽略深度渲染 + 发光描边）、**Name Tags**（姓名/生命/队伍旗帜标签，Logo 锚定左缘随相机贴合）、**Target HUD**（可配置 Player Search Distance，纯视觉）、**Scaffold HUD**（方块图标/数量/BPS，无自动化放置）、**Attack Ring**（最近玩家视觉环，不自动攻击）、**Combat Visuals**（第一人称挥剑/格挡动画，仅渲染）、**Team Viewer**（Apollo 队伍 HUD/标记/消息视觉）、**Music**（网易云/QQ 音乐屏幕 + 歌词 HUD）。
-- 新 HUD 组件接入 DioxideLite 模块管理器与 HUD 控制器，可在 ClickGUI 与 HUD Editor 中编辑；HUD Editor 在聊天界面打开时也可通过按键唤起。
-- Watermark 保持原设计意图：Logo 光栅路径改为默认避免 Mitchell 过滤与非必要的抗锯齿 blit，保留可选 Logo / 阴影 / 发光 / 渐变 / 文字行为。
-- 灵动岛（Dynamic Island）实现保持不变，未迁移替换。
-- **边界**：未复制任何战斗/移动自动化逻辑；所有"桥接"功能均为对既有客户端状态/输入/事件的只读视觉反应。
+- 基于 2.0.8 base 迁移 SetsunaClient 完整实体视觉面：**ESP**、**Chams**、**Name Tags**（Logo 锚定左缘）、**Target HUD**（可配置 Player Search Distance，纯视觉）、**Scaffold HUD**（无自动化放置）、**Attack Ring**（纯视觉）、**Combat Visuals**（仅渲染）、**Team Viewer**、**Music**（网易云/QQ 音乐屏幕 + 歌词 HUD）。
+- 新 HUD 组件接入 DioxideLite 模块管理器与 HUD 控制器。
+- Watermark Logo 光栅路径优化（默认避免 Mitchell 过滤与额外抗锯齿 blit）。
+- **边界**：未复制任何战斗/移动自动化逻辑；所有"桥接"功能均为只读视觉反应。
 
 ### 修复
-- **构建失败（Music 模块）**：`build.gradle.kts` 的 `sourceSets` 误排除 `tritium/**` 与 `repackage/**`，导致 `MusicLyricsHUD` / `MusicScreen` 引用的 `tritium.ncm.music` 包与音频播放依赖（`repackage.processing.sound`、`JSynFFT`）不可见 —— 移除排除项，音乐视觉模块恢复编译。
-- 保留 v2.0.8 的 FastGlState 渲染状态守卫与单次 Skija 提交优化。
+- 构建失败（Music 模块）：移除 sourceSets 对 tritium/repackage 的误排除。
 
 ---
 

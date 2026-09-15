@@ -5,7 +5,6 @@ import com.dioxidelite.config.ConfigManager;
 import com.dioxidelite.event.Listen;
 import com.dioxidelite.event.events.KeyInputEvent;
 import com.dioxidelite.module.ModuleManager;
-import com.dioxidelite.integration.apollo.ApolloTeamNetworking;
 import com.dioxidelite.ui.dioxide.DioxideThemeController;
 import org.lwjgl.glfw.GLFW;
 import net.fabricmc.api.ClientModInitializer;
@@ -17,7 +16,6 @@ public final class DioxideLiteClient implements ClientModInitializer {
     public void onInitializeClient() {
         DioxideLite.LOGGER.info("Initializing {} {}...", DioxideLite.NAME, DioxideLite.VERSION);
         ModuleManager.INSTANCE.init();
-        ApolloTeamNetworking.init();
         EventBus.INSTANCE.subscribe(this);
         ClientLifecycleEvents.CLIENT_STARTED.register(client -> {
             try {
