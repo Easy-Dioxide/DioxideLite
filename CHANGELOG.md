@@ -4,6 +4,34 @@
 
 ---
 
+## v2.1.1（2026-09-21）
+
+### 视觉（SetsunaClient 全量移植）
+- **全量执行**：把 SetsunaClient 上游的视觉模块与全部视觉功能并入 DioxideLite，含 C 级战斗 / 移动基建（KillAura 体系与 Scaffold 引擎）。规模：新增 144 java、修改 22、删除 0；新注册模块 43、新登记 mixin 29；编译 0 错误 / 1530 class。
+- **世界渲染（本轮新增）**：`HoleESP`、`Tracers`、`OreTracers`、`SpawnerFinder`、`UHCDetector`、`Xray`。
+- **战斗**：`KillAura`、`KillAuraPlus`、`AntiBot`、`AutoTotem`、`AutoHitCrystal`、`MaceAura`、`SpearKill`、`Surround`、`Burrow`、`Criticals`、`FakeLag`、`Backtrack`、`ZealotCrystalPlus`。
+- **移动**：`Scaffold`、`Velocity`、`KeepSprint`、`MovementFix`、`InvMove`、`NoSlow`、`NoFall`、`NoJumpDelay`、`FlatElytraFly`、`Speed`。
+- **玩家**：`ChestStealer`、`InvManager`、`AutoTool`、`AutoMLG`、`FastBreak`、`FastCraftModule`、`GhostHand`、`PacketEat`、`AntiWeb`、`AntiResourcePack`、`BedAura`、`FakePlayer`。
+- **其他**：`MiddleClickFriend`、`AltManagerModule`（此前从未被注册、永远打不开，本轮补上注册）。
+- **HUD**：`TargetHud` 与 `ScaffoldBlockHUD` 改为上游原版实现。
+- **随附基建**：KillAuraPlus 引擎、AntiBot 引擎、TargetManager / RotationManager / HealthManager、Scaffold / InvMove 引擎、BlinkManager、FallingPlayer，以及 7 个新事件（Raytrace / RotationAnimation / AfterRotation / SendPosition / Strafe / KeyboardInput / FallFlying）。ClickGUI 接入音乐色卡预览；补齐 Sodium / Indigo 兼容路径。
+
+### 修复
+- **全局翻译层失效**：语言文件前缀 `DioxideLite.` 与 `MOD_ID`（`dioxide-lite`）不一致，所有模块名/设置名回退英文 → 改 4 处键构造点为 `NAME`，移植模块开箱即中文。
+- **模块开关提示链路是死的**：唯一触发调用被注释掉 → 恢复（开关默认关，默认表现不变）。
+- **Block Offset 滑块无读取方**：`CombatVisuals.blockOffset` 全工程仅 1 处声明 → 由 `ItemInHandRendererMixin` 新处理器消费。
+- **mixin accessor 前缀不一致（编译阻断）**：`DioxideLite$` → 统一为小写 `dioxidelite$`（6 个 accessor + 7 处调用点）。
+- **Constants 目录与包声明不一致**：文件移入匹配目录（内容零改动）。
+- **音乐界面显示 "SETSUNA"**：改为 `DIOXIDELITE SELECTION` / `DIOXIDELITE RECORDS`。
+- **CommandManager 缺 `addCommand` / `commands`**：替换为上游完整版（分词 / 纠错提示 / 补全 / 历史）。
+- **Tracers 设置名笔误**：`"TargetHUD"` → `"Target"`。
+- **启动崩溃**：补齐 `assets/setsunavia/**` 资源树（77 文件）修复 `DioxideLiteViaMappingDataLoader` NPE；access widener 追加 `InterpolationHandler$InterpolationData`。
+
+### 构建
+- `gradlew build` BUILD SUCCESSFUL（JDK 25 / Loom 1.15.5），产物 `DioxideLite-2.1.1.jar` 与 `-sources.jar`；已核对 jar 内版本 2.1.1，无 2.0.9 残留。
+
+---
+
 ## v2.1.0（2026-09-15）
 
 ### 功能
