@@ -5,7 +5,7 @@ import net.minecraft.world.entity.Entity;
 /** Carries the source entity alongside vanilla's extracted render state. */
 public interface EntityRenderStateAccessor {
 
-    Entity DioxideLite$getEntity();
+    Entity dioxidelite$getEntity();
 
-    void DioxideLite$setEntity(Entity entity);
+    void dioxidelite$setEntity(Entity entity);
 }

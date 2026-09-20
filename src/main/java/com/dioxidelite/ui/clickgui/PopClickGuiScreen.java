@@ -680,6 +680,12 @@ public final class PopClickGuiScreen extends Screen implements SkijaScreen {
         } else if (setting instanceof EnumSetting<?> enumSetting) {
             drawRight(canvas, fit(enumSetting.get().name(), 66.0F, 7.0F, false),
                     x + width - 13.0F, y, SETTING_ROW_HEIGHT, valueColor, 7.0F);
+            // [DioxideLite 移植] 音乐配色预设的只读色卡预览（SetsunaClient）。
+            // 需与下方 settingHeight() 的 EXTRA_HEIGHT 分支成对存在。
+            if (MusicPresetPreview.matches(setting)) {
+                MusicPresetPreview.draw(canvas, x + 13.0F, y + SETTING_ROW_HEIGHT,
+                        Math.max(1.0F, width - 26.0F), height - SETTING_ROW_HEIGHT, alpha);
+            }
         } else if (setting instanceof IntSetting intSetting) {
             String value = Integer.toString(intSetting.get());
             drawRight(canvas, value, x + width - 13.0F, y,
@@ -1252,6 +1258,10 @@ public final class PopClickGuiScreen extends Screen implements SkijaScreen {
         if (setting instanceof ColorSetting colorSetting) {
             return SETTING_ROW_HEIGHT
                     + (colorSetting.allowAlpha() ? 4.0F : 3.0F) * COLOR_CHANNEL_HEIGHT;
+        }
+        // [DioxideLite 移植] 与上方渲染分支成对：为色卡预览多留一行高度。
+        if (MusicPresetPreview.matches(setting)) {
+            return SETTING_ROW_HEIGHT + MusicPresetPreview.EXTRA_HEIGHT;
         }
         return SETTING_ROW_HEIGHT;
     }

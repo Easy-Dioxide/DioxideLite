@@ -41,9 +41,6 @@ import java.util.Set;
 /** Direct-manipulation HUD editor with contextual settings beside the selected element. */
 public final class HudEditorScreen extends Screen implements SkijaScreen {
 
-    private static final HudEditorScreen CHAT_OVERLAY = new HudEditorScreen();
-    private static boolean chatOverlayActive;
-
     private static final float EDGE_MARGIN = 6.0F;
     private static final float SIDEBAR_WIDTH = 150.0F;
     private static final float SIDEBAR_HEADER = 22.0F;
@@ -121,10 +118,6 @@ public final class HudEditorScreen extends Screen implements SkijaScreen {
 
     @Override
     public void renderSkija(Canvas canvas) {
-        renderEditor(canvas);
-    }
-
-    private void renderEditor(Canvas canvas) {
         EventBus.INSTANCE.postTo(new Render2DEvent(canvas, width, height,
                         minecraft.getWindow().getGuiScale()),
                 subscriber -> subscriber instanceof EpsilonHudModule
@@ -137,36 +130,6 @@ public final class HudEditorScreen extends Screen implements SkijaScreen {
         }
         if (selectedModule != null) drawSidebar(canvas);
         drawActions(canvas);
-    }
-
-    /** Renders the same editor controls over the ordinary ChatScreen. */
-    public static void renderChatOverlay(Canvas canvas, int screenWidth, int screenHeight,
-                                         int mouseX, int mouseY) {
-        CHAT_OVERLAY.width = screenWidth;
-        CHAT_OVERLAY.height = screenHeight;
-        CHAT_OVERLAY.mouseX = mouseX;
-        CHAT_OVERLAY.mouseY = mouseY;
-        CHAT_OVERLAY.chatOverlayActive = true;
-        CHAT_OVERLAY.renderEditor(canvas);
-    }
-
-    public static boolean handleChatOverlayClick(MouseButtonEvent event, boolean doubleClick) {
-        if (!chatOverlayActive) return false;
-        return CHAT_OVERLAY.mouseClicked(event, doubleClick);
-    }
-
-    public static boolean handleChatOverlayDrag(MouseButtonEvent event, double dragX, double dragY) {
-        if (!chatOverlayActive) return false;
-        return CHAT_OVERLAY.mouseDragged(event, dragX, dragY);
-    }
-
-    public static boolean handleChatOverlayRelease(MouseButtonEvent event) {
-        if (!chatOverlayActive) return false;
-        return CHAT_OVERLAY.mouseReleased(event);
-    }
-
-    public static void endChatOverlay() {
-        chatOverlayActive = false;
     }
 
     private void updateInspector(List<EditorItem> items) {
@@ -478,10 +441,6 @@ public final class HudEditorScreen extends Screen implements SkijaScreen {
     }
 
     private void drawActions(Canvas canvas) {
-        if (chatOverlayActive) {
-            SkijaUi.text(canvas, "HUD EDIT  ·  drag to move  ·  right click to reset",
-                    8.0F, height - 30.0F, 14.0F, UiTheme.withAlpha(UiTheme.TEXT_MUTED, 210), 6.5F);
-        }
         float doneX = width - 8.0F - BUTTON_WIDTH;
         float resetX = doneX - 5.0F - BUTTON_WIDTH;
         float y = height - 8.0F - BUTTON_HEIGHT;
@@ -518,9 +477,7 @@ public final class HudEditorScreen extends Screen implements SkijaScreen {
         float resetX = doneX - 5.0F - BUTTON_WIDTH;
         float actionY = height - 8.0F - BUTTON_HEIGHT;
         if (contains(x, y, doneX, actionY, BUTTON_WIDTH, BUTTON_HEIGHT)) {
-            if (event.button() == GLFW.GLFW_MOUSE_BUTTON_LEFT) {
-                if (chatOverlayActive) { chatOverlayActive = false; } else onClose();
-            }
+            if (event.button() == GLFW.GLFW_MOUSE_BUTTON_LEFT) onClose();
             return true;
         }
         if (contains(x, y, resetX, actionY, BUTTON_WIDTH, BUTTON_HEIGHT)) {

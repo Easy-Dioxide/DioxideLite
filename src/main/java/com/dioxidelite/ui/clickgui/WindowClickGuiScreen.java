@@ -758,6 +758,11 @@ public final class WindowClickGuiScreen extends Screen implements SkijaScreen {
             } else if (setting instanceof EnumSetting<?> enumSetting) {
                 drawRight(canvas, fit(enumSetting.displayValue(), 42.0F, false),
                         rowY, SETTING_HEIGHT, headerColor, FONT_SMALL);
+                // [DioxideLite 移植] 音乐配色预设的只读色卡预览（SetsunaClient）。
+                if (MusicPresetPreview.matches(setting)) {
+                    MusicPresetPreview.draw(canvas, x + 10.0F, rowY + SETTING_HEIGHT,
+                            Math.max(1.0F, panelWidth - 20.0F), height - SETTING_HEIGHT, 1.0F);
+                }
             } else if (setting instanceof IntSetting intSetting) {
                 renderNumberSlider(canvas, rowY, intSetting.fraction(),
                         Integer.toString(intSetting.get()));
@@ -1455,6 +1460,10 @@ public final class WindowClickGuiScreen extends Screen implements SkijaScreen {
         }
         if (setting instanceof ColorSetting colorSetting) {
             return SETTING_HEIGHT + (colorSetting.allowAlpha() ? 4 : 3) * COLOR_CHANNEL_HEIGHT;
+        }
+        // [DioxideLite 移植] 与上方渲染分支成对：为色卡预览多留一行高度。
+        if (MusicPresetPreview.matches(setting)) {
+            return SETTING_HEIGHT + MusicPresetPreview.EXTRA_HEIGHT;
         }
         return SETTING_HEIGHT;
     }

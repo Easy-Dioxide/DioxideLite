@@ -26,7 +26,8 @@ public enum Category {
         this.guiVisible = guiVisible;
         String slug = name().toLowerCase(Locale.ROOT);
         String fallback = name().charAt(0) + slug.substring(1);
-        this.title = TranslationKey.of(DioxideLite.MOD_ID + ".category." + slug, fallback);
+        // [DioxideLite 修复] 同 Module.bindI18n：语言文件使用 "DioxideLite.category.*"。
+        this.title = TranslationKey.of(DioxideLite.NAME + ".category." + slug, fallback);
     }
 
     /** Localized category label for the GUI. */

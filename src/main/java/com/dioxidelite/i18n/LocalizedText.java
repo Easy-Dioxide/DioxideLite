@@ -35,7 +35,8 @@ public final class LocalizedText {
 
     private static String shared(String namespace, String source) {
         TranslationKey phrase = TranslationKey.of(
-                DioxideLite.MOD_ID + "." + namespace + "." + StringUtil.slug(source), source);
+                // [DioxideLite 修复] 语言文件前缀为 "DioxideLite."，非 MOD_ID("dioxide-lite")。
+                DioxideLite.NAME + "." + namespace + "." + StringUtil.slug(source), source);
         if (phrase.exists()) {
             return phrase.get();
         }
@@ -60,7 +61,8 @@ public final class LocalizedText {
                 String token = expanded.substring(start, index);
                 String slug = StringUtil.slug(token);
                 TranslationKey term = slug.isEmpty() ? null : TranslationKey.of(
-                        DioxideLite.MOD_ID + ".term." + slug, token);
+                        // [DioxideLite 修复] 同上，术语表前缀。
+                        DioxideLite.NAME + ".term." + slug, token);
                 if (term != null && term.exists()) {
                     result.append(term.get());
                     translated = true;

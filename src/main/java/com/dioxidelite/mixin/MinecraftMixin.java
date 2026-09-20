@@ -33,7 +33,7 @@ public class MinecraftMixin implements MinecraftSessionAccessor {
     private User user;
 
     @Override
-    public void DioxideLite$setUser(User user) {
+    public void dioxidelite$setUser(User user) {
         this.user = user;
     }
 
@@ -68,7 +68,7 @@ public class MinecraftMixin implements MinecraftSessionAccessor {
 
         if (overlay instanceof LoadingOverlay loading) {
             float progress = loading instanceof LoadingOverlayAccessor accessor
-                    ? accessor.DioxideLite$getCurrentProgress()
+                    ? accessor.dioxidelite$getCurrentProgress()
                     : -1.0F;
             SkijaRenderer.renderLoading(progress);
         } else if (minecraft.screen instanceof SkijaScreen skijaScreen) {
@@ -76,7 +76,7 @@ public class MinecraftMixin implements MinecraftSessionAccessor {
             // blur from vanilla's extraction pipeline, so there is no reason to
             // submit a separate HUD Skija pass before the GUI pass.
             SkijaRenderer.render(skijaScreen);
-        } else if (minecraft.screen == null || minecraft.screen instanceof net.minecraft.client.gui.screens.ChatScreen) {
+        } else if (minecraft.screen == null) {
             SkijaRenderer.renderOverlay();
         }
     }

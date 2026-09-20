@@ -98,8 +98,14 @@ public abstract class Module {
             EventBus.INSTANCE.unsubscribe(this);
         }
         afterEnabledStateChange(value, wasEnabled);
-        // No automatic module-state toast: enabling/disabling modules must not
-        // spam the screen (e.g. the old top-right "Dynamic Island / Enabled").
+        // [DioxideLite 修复] 空壳功能修复。
+        // Notifications 的 "Module State" 开关与 NotificationManager.moduleState()
+        // 此前整条链路没有任何调用方，这里就是被注释掉的最后一环。
+        // 该开关默认值为 false，因此恢复调用不改变默认表现（默认依然不弹提示），
+        // 但用户打开开关后即可生效。ClickGUI 内切换走 interactFromClickGui()，
+        // 已被 withoutModuleFeedback 抑制，不会刷屏。
+        // 回退方式：删除下面这一行。
+        NotificationManager.INSTANCE.moduleState(name(), enabled);
     }
 
     /** Invoked for non-toggleable modules when their keybind/button fires. */
@@ -210,7 +216,11 @@ public abstract class Module {
 
     /** Called once at registration to build the {@code DioxideLite.module.<slug>} key tree. */
     public void bindI18n() {
-        this.title = TranslationKey.of(DioxideLite.MOD_ID + ".module." + id(), name);
+        // [DioxideLite 修复] 键前缀由 MOD_ID("dioxide-lite") 改为 NAME("DioxideLite")。
+        // 语言文件 1314 条词条全部以 "DioxideLite." 开头，而 MOD_ID 生成的
+        // "dioxide-lite." 前缀一条都不存在，导致所有模块名/设置名/枚举值
+        // 永远命中不到翻译、只能回退成硬编码英文。
+        this.title = TranslationKey.of(DioxideLite.NAME + ".module." + id(), name);
         for (Setting<?> setting : settings) {
             setting.bindTitle(title.child(StringUtil.slug(setting.name()), setting.name()));
         }

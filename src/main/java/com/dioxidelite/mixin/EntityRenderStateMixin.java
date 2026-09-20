@@ -14,12 +14,12 @@ public class EntityRenderStateMixin implements EntityRenderStateAccessor {
     private Entity DioxideLite$entity;
 
     @Override
-    public Entity DioxideLite$getEntity() {
+    public Entity dioxidelite$getEntity() {
         return DioxideLite$entity;
     }
 
     @Override
-    public void DioxideLite$setEntity(Entity entity) {
+    public void dioxidelite$setEntity(Entity entity) {
         this.DioxideLite$entity = entity;
     }
 }

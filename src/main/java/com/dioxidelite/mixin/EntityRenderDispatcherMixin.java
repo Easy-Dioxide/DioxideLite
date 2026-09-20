@@ -15,7 +15,7 @@ public class EntityRenderDispatcherMixin {
     @ModifyReturnValue(method = "extractEntity", at = @At("RETURN"))
     private <E extends Entity> EntityRenderState DioxideLite$onExtractEntity(EntityRenderState state, E entity, float partialTicks) {
         if (state instanceof EntityRenderStateAccessor accessor) {
-            accessor.DioxideLite$setEntity(entity);
+            accessor.dioxidelite$setEntity(entity);
         }
         return state;
     }

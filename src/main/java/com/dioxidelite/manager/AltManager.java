@@ -239,7 +239,7 @@ public final class AltManager {
                 xuid,
                 Optional.empty()
         );
-        ((MinecraftSessionAccessor) minecraft).DioxideLite$setUser(user);
+        ((MinecraftSessionAccessor) minecraft).dioxidelite$setUser(user);
         lastAlt = alt;
         save();
     }
