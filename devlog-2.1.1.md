@@ -46,6 +46,7 @@ v2.1.1 是在 2.1.0（命令 / 歌词 / 聊天 HUD）基础上，把 **SetsunaCl
    - `gradlew build` **BUILD SUCCESSFUL**（4m10s），`compileJava` 0 错误、`validateAccessWidener` 通过，产出 `DioxideLite-2.1.1.jar`（约 88.8MB）与 `DioxideLite-2.1.1-sources.jar`（约 27.8MB）。
    - 已核对 jar 内 `fabric.mod.json version=2.1.1`、`DioxideLite.class` 含 2.1.1 且无 2.0.9 残留；同时含 2.1.0 命令类（IrcChatHandler / ChatScreenMixin / CommandBuilder 等）与 2.1.1 全部视觉模块（HoleESP / KillAura / Scaffold / Xray / Tracers / TargetHud / LuaScript / MusicPresetPreview 等）。
    - `gradlew runClient` 冒烟测试于 Xvfb + llvmpipe 软渲染下进行，验证客户端可启动、Fabric 完整加载。
+   - **游戏内 Music 模块实测**：进入单人世界（生存模式，v26.1.2）后打开 `NetEaseMusicModule` → `MusicScreen`，网易云 / QQ 音乐双平台二维码登录界面均正常渲染（左侧 Home / Search / Like / Daily 导航、顶部搜索框与 NetEase / QQ 切换、底部 Not Playing 播放栏与音量条、Refresh QR code 按钮齐全），背景为游戏世界；Watermark 水印显示 `DioxideLite v2.1.1`。截图见 `docs/screenshots/07-music-netease.png`、`08-music-qq.png`。
 
 ### 已知说明
 
@@ -90,6 +91,7 @@ Scale: **+144 new java, +22 modified, 0 deleted**; **43** newly registered modul
 5. **Launch-related (already verified on Windows in the port pack)** — backfilled the `assets/setsunavia/**` resource tree (77 files) fixing the `DioxideLiteViaMappingDataLoader` NPE startup crash; appended `InterpolationHandler$InterpolationData` to the access widener; added the 67 `libs/nested` libs + annotations.jar + modmenu. Launch test passed: Fabric loads 52 mods, 430 mixin entries with zero errors, access widener applied, boots to `Setting user` (stops only at the OpenGL backend on a GPU-less machine — environment limitation).
 
 6. **This cycle's build verification (Linux / JDK 25 / Fabric Loom 1.15.5)** — `gradlew build` **BUILD SUCCESSFUL** (4m10s), `compileJava` 0 errors, `validateAccessWidener` passed, producing `DioxideLite-2.1.1.jar` (~88.8MB) and `DioxideLite-2.1.1-sources.jar` (~27.8MB). Verified the jar carries `fabric.mod.json version=2.1.1`, `DioxideLite.class` has 2.1.1 and no 2.0.9 remnant, and contains both the 2.1.0 command classes and the full 2.1.1 visual set. `gradlew runClient` smoke test runs under Xvfb + llvmpipe software rendering.
+   - **In-game Music module verified**: after joining a single-player survival world (v26.1.2), opening `NetEaseMusicModule` → `MusicScreen` renders both the NetEase and QQ Music QR-login views correctly (left Home / Search / Like / Daily nav, top search bar with NetEase / QQ toggle, bottom Not Playing player bar with volume slider, Refresh QR code button), over the live game world; the Watermark reads `DioxideLite v2.1.1`. See `docs/screenshots/07-music-netease.png` and `08-music-qq.png`.
 
 ### Known notes
 

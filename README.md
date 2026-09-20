@@ -32,6 +32,10 @@
 | --- | --- |
 | ![HUD Editor](docs/screenshots/05-hud-editor-chat.png) | ![聊天](docs/screenshots/06-chat.png) |
 
+| 游戏内 Music · 网易云 | 游戏内 Music · QQ音乐 |
+| --- | --- |
+| ![网易云音乐](docs/screenshots/07-music-netease.png) | ![QQ音乐](docs/screenshots/08-music-qq.png) |
+
 ## 安装
 
 1. 安装 **Fabric Loader ≥ 0.19.2**，游戏版本 **26.1.2**。
