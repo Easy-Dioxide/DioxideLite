@@ -1,4 +1,15 @@
-import java.net.URI
+// ---------------------------------------------------------------------------
+// DioxideLite —— 由 SetsunaClient 的构建脚本改写而来。
+//
+// 与上游的差异（DioxideLite 是单 mod 结构）：
+//   1. 上游把 SetsunaVia 作为 src/vendored/setsunavia 的独立源码集并产出多个
+//      mod（setsunavia / setsunavia-api / setsunavia-visuals）。DioxideLite 把
+//      协议翻译层直接内联在 com/viaversion/setsunavia/** 下，fabric.mod.json
+//      也只有一个 mod，因此这里不需要额外的 srcDirs 与 processResources 合并。
+//   2. 上游的 nested 库（67 个）通过 flatDir libs/nested 引入。若你的工程里没有
+//      libs/nested 目录，这一段会自动跳过，不影响编译。
+//   3. 26.1 起 Loom 插件坐标改为 net.fabricmc.fabric-loom，且不再需要 mappings 行。
+// ---------------------------------------------------------------------------
 
 plugins {
     id("net.fabricmc.fabric-loom") version "1.15.5"
@@ -9,11 +20,15 @@ val modName = project.property("mod_name").toString()
 val modAuthor = project.property("mod_author").toString()
 val javaVersion = project.property("java_version").toString()
 val minecraftVersion = project.property("minecraft_version").toString()
-val setsunaViaDir = layout.projectDirectory.dir("src/vendored/setsunavia")
-val nestedLibraryModules = (1..67).map { "nested-%03d".format(it) }
+
+val nestedLibDir = layout.projectDirectory.dir("libs/nested").asFile
+val hasNestedLibs = nestedLibDir.isDirectory
+val nestedLibraryModules = if (hasNestedLibs) (1..67).map { "nested-%03d".format(it) } else emptyList()
+
 val modMenuLocalJar = file(providers.gradleProperty("modmenu_jar")
-        .orElse("D:/modmenu-18.0.0-alpha.8.jar")
+        .orElse("libs/modmenu-18.0.0-alpha.8.jar")
         .get())
+
 val supportedWebRtcPlatforms = setOf(
         "windows-x86_64", "windows-aarch64", "linux-x86_64", "linux-aarch64", "macos-aarch64"
 )
@@ -30,12 +45,11 @@ version = project.property("version").toString()
 group = project.property("group").toString()
 
 repositories {
-    flatDir { dirs("libs/nested") }
+    if (hasNestedLibs) flatDir { dirs("libs/nested") }
     mavenCentral()
     maven("https://repo.viaversion.com")
     maven("https://maven.lenni0451.net/everything")
     maven("https://maven.terraformersmc.com/releases")
-    maven("https://api.modrinth.com/maven")
     maven("https://jitpack.io") {
         content {
             includeGroup("com.github.oryxel1")
@@ -62,43 +76,41 @@ repositories {
     }
 }
 
-sourceSets.named("main") {
-    val vendoredSetsunaViaDir = setsunaViaDir.asFile
-    java.srcDirs(
-            vendoredSetsunaViaDir.resolve("main/java"),
-            vendoredSetsunaViaDir.resolve("api/java"),
-            vendoredSetsunaViaDir.resolve("visuals/java")
-    )
-}
-
 dependencies {
     minecraft("com.mojang:minecraft:${minecraftVersion}")
     implementation("net.fabricmc:fabric-loader:${project.property("fabric_loader_version")}")
     implementation("net.fabricmc.fabric-api:fabric-api:${project.property("fabric_version")}")
-    // Bundled optimisation mods (jar-in-jar). All publish with named (mojmap)
-    // mappings, so plain implementation + include is equivalent to modImplementation.
-    // Sodium/Lithium are LGPL-3.0, FerriteCore is MIT — compatible with the
-    // project's GPL-3.0/Apache-2.0 dual licence.
-    include(implementation("net.caffeinemc:sodium-fabric:0.8.12+mc26.1.2")!!)
-    include(implementation("maven.modrinth:lithium:mc26.1.2-0.24.7-fabric")!!)
-    include(implementation("maven.modrinth:ferrite-core:9.0.0-fabric")!!)
+
+    // 移植 Xray 的 Sodium / Indigo 兼容路径所需
+    compileOnly("net.caffeinemc:sodium-fabric:0.8.12+mc26.1.2")
+
+    // 内嵌音乐子系统（tritium / Cadence）与部分协议代码使用 lombok
     compileOnly("org.projectlombok:lombok:1.18.42")
     annotationProcessor("org.projectlombok:lombok:1.18.42")
+
     implementation("com.google.zxing:core:3.5.1")
+    implementation("org.luaj:luaj-jse:3.0.1")
     implementation("com.github.FPSMasterTeam:Cadence:v0.1.1") {
         exclude(group = "com.google.code.gson", module = "gson")
     }
     implementation("org.jetbrains.kotlin:kotlin-stdlib:2.4.0")
+
+    // mixin 相关：Xray 的 @WrapOperation 与 FabricMixinPlugin 的 ASM 依赖
     compileOnly("io.github.llamalad7:mixinextras-common:0.5.3")
     compileOnly("org.ow2.asm:asm:9.8")
     compileOnly("com.google.code.findbugs:jsr305:3.0.2")
     compileOnly("org.checkerframework:checker-qual:3.12.0")
+
     if (modMenuLocalJar.isFile) compileOnly(files(modMenuLocalJar))
     else compileOnly("com.terraformersmc:modmenu:18.0.0-alpha.8")
+    val annotationsJar = file("libs/annotations.jar")
+    if (annotationsJar.isFile) compileOnly(files(annotationsJar))
+
     testImplementation("org.junit.jupiter:junit-jupiter:5.12.2")
     testImplementation("org.ow2.asm:asm:9.9")
     testRuntimeOnly("org.junit.platform:junit-platform-launcher:1.12.2")
 
+    // ---- 内联的协议翻译层（com.viaversion.setsunavia）依赖 ----
     implementation("com.viaversion:viaversion-common:5.10.0")
     implementation("com.viaversion:viabackwards-common:5.10.0")
     implementation("com.viaversion:viaaprilfools-common:4.2.1")
@@ -131,14 +143,11 @@ dependencies {
     val skijaVersion = "0.143.17"
     implementation("io.github.humbleui:skija-windows-x64:$skijaVersion")
     implementation("io.github.humbleui:skija-linux-x64:$skijaVersion")
-    include("io.github.humbleui:skija-windows-x64:$skijaVersion")
-    include("io.github.humbleui:skija-linux-x64:$skijaVersion")
-    include("io.github.humbleui:skija-shared:$skijaVersion")
-    nestedLibraryModules.forEach { include("setsuna.nested:$it:1.0.0") }
+
+    nestedLibraryModules.forEach { include("dioxidelite.nested:$it:1.0.0") }
 }
 
 tasks.withType<Test>().configureEach { useJUnitPlatform() }
-
 
 loom {
     val aw = file("src/main/resources/${modId}.accesswidener")
@@ -166,14 +175,6 @@ tasks.withType<JavaCompile>().configureEach {
 }
 
 tasks.named<ProcessResources>("processResources") {
-    val vendoredSetsunaViaDir = setsunaViaDir.asFile
-    from(vendoredSetsunaViaDir.resolve("main/resources")) {
-        exclude("fabric.mod.json", "setsunavia.accesswidener")
-    }
-    from(vendoredSetsunaViaDir.resolve("api/resources")) { exclude("fabric.mod.json") }
-    from(vendoredSetsunaViaDir.resolve("visuals/resources")) {
-        exclude("fabric.mod.json", "setsunavia-visuals.accesswidener")
-    }
     val props = mapOf(
             "version" to version,
             "mod_id" to modId,
@@ -190,7 +191,6 @@ tasks.named<ProcessResources>("processResources") {
 }
 
 tasks.named<Jar>("jar") {
-    from(setsunaViaDir.file("LICENSE")) { rename("LICENSE", "LICENSE_SetsunaVia") }
     manifest {
         attributes(
                 "Specification-Title" to modName,
@@ -201,8 +201,4 @@ tasks.named<Jar>("jar") {
                 "Built-On-Minecraft" to minecraftVersion
         )
     }
-}
-
-tasks.named<Jar>("sourcesJar") {
-    from(setsunaViaDir.file("LICENSE")) { rename("LICENSE", "LICENSE_SetsunaVia") }
 }

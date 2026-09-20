@@ -11,7 +11,6 @@ import com.dioxidelite.ui.screen.LoadingScreenDrawer;
 import com.dioxidelite.module.modules.render.DioxideIslandModule;
 import com.dioxidelite.module.modules.render.GlobalBlurModule;
 import com.dioxidelite.ui.dioxide.DioxideDynamicIsland;
-import com.dioxidelite.ui.hud.HudEditorScreen;
 
 import com.dioxidelite.ui.screen.VanillaScreenTheme;
 import io.github.humbleui.skija.BackendRenderTarget;
@@ -190,12 +189,6 @@ public final class SkijaRenderer
             EventBus.INSTANCE.post(new Render2DEvent(canvas, scaledWidth, scaledHeight, guiScale));
             if (DioxideIslandModule.INSTANCE.isEnabled()) {
                 DioxideDynamicIsland.getInstance().render(canvas, scaledWidth, scaledHeight);
-            }
-            Minecraft minecraft = Minecraft.getInstance();
-            if (minecraft.screen instanceof net.minecraft.client.gui.screens.ChatScreen) {
-                int mx = (int) minecraft.mouseHandler.getScaledXPos(minecraft.getWindow());
-                int my = (int) minecraft.mouseHandler.getScaledYPos(minecraft.getWindow());
-                HudEditorScreen.renderChatOverlay(canvas, (int) scaledWidth, (int) scaledHeight, mx, my);
             }
         }, captureBackdrop);
         lastOverlayNanos = System.nanoTime() - t0;

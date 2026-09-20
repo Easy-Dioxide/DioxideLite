@@ -10,6 +10,50 @@ import com.dioxidelite.module.modules.FontModule;
 import com.dioxidelite.module.modules.player.IrcModule;
 import com.dioxidelite.module.modules.render.FullBright;
 import com.dioxidelite.module.modules.render.HudEditorModule;
+// [DioxideLite 移植] SetsunaClient 模块导入
+import com.dioxidelite.module.modules.AltManagerModule;
+import com.dioxidelite.module.modules.combat.AntiBot;
+import com.dioxidelite.module.modules.player.AntiResourcePack;
+import com.dioxidelite.module.modules.player.AntiWeb;
+import com.dioxidelite.module.modules.combat.AutoHitCrystal;
+import com.dioxidelite.module.modules.player.AutoMLG;
+import com.dioxidelite.module.modules.player.AutoTool;
+import com.dioxidelite.module.modules.combat.AutoTotem;
+import com.dioxidelite.module.modules.combat.Backtrack;
+import com.dioxidelite.module.modules.player.BedAura;
+import com.dioxidelite.module.modules.combat.Burrow;
+import com.dioxidelite.module.modules.player.ChestStealer;
+import com.dioxidelite.module.modules.combat.Criticals;
+import com.dioxidelite.module.modules.combat.FakeLag;
+import com.dioxidelite.module.modules.player.FakePlayer;
+import com.dioxidelite.module.modules.player.FastBreak;
+import com.dioxidelite.module.modules.player.FastCraftModule;
+import com.dioxidelite.module.modules.movement.FlatElytraFly;
+import com.dioxidelite.module.modules.player.GhostHand;
+import com.dioxidelite.module.modules.render.HoleESP;
+import com.dioxidelite.module.modules.player.InvManager;
+import com.dioxidelite.module.modules.movement.InvMove;
+import com.dioxidelite.module.modules.movement.KeepSprint;
+import com.dioxidelite.module.modules.combat.KillAura;
+import com.dioxidelite.module.modules.combat.KillAuraPlus;
+import com.dioxidelite.module.modules.combat.MaceAura;
+import com.dioxidelite.module.modules.misc.MiddleClickFriend;
+import com.dioxidelite.module.modules.movement.MovementFix;
+import com.dioxidelite.module.modules.movement.NoFall;
+import com.dioxidelite.module.modules.movement.NoJumpDelay;
+import com.dioxidelite.module.modules.movement.NoSlow;
+import com.dioxidelite.module.modules.render.OreTracers;
+import com.dioxidelite.module.modules.player.PacketEat;
+import com.dioxidelite.module.modules.movement.Scaffold;
+import com.dioxidelite.module.modules.render.SpawnerFinder;
+import com.dioxidelite.module.modules.combat.SpearKill;
+import com.dioxidelite.module.modules.movement.Speed;
+import com.dioxidelite.module.modules.combat.Surround;
+import com.dioxidelite.module.modules.render.Tracers;
+import com.dioxidelite.module.modules.render.UHCDetector;
+import com.dioxidelite.module.modules.movement.Velocity;
+import com.dioxidelite.module.modules.render.Xray;
+import com.dioxidelite.module.modules.combat.ZealotCrystalPlus;
 import com.dioxidelite.module.modules.render.BlockHighlight;
 import com.dioxidelite.module.modules.render.CameraClip;
 import com.dioxidelite.module.modules.render.Compass;
@@ -22,8 +66,15 @@ import com.dioxidelite.module.modules.render.LegendWatch;
 import com.dioxidelite.module.modules.movement.Sprint;
 import com.dioxidelite.module.modules.render.NoRender;
 import com.dioxidelite.module.modules.render.ESP;
+import com.dioxidelite.module.modules.render.Chams;
+import com.dioxidelite.module.modules.render.NameTags;
+import com.dioxidelite.module.modules.render.TeamViewer;
+import com.dioxidelite.module.modules.render.AttackRing;
+import com.dioxidelite.module.modules.render.CombatVisuals;
+import com.dioxidelite.module.modules.player.NetEaseMusicModule;
 import com.dioxidelite.ui.hud.TargetHud;
 import com.dioxidelite.ui.hud.ScaffoldBlockHUD;
+import com.dioxidelite.ui.hud.MusicLyricsHUD;
 import com.dioxidelite.render.NameTagLogoRenderer;
 import com.dioxidelite.ui.hud.BPSHUD;
 import com.dioxidelite.ui.hud.CoordinatesHUD;
@@ -42,6 +93,7 @@ import com.dioxidelite.ui.hud.PerformanceHUD;
 import com.dioxidelite.ui.hud.WatermarkHUD;
 import com.dioxidelite.util.client.InputBind;
 import net.minecraft.client.Minecraft;
+import net.minecraft.client.gui.screens.ChatScreen;
 import org.lwjgl.glfw.GLFW;
 
 import java.util.ArrayList;
@@ -85,6 +137,58 @@ public final class ModuleManager {
         register(ClickGui.INSTANCE);
         register(FontModule.INSTANCE);
         register(HudEditorModule.INSTANCE);
+        // [DioxideLite 移植] 以下模块移植自 SetsunaClient（上游开源版）。
+        // AltManagerModule 此前从未被注册，导致该模块永远无法从 GUI 或按键打开，
+        // 本次一并补上。
+        // --- COMBAT ---
+        register(AntiBot.INSTANCE);
+        register(AutoHitCrystal.INSTANCE);
+        register(AutoTotem.INSTANCE);
+        register(Backtrack.INSTANCE);
+        register(Burrow.INSTANCE);
+        register(Criticals.INSTANCE);
+        register(FakeLag.INSTANCE);
+        register(KillAura.INSTANCE);
+        register(KillAuraPlus.INSTANCE);
+        register(MaceAura.INSTANCE);
+        register(SpearKill.INSTANCE);
+        register(Surround.INSTANCE);
+        register(ZealotCrystalPlus.INSTANCE);
+        // --- MISC ---
+        register(MiddleClickFriend.INSTANCE);
+        // --- MOVEMENT ---
+        register(FlatElytraFly.INSTANCE);
+        register(InvMove.INSTANCE);
+        register(KeepSprint.INSTANCE);
+        register(MovementFix.INSTANCE);
+        register(NoFall.INSTANCE);
+        register(NoJumpDelay.INSTANCE);
+        register(NoSlow.INSTANCE);
+        register(Scaffold.INSTANCE);
+        register(Speed.INSTANCE);
+        register(Velocity.INSTANCE);
+        // --- PLAYER ---
+        register(AntiResourcePack.INSTANCE);
+        register(AntiWeb.INSTANCE);
+        register(AutoMLG.INSTANCE);
+        register(AutoTool.INSTANCE);
+        register(BedAura.INSTANCE);
+        register(ChestStealer.INSTANCE);
+        register(FakePlayer.INSTANCE);
+        register(FastBreak.INSTANCE);
+        register(FastCraftModule.INSTANCE);
+        register(GhostHand.INSTANCE);
+        register(InvManager.INSTANCE);
+        register(PacketEat.INSTANCE);
+        // --- RENDER ---
+        register(HoleESP.INSTANCE);
+        register(OreTracers.INSTANCE);
+        register(SpawnerFinder.INSTANCE);
+        register(Tracers.INSTANCE);
+        register(UHCDetector.INSTANCE);
+        register(Xray.INSTANCE);
+        // --- CLIENT ---
+        register(AltManagerModule.INSTANCE);
         register(Sprint.INSTANCE);
         register(IrcModule.INSTANCE);
         register(FullBright.INSTANCE);
@@ -97,8 +201,15 @@ public final class ModuleManager {
         register(LegendWatch.INSTANCE);
         register(NoRender.INSTANCE);
         register(ESP.INSTANCE);
+        register(Chams.INSTANCE);
+        register(NameTags.INSTANCE);
+        register(TeamViewer.INSTANCE);
+        register(AttackRing.INSTANCE);
+        register(CombatVisuals.INSTANCE);
+        register(NetEaseMusicModule.INSTANCE);
         register(TargetHud.INSTANCE);
         register(ScaffoldBlockHUD.INSTANCE);
+        register(MusicLyricsHUD.INSTANCE);
         register(DioxideIslandModule.INSTANCE);
         register(GlobalBlurModule.INSTANCE);
         register(WatermarkHUD.INSTANCE);
@@ -185,10 +296,12 @@ public final class ModuleManager {
 
         switch (event.action()) {
             case GLFW.GLFW_PRESS -> {
-                if (mc.screen != null || mc.options.keyDebugModifier.isDown()) {
+                if ((mc.screen != null && !(mc.screen instanceof ChatScreen))
+                        || mc.options.keyDebugModifier.isDown()) {
                     return;
                 }
                 for (Module module : modules) {
+                    if (mc.screen instanceof ChatScreen && module != HudEditorModule.INSTANCE) continue;
                     InputBind bind = module.bind();
                     if (!bind.matchesKey(event.key()) || !bind.matchesModifiers(event.modifiers())) {
                         continue;

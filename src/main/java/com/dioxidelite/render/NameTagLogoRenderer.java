@@ -4,89 +4,123 @@ import com.dioxidelite.event.Listen;
 import com.dioxidelite.event.events.Render2DEvent;
 import com.dioxidelite.module.modules.player.IrcModule;
 import com.dioxidelite.module.modules.render.LegendWatch;
+import com.dioxidelite.module.modules.render.NameTags;
 import com.dioxidelite.util.legendwatch.LegendSuffixUtil;
-import com.dioxidelite.util.render.WorldToScreen;
 import io.github.humbleui.skija.Canvas;
 import io.github.humbleui.skija.Image;
 import io.github.humbleui.skija.Paint;
 import io.github.humbleui.skija.SamplingMode;
 import io.github.humbleui.types.Rect;
-import net.minecraft.client.Minecraft;
+import net.minecraft.client.Camera;
 import net.minecraft.client.CameraType;
+import net.minecraft.client.Minecraft;
 import net.minecraft.resources.Identifier;
 import net.minecraft.world.entity.player.Player;
-import net.minecraft.world.phys.AABB;
-import org.joml.Vector4d;
+import net.minecraft.world.phys.Vec3;
+import org.joml.Matrix4f;
+import org.joml.Vector3f;
 
 /**
- * Draws the logo from the final projected name-tag anchor. Unlike the old
- * world-position/focal-length calculation, this uses the same world-to-screen
- * projection path as the client HUD, so camera rotation cannot make the logo
- * drift independently of the name tag.
+ * Paints the client logo (the same high-resolution texture the Dynamic Island
+ * uses) next to name tags through the shared Skija canvas.
+ *
+ * <p>Vanilla name tags render through the sprite-text pipeline and cannot
+ * display the custom bitmap glyph, so instead of injecting a glyph into the
+ * name tag component the logo is projected from the entity's head anchor into
+ * GUI space and drawn here every frame. It shows for the local player in third
+ * person ({@code Client Logo} in Legend Watch, on by default) and for IRC
+ * online users ({@code IRC Logo}, on by default).</p>
  */
 public final class NameTagLogoRenderer {
-    public static final NameTagLogoRenderer INSTANCE = new NameTagLogoRenderer();
-    private static final Identifier LOGO = Identifier.fromNamespaceAndPath("dioxide-lite", "textures/hud/dioxide_logo.png");
-    private static final Paint PAINT = new Paint().setAntiAlias(false);
-    private SkijaRenderer.BorrowedImage cachedLogo;
 
-    private NameTagLogoRenderer() {}
+    public static final NameTagLogoRenderer INSTANCE = new NameTagLogoRenderer();
+
+    private static final Identifier LOGO = Identifier.fromNamespaceAndPath(
+            "dioxide-lite", "textures/hud/dioxide_logo.png");
+
+    /** Beyond this squared distance the logo is not painted (matches vanilla's ~16 block name tag range). */
+    private static final double PROJECTION_FAR_SQ = 16.0 * 16.0;
+
+    private SkijaRenderer.BorrowedImage cachedLogo;
+    private static final Paint LOGO_PAINT = new Paint().setAntiAlias(true);
+
+    private NameTagLogoRenderer() {
+    }
 
     @Listen
     private void onRender2D(Render2DEvent event) {
         Minecraft mc = Minecraft.getInstance();
-        if (mc.level == null || mc.player == null) return;
-        if (!LegendWatch.INSTANCE.clientLogoEnabled() && !LegendWatch.INSTANCE.ircLogoEnabled()) return;
+        if (mc.level == null || mc.getUser() == null) return;
+        if (!LegendWatch.INSTANCE.clientLogoEnabled()
+                && !LegendWatch.INSTANCE.ircLogoEnabled()) return;
+
+        Camera camera = mc.gameRenderer.getMainCamera();
+        Vec3 camPos = camera.position();
+        double farSq = PROJECTION_FAR_SQ;
+        float fovDeg = camera.getFov();
+        if (mc.options.getCameraType() != CameraType.FIRST_PERSON) fovDeg *= 1.28F;
+        final int screenWidth = mc.getWindow().getScreenWidth();
+        final int screenHeight = mc.getWindow().getScreenHeight();
+        final double guiScale = event.guiScale() <= 0.0 ? 1.0 : event.guiScale();
+        final Matrix4f viewRot = camera.getViewRotationMatrix(new Matrix4f());
+        final float focal = (screenHeight * 0.5F)
+                / (float) Math.tan(Math.toRadians(fovDeg) * 0.5F);
+        final Vector3f rel = new Vector3f();
 
         for (Player player : mc.level.players()) {
             if (player == null || player.isRemoved()) continue;
-            boolean local = player == mc.player;
-            if (local && mc.options.getCameraType() == CameraType.FIRST_PERSON) continue;
             String clean = LegendSuffixUtil.cleanUsername(player.getName().getString());
+            boolean local = player == mc.player;
             boolean show = local
                     ? LegendWatch.INSTANCE.clientLogoEnabled()
                     : LegendWatch.INSTANCE.ircLogoEnabled() && IrcModule.isIrcUser(clean);
             if (!show) continue;
 
-            double distanceSq = player.distanceToSqr(mc.gameRenderer.getMainCamera().position());
-            if (distanceSq > 256.0) continue;
+            Vec3 pos = player.position();
+            double anchorY = pos.y + player.getDimensions(player.getPose()).height() + 0.55;
+            if (pos.distanceToSqr(camPos) > farSq) continue;
 
-            // Project a thin box around the actual name-tag attachment height.
-            // Using a box instead of a single point keeps the anchor stable in
-            // third person when the camera rolls/rotates around the player.
-            double top = player.getY() + player.getBbHeight() + 0.52;
-            AABB anchor = new AABB(player.getX() - 0.01, top - 0.01, player.getZ() - 0.01,
-                    player.getX() + 0.01, top + 0.01, player.getZ() + 0.01);
-            Vector4d bounds = WorldToScreen.projectAbsoluteAABBOn2D(anchor);
-            if (bounds == null) continue;
+            rel.set((float) (pos.x - camPos.x), (float) (anchorY - camPos.y),
+                    (float) (pos.z - camPos.z));
+            float rx = rel.x, ry = rel.y, rz = rel.z;
+            rel.x = viewRot.m00() * rx + viewRot.m01() * ry + viewRot.m02() * rz;
+            rel.y = viewRot.m10() * rx + viewRot.m11() * ry + viewRot.m12() * rz;
+            rel.z = viewRot.m20() * rx + viewRot.m21() * ry + viewRot.m22() * rz;
+            float depth = -rel.z;
+            if (depth < 0.15F) continue;
 
-            float centerX = (float)((bounds.x + bounds.z) * 0.5);
-            float centerY = (float)((bounds.y + bounds.w) * 0.5);
+            float gx = (float) (screenWidth * 0.5 + (rel.x / depth) * focal) / (float) guiScale;
+            float gy = (float) (screenHeight * 0.5 - (rel.y / depth) * focal) / (float) guiScale;
             float size = LegendWatch.INSTANCE.clientLogoSize().get().floatValue();
-            var displayed = LegendSuffixUtil.appendIfLegendary(player.getName(), player.getName().getString());
-            float textWidth = mc.font.width(displayed);
-
-            // The logo is laid out as a sibling of the name text. It is never
-            // independently transformed after this point: rotation only changes
-            // the projected name-tag anchor itself.
-            float x = centerX - textWidth * 0.5f - size - 4.0f;
-            float y = centerY - size * 0.5f;
-            drawLogo(event.canvas(), x, y, size);
+            float tagScale = NameTags.INSTANCE.scale.get().floatValue();
+            float boxWidth = NameTags.INSTANCE.getTagBoxWidth(player);
+            float leftEdge = gx - (boxWidth * 0.5F) * tagScale;
+            float drawSize = size * tagScale;
+            drawLogo(event.canvas(), leftEdge - drawSize - 4.0F * tagScale,
+                    gy - drawSize * 0.5F - 3.0F * tagScale, drawSize);
         }
     }
 
     private void drawLogo(Canvas canvas, float x, float y, float size) {
         try {
-            if (cachedLogo == null) cachedLogo = SkijaRenderer.borrowTexture(LOGO);
-            if (cachedLogo == null) return;
+            if (cachedLogo == null) {
+                cachedLogo = SkijaRenderer.borrowTexture(LOGO);
+            }
+            if (cachedLogo == null) {
+                return;
+            }
             Image image = cachedLogo.image();
             Rect src = Rect.makeXYWH(0, 0, image.getWidth(), image.getHeight());
             Rect dst = Rect.makeXYWH(x, y, size, size);
-            PAINT.setAlpha(255).setImageFilter(null);
-            canvas.drawImageRect(image, src, dst, SamplingMode.DEFAULT, PAINT, true);
+            LOGO_PAINT.setImageFilter(null).setAlpha(255);
+            canvas.drawImageRect(image, src, dst, SamplingMode.MITCHELL, LOGO_PAINT, true);
         } catch (Throwable ignored) {
             if (cachedLogo != null) {
-                try { cachedLogo.close(); } catch (Throwable ignored2) {}
+                try {
+                    cachedLogo.close();
+                } catch (Throwable ignored2) {
+                    // ignore
+                }
                 cachedLogo = null;
             }
         }
