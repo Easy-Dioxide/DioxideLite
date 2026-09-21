@@ -41,3 +41,7 @@ Server auth/uploads/avatars/*
 
 # Mac OS
 .DS_Store
+
+# local IRC server runtime state
+tools/OpticsValleyIRC-server/logs/
+irc-server.properties
