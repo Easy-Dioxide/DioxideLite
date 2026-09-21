@@ -36,6 +36,14 @@
 | --- | --- |
 | ![网易云音乐](docs/screenshots/07-music-netease.png) | ![QQ音乐](docs/screenshots/08-music-qq.png) |
 
+## Lua 脚本
+
+DioxideLite 内置 Luaj 脚本沙箱，把 `.lua` 文件放进 `<配置目录>/scripts/`，游戏内 Lua 面板即可加载。脚本可注册模块、绑定 `tick` / `render` 回调，调用 `player` / `world` / `input` / `action` 等受限 API。
+
+| 脚本 | 说明 |
+| --- | --- |
+| [`scripts/SpeedTelly.lua`](scripts/SpeedTelly.lua) | 仿绿玩 SpeedTelly 搭路：右键按住 + W/A/D，AIM 瞄准落点 → 放置 → FORWARD_RESET 视角前摆正疾跑 → 循环；平滑转头、角度限幅、落点有效性校验防虚空。 |
+
 ## 安装
 
 1. 安装 **Fabric Loader ≥ 0.19.2**，游戏版本 **26.1.2**。
