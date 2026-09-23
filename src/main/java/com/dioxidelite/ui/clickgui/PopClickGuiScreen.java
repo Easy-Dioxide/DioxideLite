@@ -680,7 +680,7 @@ public final class PopClickGuiScreen extends Screen implements SkijaScreen {
         } else if (setting instanceof EnumSetting<?> enumSetting) {
             drawRight(canvas, fit(enumSetting.get().name(), 66.0F, 7.0F, false),
                     x + width - 13.0F, y, SETTING_ROW_HEIGHT, valueColor, 7.0F);
-            // [DioxideLite 移植] 音乐配色预设的只读色卡预览（SetsunaClient）。
+            // [DioxideLite 移植] 音乐配色预设的只读色卡预览（DioxideLite）。
             // 需与下方 settingHeight() 的 EXTRA_HEIGHT 分支成对存在。
             if (MusicPresetPreview.matches(setting)) {
                 MusicPresetPreview.draw(canvas, x + 13.0F, y + SETTING_ROW_HEIGHT,

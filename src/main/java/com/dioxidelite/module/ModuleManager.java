@@ -10,7 +10,7 @@ import com.dioxidelite.module.modules.FontModule;
 import com.dioxidelite.module.modules.player.IrcModule;
 import com.dioxidelite.module.modules.render.FullBright;
 import com.dioxidelite.module.modules.render.HudEditorModule;
-// [DioxideLite 移植] SetsunaClient 模块导入
+// [DioxideLite 移植] DioxideLite 模块导入
 import com.dioxidelite.module.modules.AltManagerModule;
 import com.dioxidelite.module.modules.combat.AntiBot;
 import com.dioxidelite.module.modules.player.AntiResourcePack;
@@ -137,7 +137,7 @@ public final class ModuleManager {
         register(ClickGui.INSTANCE);
         register(FontModule.INSTANCE);
         register(HudEditorModule.INSTANCE);
-        // [DioxideLite 移植] 以下模块移植自 SetsunaClient（上游开源版）。
+        // [DioxideLite 移植] 以下模块移植自 DioxideLite（上游开源版）。
         // AltManagerModule 此前从未被注册，导致该模块永远无法从 GUI 或按键打开，
         // 本次一并补上。
         // --- COMBAT ---

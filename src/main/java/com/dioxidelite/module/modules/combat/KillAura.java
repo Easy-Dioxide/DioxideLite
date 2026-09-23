@@ -1,9 +1,9 @@
 package com.dioxidelite.module.modules.combat;
 
 // ---------------------------------------------------------------------------
-// 移植来源：SetsunaClient（上游开源版）com/setsuna/module/modules/combat/KillAura.java
-// 变更：包名/导入 com.setsuna.* -> com.dioxidelite.*，mixin 方法前缀
-//       setsuna$ -> dioxidelite$，字符串中的 setsuna -> dioxidelite。
+// 移植来源：DioxideLite（上游开源版）com/dioxidelite/module/modules/combat/KillAura.java
+// 变更：包名/导入 com.dioxidelite.* -> com.dioxidelite.*，mixin 方法前缀
+//       dioxidelite$ -> dioxidelite$，字符串中的 dioxidelite -> dioxidelite。
 //       逻辑逐行保留，未做功能改动。
 // ---------------------------------------------------------------------------
 
@@ -46,7 +46,7 @@ import com.dioxidelite.util.rotation.Priority;
 import com.dioxidelite.util.rotation.RaytraceUtils;
 import com.dioxidelite.util.rotation.Rot2f;
 import com.dioxidelite.util.rotation.RotationUtils;
-import com.viaversion.setsunavia.protocoltranslator.ProtocolTranslator;
+import com.viaversion.dioxidelitevia.protocoltranslator.ProtocolTranslator;
 import com.viaversion.viaversion.api.protocol.version.ProtocolVersion;
 import com.mojang.blaze3d.vertex.PoseStack;
 import org.lwjgl.glfw.GLFW;

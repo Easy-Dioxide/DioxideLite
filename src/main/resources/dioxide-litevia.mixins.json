@@ -1,7 +1,7 @@
 {
   "required": true,
   "minVersion": "0.8",
-  "package": "com.viaversion.setsunavia.injection.mixin",
+  "package": "com.viaversion.dioxidelitevia.injection.mixin",
   "compatibilityLevel": "JAVA_25",
   "client": [
     "compat.classic4j.MixinCCAuthenticationResponse",
