@@ -1,9 +1,9 @@
 package com.dioxidelite.script;
 
 // ---------------------------------------------------------------------------
-// 移植来源：SetsunaClient（上游开源版）com/setsuna/script/LuaSandbox.java
-// 变更：包名/导入 com.setsuna.* -> com.dioxidelite.*，mixin 方法前缀
-//       setsuna$ -> dioxidelite$，字符串中的 setsuna -> dioxidelite。
+// 移植来源：DioxideLite（上游开源版）com/dioxidelite/script/LuaSandbox.java
+// 变更：包名/导入 com.dioxidelite.* -> com.dioxidelite.*，mixin 方法前缀
+//       dioxidelite$ -> dioxidelite$，字符串中的 dioxidelite -> dioxidelite。
 //       逻辑逐行保留，未做功能改动。
 // ---------------------------------------------------------------------------
 
@@ -58,9 +58,9 @@ final class LuaSandbox {
             globals.set(forbidden, LuaValue.NIL);
         }
 
-        LuaTable setsuna = new LuaTable();
-        setsuna.set("version", LuaValue.valueOf(DioxideLite.VERSION));
-        setsuna.set("color", new VarArgFunction() {
+        LuaTable dioxidelite = new LuaTable();
+        dioxidelite.set("version", LuaValue.valueOf(DioxideLite.VERSION));
+        dioxidelite.set("color", new VarArgFunction() {
             @Override
             public Varargs invoke(Varargs args) {
                 if (args.narg() == 1) {
@@ -73,13 +73,13 @@ final class LuaSandbox {
                 return LuaValue.valueOf(LuaApiSupport.rgba(red, green, blue, alpha));
             }
         });
-        setsuna.set("color_table", new VarArgFunction() {
+        dioxidelite.set("color_table", new VarArgFunction() {
             @Override
             public Varargs invoke(Varargs args) {
                 return LuaApiSupport.colorTable(LuaApiSupport.color(args.arg1()));
             }
         });
-        setsuna.set("module", new VarArgFunction() {
+        dioxidelite.set("module", new VarArgFunction() {
             @Override
             public Varargs invoke(Varargs args) {
                 LuaTable metadata = args.arg1().checktable();
@@ -107,7 +107,7 @@ final class LuaSandbox {
                 return module.api();
             }
         });
-        globals.set("dioxidelite", setsuna);
+        globals.set("dioxidelite", dioxidelite);
         globals.set("client", clientApi());
         globals.set("player", playerApi());
         globals.set("world", LuaWorldApi.create());

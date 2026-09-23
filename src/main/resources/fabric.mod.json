@@ -13,8 +13,8 @@
     "client": [
       "com.dioxidelite.DioxideLiteClient"
     ],
-    "setsunavia": [
-      "com.viaversion.setsunavia.visuals.DioxideLiteViaVisuals"
+    "dioxidelitevia": [
+      "com.viaversion.dioxidelitevia.visuals.DioxideLiteViaVisuals"
     ]
   },
   "mixins": [
@@ -34,13 +34,13 @@
     "viafabric": "*"
   },
   "custom": {
-    "setsunavia:implVersion": "${version}+DioxideLite",
+    "dioxidelitevia:implVersion": "${version}+DioxideLite",
     "dioxide-litevia:implVersion": "${version}+DioxideLite"
   },
   "provides": [
-    "setsunavia-visuals",
-    "setsunavia-api",
-    "setsunavia",
+    "dioxidelitevia-visuals",
+    "dioxidelitevia-api",
+    "dioxidelitevia",
     "dioxide-litevia",
     "dioxide-litevia-api",
     "dioxide-litevia-visuals",

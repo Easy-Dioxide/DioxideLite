@@ -88,12 +88,19 @@ dependencies {
     compileOnly("org.projectlombok:lombok:1.18.42")
     annotationProcessor("org.projectlombok:lombok:1.18.42")
 
+    // 运行时依赖：implementation 编译时 + include 打包进 jar
     implementation("com.google.zxing:core:3.5.1")
+    include("com.google.zxing:core:3.5.1")
     implementation("org.luaj:luaj-jse:3.0.1")
+    include("org.luaj:luaj-jse:3.0.1")
     implementation("com.github.FPSMasterTeam:Cadence:v0.1.1") {
         exclude(group = "com.google.code.gson", module = "gson")
     }
+    include("com.github.FPSMasterTeam:Cadence:v0.1.1") {
+        exclude(group = "com.google.code.gson", module = "gson")
+    }
     implementation("org.jetbrains.kotlin:kotlin-stdlib:2.4.0")
+    include("org.jetbrains.kotlin:kotlin-stdlib:2.4.0")
 
     // mixin 相关：Xray 的 @WrapOperation 与 FabricMixinPlugin 的 ASM 依赖
     compileOnly("io.github.llamalad7:mixinextras-common:0.5.3")
@@ -110,39 +117,69 @@ dependencies {
     testImplementation("org.ow2.asm:asm:9.9")
     testRuntimeOnly("org.junit.platform:junit-platform-launcher:1.12.2")
 
-    // ---- 内联的协议翻译层（com.viaversion.setsunavia）依赖 ----
+    // ---- 内联的协议翻译层（com.viaversion.dioxidelitevia）运行时依赖 ----
     implementation("com.viaversion:viaversion-common:5.10.0")
+    include("com.viaversion:viaversion-common:5.10.0")
     implementation("com.viaversion:viabackwards-common:5.10.0")
+    include("com.viaversion:viabackwards-common:5.10.0")
     implementation("com.viaversion:viaaprilfools-common:4.2.1")
+    include("com.viaversion:viaaprilfools-common:4.2.1")
     implementation("net.raphimc:ViaLegacy:3.0.16")
+    include("net.raphimc:ViaLegacy:3.0.16")
     implementation("com.seedfinding:mc_biome:1.171.1")
+    include("com.seedfinding:mc_biome:1.171.1")
     implementation("com.seedfinding:mc_noise:1.171.1")
+    include("com.seedfinding:mc_noise:1.171.1")
     implementation("com.seedfinding:mc_seed:1.171.2")
+    include("com.seedfinding:mc_seed:1.171.2")
     implementation("com.seedfinding:mc_math:1.171.0")
+    include("com.seedfinding:mc_math:1.171.0")
     implementation("com.seedfinding:mc_core:1.210.0")
+    include("com.seedfinding:mc_core:1.210.0")
     implementation("net.raphimc:ViaBedrock:0.0.29-SNAPSHOT") {
         exclude(group = "com.mojang", module = "brigadier")
         exclude(group = "at.yawk.lz4", module = "lz4-java")
         exclude(group = "io.netty")
     }
+    include("net.raphimc:ViaBedrock:0.0.29-SNAPSHOT") {
+        exclude(group = "com.mojang", module = "brigadier")
+        exclude(group = "at.yawk.lz4", module = "lz4-java")
+        exclude(group = "io.netty")
+    }
     implementation("io.jsonwebtoken:jjwt-api:0.13.0")
+    include("io.jsonwebtoken:jjwt-api:0.13.0")
     implementation("io.jsonwebtoken:jjwt-impl:0.13.0")
+    include("io.jsonwebtoken:jjwt-impl:0.13.0")
     implementation("io.jsonwebtoken:jjwt-gson:0.13.0") {
         exclude(group = "com.google.code.gson", module = "gson")
     }
+    include("io.jsonwebtoken:jjwt-gson:0.13.0") {
+        exclude(group = "com.google.code.gson", module = "gson")
+    }
     implementation("net.lenni0451:Reflect:1.6.3")
+    include("net.lenni0451:Reflect:1.6.3")
     implementation("net.lenni0451.commons:unchecked:1.9.2")
+    include("net.lenni0451.commons:unchecked:1.9.2")
     implementation("de.florianreuth:classic4j:2.3.0")
+    include("de.florianreuth:classic4j:2.3.0")
     implementation("net.raphimc:MinecraftAuth:5.0.1") {
         exclude(group = "com.google.code.gson", module = "gson")
     }
+    include("net.raphimc:MinecraftAuth:5.0.1") {
+        exclude(group = "com.google.code.gson", module = "gson")
+    }
     implementation("dev.kastle.netty:netty-transport-raknet:1.7.0") { exclude(group = "io.netty") }
+    include("dev.kastle.netty:netty-transport-raknet:1.7.0") { exclude(group = "io.netty") }
     implementation("dev.kastle.netty:netty-transport-nethernet:1.7.0") { exclude(group = "io.netty") }
+    include("dev.kastle.netty:netty-transport-nethernet:1.7.0") { exclude(group = "io.netty") }
     implementation("dev.kastle.webrtc:webrtc-java:1.0.3:$webRtcPlatform")
+    include("dev.kastle.webrtc:webrtc-java:1.0.3:$webRtcPlatform")
 
     val skijaVersion = "0.143.17"
     implementation("io.github.humbleui:skija-windows-x64:$skijaVersion")
+    include("io.github.humbleui:skija-windows-x64:$skijaVersion")
     implementation("io.github.humbleui:skija-linux-x64:$skijaVersion")
+    include("io.github.humbleui:skija-linux-x64:$skijaVersion")
 
     nestedLibraryModules.forEach { include("dioxidelite.nested:$it:1.0.0") }
 }

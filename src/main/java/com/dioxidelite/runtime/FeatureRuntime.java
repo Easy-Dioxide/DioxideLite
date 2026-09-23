@@ -1,9 +1,9 @@
 package com.dioxidelite.runtime;
 
 // ---------------------------------------------------------------------------
-// 移植来源：SetsunaClient（上游开源版）com/setsuna/runtime/FeatureRuntime.java
-// 变更：包名/导入 com.setsuna.* -> com.dioxidelite.*，mixin 方法前缀
-//       setsuna$ -> dioxidelite$，字符串中的 setsuna -> dioxidelite。
+// 移植来源：DioxideLite（上游开源版）com/dioxidelite/runtime/FeatureRuntime.java
+// 变更：包名/导入 com.dioxidelite.* -> com.dioxidelite.*，mixin 方法前缀
+//       dioxidelite$ -> dioxidelite$，字符串中的 dioxidelite -> dioxidelite。
 //       逻辑逐行保留，未做功能改动。
 // ---------------------------------------------------------------------------
 
@@ -19,7 +19,7 @@ import com.dioxidelite.module.ModuleManager;
 import com.dioxidelite.notification.NotificationManager;
 import com.dioxidelite.render.SkijaRenderer;
 import com.dioxidelite.script.LuaScriptManager;
-import com.viaversion.setsunavia.protocoltranslator.ProtocolTranslator;
+import com.viaversion.dioxidelitevia.protocoltranslator.ProtocolTranslator;
 import tritium.ncm.music.CloudMusic;
 
 import java.util.concurrent.CompletableFuture;

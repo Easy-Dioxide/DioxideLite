@@ -1,7 +1,7 @@
 package com.dioxidelite.ui.hud;
 
 // ---------------------------------------------------------------------------
-// 本文件改为 SetsunaClient（上游开源版）com/setsuna/ui/hud/TargetHud.java 的原版实现。
+// 本文件改为 DioxideLite（上游开源版）com/dioxidelite/ui/hud/TargetHud.java 的原版实现。
 // 原因：你端原版把数据源绑在"最近玩家搜索"上，而上游版绑定在
 //       KillAura / KillAuraPlus / TargetManager（TargetHud）与
 //       Scaffold 移动引擎（ScaffoldBlockHUD）上。本次已一并移植这些

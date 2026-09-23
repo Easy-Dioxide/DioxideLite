@@ -1,9 +1,9 @@
 package com.dioxidelite.util.render.esp;
 
 // ---------------------------------------------------------------------------
-// 移植来源：SetsunaClient（上游开源版）com/setsuna/util/render/esp/CaptureMarkESP.java
-// 变更：包名/导入 com.setsuna.* -> com.dioxidelite.*，mixin 方法前缀
-//       setsuna$ -> dioxidelite$，字符串中的 setsuna -> dioxidelite。
+// 移植来源：DioxideLite（上游开源版）com/dioxidelite/util/render/esp/CaptureMarkESP.java
+// 变更：包名/导入 com.dioxidelite.* -> com.dioxidelite.*，mixin 方法前缀
+//       dioxidelite$ -> dioxidelite$，字符串中的 dioxidelite -> dioxidelite。
 //       逻辑逐行保留，未做功能改动。
 // ---------------------------------------------------------------------------
 
@@ -37,7 +37,7 @@ import java.awt.Color;
 
 /**
  * A billboarded, rotating "target" sprite over the KillAura target that fades
- * between two colours in a wave. Requires the {@code setsuna:textures/particles/target.png}
+ * between two colours in a wave. Requires the {@code dioxidelite:textures/particles/target.png}
  * asset.
  */
 public final class CaptureMarkESP {

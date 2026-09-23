@@ -1,9 +1,9 @@
 package com.dioxidelite.script;
 
 // ---------------------------------------------------------------------------
-// 移植来源：SetsunaClient（上游开源版）com/setsuna/script/LuaScriptManager.java
-// 变更：包名/导入 com.setsuna.* -> com.dioxidelite.*，mixin 方法前缀
-//       setsuna$ -> dioxidelite$，字符串中的 setsuna -> dioxidelite。
+// 移植来源：DioxideLite（上游开源版）com/dioxidelite/script/LuaScriptManager.java
+// 变更：包名/导入 com.dioxidelite.* -> com.dioxidelite.*，mixin 方法前缀
+//       dioxidelite$ -> dioxidelite$，字符串中的 dioxidelite -> dioxidelite。
 //       逻辑逐行保留，未做功能改动。
 // ---------------------------------------------------------------------------
 
@@ -33,7 +33,7 @@ public final class LuaScriptManager {
     private static final long MAX_SCRIPT_BYTES = 1024L * 1024L;
     private static final int MAX_ERRORS = 100;
     private static final String EXAMPLE = """
-            local module = setsuna.module({
+            local module = dioxidelite.module({
                 id = "lua_visual_example",
                 name = "Lua 视觉示例",
                 category = "render"
@@ -41,9 +41,9 @@ public final class LuaScriptManager {
 
             local showBoxes = module:boolean("show_boxes", true, "显示实体方框")
             local range = module:integer("range", 24, 4, 64, 1, "扫描范围")
-            local accent = setsuna.color("#58DCE5")
-            local fill = setsuna.color("#2458DCE5")
-            local background = setsuna.color("#D914191E")
+            local accent = dioxidelite.color("#58DCE5")
+            local fill = dioxidelite.color("#2458DCE5")
+            local background = dioxidelite.color("#D914191E")
             local ticks = 0
             local nearby = {}
 
