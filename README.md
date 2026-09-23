@@ -2,7 +2,7 @@
 
 **DioxideLite** 是一个基于 Skija 渲染的 Minecraft 视觉客户端（Fabric），为 Minecraft **26.1.2** 打造，专注流畅的 HUD 视觉、ClickGUI 与聊天联动。
 
-> 当前版本：**v2.1.1** · 平台：Fabric · 游戏版本：Minecraft 26.1.2 · JDK 25
+> 当前版本：**v2.1.2** · 平台：Fabric · 游戏版本：Minecraft 26.1.2 · JDK 25
 
 ---
 
@@ -10,19 +10,19 @@
 
 - **Skija GPU 渲染**：全部自绘 UI（ClickGUI / HUD / 灵动岛 / Watermark）走 Skija 渲染，文字锐利、动画流畅。
 - **灵动岛（Dynamic Island）**：顶部胶囊信息面板，实时显示客户端版本 / FPS / 延迟。
-- **Watermark**：客户端身份水印（默认 `DioxideLite 2.1.1`），支持自定义文字与品牌 Logo。
+- **Watermark**：客户端身份水印（默认 `DioxideLite 2.1.2`），支持自定义文字与品牌 Logo。
 - **ClickGUI（Pop / Drop）**：右 `Shift` 打开，六分类环形菜单，主题可热切换（无需重启游戏）。
 - **HUD Editor**：聊天界面打开时可通过按键唤起，直接拖拽调整 HUD 位置（RESET / DONE）。
 - **命令系统（Command）**：客户端命令注册表骨架（v2 明确不暴露任何 gameplay / cheat 命令，`handle` 默认放行至原版）。
 - **IRC 聊天联动**（Player → IRC，默认开启）：基于 OpticsValleyIRC 原版协议，IRC 在线用户 Nametag 显示 DioxideLite 品牌 Logo。
-- **视觉模块（全量移植 SetsunaClient）**：世界渲染（HoleESP / Tracers / OreTracers / SpawnerFinder / UHCDetector / Xray）、战斗（KillAura / KillAuraPlus / AntiBot / AutoTotem / Surround / Criticals 等）、移动（Scaffold / Velocity / NoSlow / Speed 等）、玩家（ChestStealer / InvManager / AutoTool / BedAura 等）、TargetHud / ScaffoldBlockHUD（上游原版）、ESP、Chams、Global Blur、Full Bright、Radar 等。
+- **视觉模块（全量移植）**：世界渲染（HoleESP / Tracers / OreTracers / SpawnerFinder / UHCDetector / Xray）、战斗（KillAura / KillAuraPlus / AntiBot / AutoTotem / Surround / Criticals 等）、移动（Scaffold / Velocity / NoSlow / Speed 等）、玩家（ChestStealer / InvManager / AutoTool / BedAura 等）、TargetHud / ScaffoldBlockHUD、ESP、Chams、Global Blur、Full Bright、Radar 等。
 - **内置优化模组**：Sodium / Lithium / FerriteCore 一并内嵌，开箱即用。
 
 ## 截图
 
-| 主菜单 | ClickGUI |
+| v2.1.2 主菜单 | ClickGUI |
 | --- | --- |
-| ![主菜单](docs/screenshots/01-main-menu.png) | ![ClickGUI](docs/screenshots/02-clickgui.png) |
+| ![主菜单](docs/screenshots/v212-main-menu.png) | ![ClickGUI](docs/screenshots/02-clickgui.png) |
 
 | 游戏内灵动岛 | Render 视觉模块 |
 | --- | --- |
@@ -48,7 +48,7 @@ DioxideLite 内置 Luaj 脚本沙箱，把 `.lua` 文件放进 `<配置目录>/s
 
 1. 安装 **Fabric Loader ≥ 0.19.2**，游戏版本 **26.1.2**。
 2. 安装 **Fabric API**（26.1.2 对应版本）。
-3. 将 `DioxideLite-2.1.1.jar` 放入 `.minecraft/mods`。
+3. 将 `DioxideLite-2.1.2.jar` 放入 `.minecraft/mods`。
 4. 启动游戏。`右 Shift` 打开 ClickGUI，灵动岛默认开启。
 
 ## IRC 使用
@@ -66,9 +66,17 @@ DioxideLite 内置 Luaj 脚本沙箱，把 `.lua` 文件放进 `<配置目录>/s
 .\gradlew.bat clean build
 ```
 
-产物位于 `build/libs/DioxideLite-2.1.1.jar`（含 sources.jar）。
+产物位于 `build/libs/DioxideLite-2.1.2.jar`（含 sources.jar）。
 
-> 注意：构建依赖 `libs/nested/` 下的内嵌库（Setsuna 系列）与 `src/main/java/tritium`、`src/main/java/repackage`（音频 / JSyn 库），均已随仓库提供。
+> 注意：构建依赖 `libs/nested/` 下的内嵌库与 `src/main/java/tritium`、`src/main/java/repackage`（音频 / JSyn 库），均已随仓库提供。
+
+## 更新日志
+
+| 版本 | Devlog |
+| --- | --- |
+| v2.1.2 | [devlog-2.1.2.md](devlog-2.1.2.md) — 修复 Windows 运行失败 + 去除 setsuna 字样 + 自定义背景 |
+| v2.1.1 | [devlog-2.1.1.md](devlog-2.1.1.md) — 视觉模块全量移植 + Music 模块 + 灵动岛 + Lua 脚本沙箱 |
+| v2.1.0 | [devlog-2.1.0.md](devlog-2.1.0.md) — 初始 Skija 渲染 + ClickGUI + IRC 联动 |
 
 ## 许可
 
