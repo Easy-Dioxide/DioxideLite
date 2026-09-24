@@ -32,10 +32,10 @@ public final class DioxideThemeController {
         current = theme == null ? Theme.LIQUID_GLASS : theme;
         ClickGui gui = ClickGui.INSTANCE;
         switch (current) {
-            case LIQUID_GLASS -> { gui.mode.set(ClickGui.Mode.Pop); gui.daylightMode.set(false); gui.accent.set(new Color(120, 200, 255)); }
+            case LIQUID_GLASS -> { gui.mode.set(ClickGui.Mode.Setsuna); gui.daylightMode.set(false); gui.accent.set(new Color(120, 200, 255)); }
             case MINIMAL -> { gui.mode.set(ClickGui.Mode.Drop); gui.daylightMode.set(false); gui.accent.set(new Color(205, 215, 225)); }
-            case SIGNATURE -> { gui.mode.set(ClickGui.Mode.Pop); gui.daylightMode.set(true); gui.accent.set(new Color(105, 185, 255)); }
-            case OPAI_ONYX -> { gui.mode.set(ClickGui.Mode.Pop); gui.daylightMode.set(false); gui.popBackgroundBlur.set(3); gui.accent.set(new Color(145, 205, 255)); }
+            case SIGNATURE -> { gui.mode.set(ClickGui.Mode.Setsuna); gui.daylightMode.set(true); gui.accent.set(new Color(105, 185, 255)); }
+            case OPAI_ONYX -> { gui.mode.set(ClickGui.Mode.Setsuna); gui.daylightMode.set(false); gui.popBackgroundBlur.set(3); gui.accent.set(new Color(145, 205, 255)); }
         }
     }
 }

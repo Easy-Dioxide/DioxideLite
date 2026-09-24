@@ -17,14 +17,12 @@ public final class DioxideIslandModule extends Module {
     public static final DioxideIslandModule INSTANCE = new DioxideIslandModule();
 
     public enum Style {
-        DIOXIDE,
-        OPAI_ONYX,
-        ONYX_MINIMAL,
-        ONYX_GLASS
+        DIOXIDE_OPAI,
+        OPEN_ONYX
     }
 
     public final EnumSetting<Style> style =
-            add(new EnumSetting<>("Island Style", Style.DIOXIDE));
+            add(new EnumSetting<>("Island", Style.DIOXIDE_OPAI));
 
     public final BooleanSetting musicLyrics =
             add(new BooleanSetting("Music Lyrics", true));
@@ -33,7 +31,7 @@ public final class DioxideIslandModule extends Module {
             add(new BooleanSetting("Onyx Notifications", true));
 
     private DioxideIslandModule() {
-        super("Dynamic Island", Category.RENDER);
+        super("Dioxide Island", Category.RENDER);
         setEnabled(true);
     }
 }

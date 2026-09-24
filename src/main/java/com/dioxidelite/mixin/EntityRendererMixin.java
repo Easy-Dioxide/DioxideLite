@@ -1,6 +1,7 @@
 package com.dioxidelite.mixin;
 
 import com.dioxidelite.util.legendwatch.LegendSuffixUtil;
+import com.dioxidelite.module.modules.player.NameChanger;
 import net.minecraft.client.renderer.entity.EntityRenderer;
 import net.minecraft.client.renderer.entity.state.EntityRenderState;
 import net.minecraft.world.entity.Entity;
@@ -18,11 +19,11 @@ public class EntityRendererMixin<T extends Entity, S extends EntityRenderState> 
             at = @At("RETURN"))
     private void DioxideLite$appendLegendarySuffix(T entity, S state, float partialTicks, CallbackInfo ci) {
         if (entity instanceof Player player) {
-            String rawName = player.getName().getString();
+            String rawName = NameChanger.apply(player.getName().getString());
             if (state.nameTag == null) {
                 // 26.1.2 leaves the local player's name tag unset; fill it so
                 // the name-tag module (Legend Watch) can decorate it.
-                state.nameTag = player.getName();
+                state.nameTag = net.minecraft.network.chat.Component.literal(rawName);
                 state.nameTagAttachment = player.getAttachments().getNullable(
                         net.minecraft.world.entity.EntityAttachment.NAME_TAG,
                         0, player.getYRot(partialTicks));

@@ -21,7 +21,6 @@ import com.dioxidelite.setting.settings.KeybindSetting;
 import com.dioxidelite.setting.settings.StringSetting;
 import com.dioxidelite.ui.CategoryGlyphs;
 import com.dioxidelite.ui.SkijaScreen;
-import com.dioxidelite.ui.dioxide.DioxideThemeController;
 import com.dioxidelite.ui.hud.WatermarkHUD;
 import com.dioxidelite.util.KeyBindText;
 import io.github.humbleui.skija.Canvas;
@@ -1004,10 +1003,6 @@ public final class PopClickGuiScreen extends Screen implements SkijaScreen {
             if (settingsRequested) settingsRequested = false;
             else if (categoryRequested) categoryRequested = false;
             else onClose();
-            return true;
-        }
-        if (event.key() == GLFW.GLFW_KEY_F6) {
-            DioxideThemeController.cycle(this);
             return true;
         }
         return super.keyPressed(event);

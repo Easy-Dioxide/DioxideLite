@@ -364,5 +364,13 @@
   "DioxideLite.term.nether": "Nether",
   "DioxideLite.term.portals": "Portals",
   "DioxideLite.term.retrieve": "Retrieve",
-  "DioxideLite.term.extinguish": "Extinguish"
+  "DioxideLite.term.extinguish": "Extinguish",
+  "DioxideLite.module.dioxide_island": "Dioxide Island",
+  "DioxideLite.module.dioxide_island.island_style": "Island Style",
+  "DioxideLite.module.dioxide_island.island_style.dioxide_original": "Original Dioxide",
+  "DioxideLite.module.dioxide_island.island_style.onyx_opai": "OPAI Onyx",
+  "DioxideLite.module.dioxide_island.island_style.onyx_minimal": "Onyx Minimal",
+  "DioxideLite.module.dioxide_island.island_style.onyx_glass": "Onyx Glass",
+  "DioxideLite.module.dioxide_island.music_lyrics": "Music Lyrics",
+  "DioxideLite.module.dioxide_island.onyx_notifications": "Onyx Notifications"
 }

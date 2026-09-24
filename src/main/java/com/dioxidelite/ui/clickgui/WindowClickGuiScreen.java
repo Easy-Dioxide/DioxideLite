@@ -24,7 +24,6 @@ import com.dioxidelite.setting.settings.KeybindSetting;
 import com.dioxidelite.setting.settings.StringSetting;
 import com.dioxidelite.ui.CategoryGlyphs;
 import com.dioxidelite.ui.SkijaScreen;
-import com.dioxidelite.ui.dioxide.DioxideThemeController;
 import com.dioxidelite.ui.hud.EpsilonHudModule;
 import com.dioxidelite.ui.hud.HUD;
 import com.dioxidelite.util.KeyBindText;
@@ -357,10 +356,6 @@ public final class WindowClickGuiScreen extends Screen implements SkijaScreen {
             return true;
         }
         if (textTarget != TextTarget.NONE && handleTextKey(event)) {
-            return true;
-        }
-        if (event.key() == GLFW.GLFW_KEY_F6) {
-            DioxideThemeController.cycle(this);
             return true;
         }
         return super.keyPressed(event);

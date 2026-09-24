@@ -285,15 +285,24 @@ public final class DioxideDynamicIsland {
                 || Math.abs(shapeCacheH - ch) > 12
                 || Math.abs(shapeCacheR - r) > 3f;
         if (shapeChanged) {
-            if (shapeCache != null) {
-                try { shapeCache.close(); } catch (Throwable ignored) {}
+            // Never close the image currently owned by the renderer before the
+            // replacement has been successfully created. A style change can
+            // happen while ClickGUI is writing the setting; closing first can
+            // leave Skija with a native image handle that is still referenced
+            // by the current frame and can crash the client.
+            Image replacement = renderIslandShape(cw, ch, r, expanded, style);
+            if (replacement != null) {
+                Image previous = shapeCache;
+                shapeCache = replacement;
+                shapeCacheW = cw;
+                shapeCacheH = ch;
+                shapeCacheR = r;
+                shapeCacheExpanded = expanded;
+                shapeCacheStyle = style;
+                if (previous != null) {
+                    try { previous.close(); } catch (Throwable ignored) {}
+                }
             }
-            shapeCache = renderIslandShape(cw, ch, r, expanded, style);
-            shapeCacheW = cw;
-            shapeCacheH = ch;
-            shapeCacheR = r;
-            shapeCacheExpanded = expanded;
-            shapeCacheStyle = style;
         }
         if (shapeCache == null) {
             // Fallback: draw the body directly (should not normally happen).
@@ -418,55 +427,43 @@ public final class DioxideDynamicIsland {
 
     private static int primaryColor(DioxideIslandModule.Style style) {
         return switch (style) {
-            case OPAI_ONYX -> 0xFFFFFFFF;
-            case ONYX_MINIMAL -> 0xFFF0F0F0;
-            case ONYX_GLASS -> 0xFFE8F1FF;
-            case DIOXIDE -> 0xFFF5F8FF;
+            case OPEN_ONYX -> 0xFFFFFFFF;
+            case DIOXIDE_OPAI -> 0xFFF5F8FF;
         };
     }
 
     private static int mutedColor(DioxideIslandModule.Style style) {
         return switch (style) {
-            case OPAI_ONYX -> 0xFFB7BCC5;
-            case ONYX_MINIMAL -> 0xFF9299A3;
-            case ONYX_GLASS -> 0xFF9AAEC4;
-            case DIOXIDE -> 0xFF91A0B4;
+            case OPEN_ONYX -> 0xFFB7BCC5;
+            case DIOXIDE_OPAI -> 0xFF91A0B4;
         };
     }
 
     private static int accentColor(DioxideIslandModule.Style style) {
         return switch (style) {
-            case OPAI_ONYX -> 0xFF9BD7FF;
-            case ONYX_MINIMAL -> 0xFFD7DDE5;
-            case ONYX_GLASS -> 0xFF86C8FF;
-            case DIOXIDE -> 0xFF8BD7FF;
+            case OPEN_ONYX -> 0xFF9BD7FF;
+            case DIOXIDE_OPAI -> 0xFF8BD7FF;
         };
     }
 
     private static int islandBodyColor(DioxideIslandModule.Style style) {
         return switch (style) {
-            case OPAI_ONYX -> 0xF20A0C10;
-            case ONYX_MINIMAL -> 0xF216181C;
-            case ONYX_GLASS -> 0xD91A2633;
-            case DIOXIDE -> 0xEE05070A;
+            case OPEN_ONYX -> 0xF20A0C10;
+            case DIOXIDE_OPAI -> 0xEE05070A;
         };
     }
 
     private static int islandEdgeColor(DioxideIslandModule.Style style) {
         return switch (style) {
-            case OPAI_ONYX -> 0xA8FFFFFF;
-            case ONYX_MINIMAL -> 0x70E8EDF4;
-            case ONYX_GLASS -> 0xA08BD7FF;
-            case DIOXIDE -> 0x99FFFFFF;
+            case OPEN_ONYX -> 0xA8FFFFFF;
+            case DIOXIDE_OPAI -> 0x99FFFFFF;
         };
     }
 
     private static int islandGlowColor(DioxideIslandModule.Style style) {
         return switch (style) {
-            case OPAI_ONYX -> 0x329BD7FF;
-            case ONYX_MINIMAL -> 0x18000000;
-            case ONYX_GLASS -> 0x3686C8FF;
-            case DIOXIDE -> 0x28000000;
+            case OPEN_ONYX -> 0x329BD7FF;
+            case DIOXIDE_OPAI -> 0x28000000;
         };
     }
 }
