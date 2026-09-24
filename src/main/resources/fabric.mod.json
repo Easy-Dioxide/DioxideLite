@@ -9,6 +9,7 @@
   ],
   "license": "${license}",
   "environment": "client",
+  "icon": "assets/dioxide-lite/textures/icons/icon_128x128.png",
   "entrypoints": {
     "client": [
       "com.dioxidelite.DioxideLiteClient"

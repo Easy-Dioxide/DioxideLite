@@ -31,10 +31,14 @@ public class WindowMixin {
     private List<IoSupplier<InputStream>> DioxideLite$icons(IconSet iconSet, PackResources resources) throws IOException {
         IoSupplier<InputStream> icon16 = () -> DioxideLite.class.getResourceAsStream("/assets/dioxide-lite/textures/icons/icon_16x16.png");
         IoSupplier<InputStream> icon32 = () -> DioxideLite.class.getResourceAsStream("/assets/dioxide-lite/textures/icons/icon_32x32.png");
-        try (InputStream stream16 = icon16.get(); InputStream stream32 = icon32.get()) {
-            if (stream16 != null && stream32 != null) {
-                DioxideLite.LOGGER.info("Applying {} window icon.", DioxideLite.NAME);
-                return List.of(icon16, icon32);
+        IoSupplier<InputStream> icon48 = () -> DioxideLite.class.getResourceAsStream("/assets/dioxide-lite/textures/icons/icon_48x48.png");
+        IoSupplier<InputStream> icon64 = () -> DioxideLite.class.getResourceAsStream("/assets/dioxide-lite/textures/icons/icon_64x64.png");
+        IoSupplier<InputStream> icon128 = () -> DioxideLite.class.getResourceAsStream("/assets/dioxide-lite/textures/icons/icon_128x128.png");
+        try (InputStream stream16 = icon16.get(); InputStream stream32 = icon32.get();
+             InputStream stream48 = icon48.get(); InputStream stream64 = icon64.get(); InputStream stream128 = icon128.get()) {
+            if (stream16 != null && stream32 != null && stream48 != null && stream64 != null && stream128 != null) {
+                DioxideLite.LOGGER.info("Applying {} multi-resolution window/taskbar icon.", DioxideLite.NAME);
+                return List.of(icon16, icon32, icon48, icon64, icon128);
             }
         }
 

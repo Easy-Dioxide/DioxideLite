@@ -1,3 +1,11 @@
+## 2.1.3
+
+- OpenOnyx presentation integration layer for the existing DioxideLite feature surface.
+- Dynamic Island styles: DIOXIDE, OPAI_ONYX, ONYX_MINIMAL, ONYX_GLASS.
+- Dynamic Island NetEase lyric line integration with failure-isolated API access.
+- Notification HUD styles: DIOXIDE, ONYX, OPAI; configurable display duration remains persisted in ClickGUI.
+- Kept all rendering on the existing Skija path; no OpenGL renderer replacement.
+
 # 更新日志（CHANGELOG）
 
 本文件汇总 DioxideLite 各版本更新记录。最新版本见顶部。

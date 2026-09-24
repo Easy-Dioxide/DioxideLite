@@ -7,7 +7,7 @@ import java.awt.Color;
 
 /** Presentation-only theme router. It never changes gameplay/module behaviour. */
 public final class DioxideThemeController {
-    public enum Theme { LIQUID_GLASS, MINIMAL, SIGNATURE }
+    public enum Theme { LIQUID_GLASS, MINIMAL, SIGNATURE, OPAI_ONYX }
     private static Theme current = Theme.LIQUID_GLASS;
     private DioxideThemeController() {}
     public static Theme current() { return current; }
@@ -35,6 +35,7 @@ public final class DioxideThemeController {
             case LIQUID_GLASS -> { gui.mode.set(ClickGui.Mode.Pop); gui.daylightMode.set(false); gui.accent.set(new Color(120, 200, 255)); }
             case MINIMAL -> { gui.mode.set(ClickGui.Mode.Drop); gui.daylightMode.set(false); gui.accent.set(new Color(205, 215, 225)); }
             case SIGNATURE -> { gui.mode.set(ClickGui.Mode.Pop); gui.daylightMode.set(true); gui.accent.set(new Color(105, 185, 255)); }
+            case OPAI_ONYX -> { gui.mode.set(ClickGui.Mode.Pop); gui.daylightMode.set(false); gui.popBackgroundBlur.set(3); gui.accent.set(new Color(145, 205, 255)); }
         }
     }
 }

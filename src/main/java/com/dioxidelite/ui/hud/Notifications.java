@@ -22,12 +22,14 @@ public final class Notifications extends EpsilonHudModule {
     private static final int EXIT_TIME = 220;
 
     public enum Position { TOP_CENTER, TOP_RIGHT, TOP_LEFT, BOTTOM_RIGHT, BOTTOM_LEFT, CUSTOM }
+    public enum Style { DIOXIDE, ONYX, OPAI }
 
     // Off by default: enabling/disabling modules must not spam the top-right
     // corner. Users can re-enable from the ClickGUI.
     public final BooleanSetting moduleState = add(new BooleanSetting("Module State", false));
     public final BooleanSetting moduleActions = add(new BooleanSetting("Module Actions", false));
     public final IntSetting duration = add(new IntSetting("Display Time", 2000, 500, 5000, 100));
+    public final EnumSetting<Style> style = add(new EnumSetting<>("Style", Style.DIOXIDE));
     public final IntSetting maxVisible = add(new IntSetting("Max Visible", 4, 1, 6, 1));
     public final EnumSetting<Position> position = add(new EnumSetting<>("Position", Position.TOP_CENTER));
     public final IntSetting scalePercent = add(new IntSetting("Scale", 100, 60, 160, 5));
@@ -72,8 +74,9 @@ public final class Notifications extends EpsilonHudModule {
         float slide = (1.0F - ease(progress)) * (width + 10.0F);
         float drawX = docksLeft() ? x - slide : x + slide;
         int alpha = Math.round(255.0F * progress);
-        int accent = withAlpha(entry.type().color(), alpha);
-        HudRenderUtil.panel(event.canvas(), drawX, y, width, height, Math.round(184.0F * progress));
+        int accent = withAlpha(styleAccent(entry), alpha);
+        int panel = stylePanel();
+        HudRenderUtil.panel(event.canvas(), drawX, y, width, height, Math.round(panel * progress));
         SkijaUi.fill(event.canvas(), drawX + 4.0F * scale, y + 5.0F * scale,
                 2.0F * scale, height - 10.0F * scale, accent);
 
@@ -94,9 +97,9 @@ public final class Notifications extends EpsilonHudModule {
         String message = HudRenderUtil.fit(entry.message(), textWidth, 6.7F * scale, false);
         float textBlockY = y + (height - 22.0F * scale) * 0.5F;
         SkijaUi.boldText(event.canvas(), title, textX, textBlockY,
-                12.0F * scale, withAlpha(UiTheme.TEXT, alpha), 7.8F * scale);
+                12.0F * scale, withAlpha(styleText(), alpha), 7.8F * scale);
         SkijaUi.text(event.canvas(), message, textX, textBlockY + 12.0F * scale,
-                10.0F * scale, withAlpha(UiTheme.TEXT_MUTED, Math.round(220.0F * progress)),
+                10.0F * scale, withAlpha(styleMuted(), Math.round(220.0F * progress)),
                 6.7F * scale);
 
         float remaining = 1.0F - Math.min(1.0F,
@@ -162,5 +165,38 @@ public final class Notifications extends EpsilonHudModule {
     @Override
     public int editorColor() {
         return UiTheme.INFO;
+    }
+
+
+    private int styleAccent(NotificationManager.Entry entry) {
+        return switch (style.get()) {
+            case ONYX -> entry.type().color();
+            case OPAI -> 0xFF9BD7FF;
+            case DIOXIDE -> entry.type().color();
+        };
+    }
+
+    private int stylePanel() {
+        return switch (style.get()) {
+            case ONYX -> 150;
+            case OPAI -> 205;
+            case DIOXIDE -> 184;
+        };
+    }
+
+    private int styleText() {
+        return switch (style.get()) {
+            case ONYX -> 0xFFF1F4F8;
+            case OPAI -> 0xFFF7FAFF;
+            case DIOXIDE -> UiTheme.TEXT;
+        };
+    }
+
+    private int styleMuted() {
+        return switch (style.get()) {
+            case ONYX -> 0xFFADB6C2;
+            case OPAI -> 0xFFB9C7D8;
+            case DIOXIDE -> UiTheme.TEXT_MUTED;
+        };
     }
 }

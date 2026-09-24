@@ -2,7 +2,7 @@
 
 **DioxideLite** 是一个基于 Skija 渲染的 Minecraft 视觉客户端（Fabric），为 Minecraft **26.1.2** 打造，专注流畅的 HUD 视觉、ClickGUI 与聊天联动。
 
-> 当前版本：**v2.1.2** · 平台：Fabric · 游戏版本：Minecraft 26.1.2 · JDK 25
+> 当前版本：**v2.1.3** · 平台：Fabric · 游戏版本：Minecraft 26.1.2 · JDK 25
 
 ---
 
@@ -20,9 +20,9 @@
 
 ## 截图
 
-| v2.1.2 主菜单 | ClickGUI |
+| v2.1.3 主菜单 | ClickGUI |
 | --- | --- |
-| ![主菜单](docs/screenshots/v212-main-menu.png) | ![ClickGUI](docs/screenshots/02-clickgui.png) |
+| ![主菜单](docs/screenshots/v213-main-menu.png) | ![ClickGUI](docs/screenshots/02-clickgui.png) |
 
 | 游戏内灵动岛 | Render 视觉模块 |
 | --- | --- |
@@ -48,7 +48,7 @@ DioxideLite 内置 Luaj 脚本沙箱，把 `.lua` 文件放进 `<配置目录>/s
 
 1. 安装 **Fabric Loader ≥ 0.19.2**，游戏版本 **26.1.2**。
 2. 安装 **Fabric API**（26.1.2 对应版本）。
-3. 将 `DioxideLite-2.1.2.jar` 放入 `.minecraft/mods`。
+3. 将 `DioxideLite-2.1.3.jar` 放入 `.minecraft/mods`。
 4. 启动游戏。`右 Shift` 打开 ClickGUI，灵动岛默认开启。
 
 ## IRC 使用
@@ -66,7 +66,7 @@ DioxideLite 内置 Luaj 脚本沙箱，把 `.lua` 文件放进 `<配置目录>/s
 .\gradlew.bat clean build
 ```
 
-产物位于 `build/libs/DioxideLite-2.1.2.jar`（含 sources.jar）。
+产物位于 `build/libs/DioxideLite-2.1.3.jar`（含 sources.jar）。
 
 > 注意：构建依赖 `libs/nested/` 下的内嵌库与 `src/main/java/tritium`、`src/main/java/repackage`（音频 / JSyn 库），均已随仓库提供。
 
@@ -74,6 +74,7 @@ DioxideLite 内置 Luaj 脚本沙箱，把 `.lua` 文件放进 `<配置目录>/s
 
 | 版本 | Devlog |
 | --- | --- |
+| v2.1.3 | [devlog-2.1.3-bilingual.md](devlog-2.1.3-bilingual.md) — OpenOnyx 视觉适配 + OPAI_ONYX 主题 + 多分辨率窗口图标 |
 | v2.1.2 | [devlog-2.1.2.md](devlog-2.1.2.md) — 修复 Windows 运行失败 + 去除 setsuna 字样 + 自定义背景 |
 | v2.1.1 | [devlog-2.1.1.md](devlog-2.1.1.md) — 视觉模块全量移植 + Music 模块 + 灵动岛 + Lua 脚本沙箱 |
 | v2.1.0 | [devlog-2.1.0.md](devlog-2.1.0.md) — 初始 Skija 渲染 + ClickGUI + IRC 联动 |
