@@ -26,6 +26,7 @@ import com.dioxidelite.mixin.KeyMappingAccessor;
 import com.dioxidelite.module.Category;
 import com.dioxidelite.module.Module;
 import com.dioxidelite.module.modules.combat.killaura.HeypixelKillAuraEngine;
+import com.dioxidelite.onyx.engine.OnyxCombatEngine;
 import com.dioxidelite.module.modules.movement.KeepSprint;
 import com.dioxidelite.module.modules.movement.Scaffold;
 import com.dioxidelite.module.modules.movement.Velocity;
@@ -348,6 +349,7 @@ public final class KillAura extends Module {
     }
 
     private final HeypixelKillAuraEngine heypixelEngine = new HeypixelKillAuraEngine(mc);
+    private final OnyxCombatEngine onyxCombatEngine = new OnyxCombatEngine();
     private EntityHitResult heypixelLookaheadHit;
     private boolean heypixelRuntimeActive;
     private int grimAttackKeepTicks;
@@ -487,9 +489,8 @@ public final class KillAura extends Module {
         }
 
         double acquireRange = getAcquireRange();
-        List<LivingEntity> targets = TargetManager.INSTANCE.acquireTargets(TargetRequest.of(
+        List<LivingEntity> targets = onyxCombatEngine.acquireTargets(
                 acquireRange,
-                fov.get().floatValue(),
                 player.get(),
                 mob.get(),
                 animal.get(),
@@ -497,7 +498,7 @@ public final class KillAura extends Module {
                 invisible.get(),
                 living -> isInModeRange(living) && !isTeammate(living),
                 64
-        ));
+        );
 
         if (targets.isEmpty()) {
             target = null;

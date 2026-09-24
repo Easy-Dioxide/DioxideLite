@@ -946,5 +946,13 @@
   "DioxideLite.term.nether": "地狱",
   "DioxideLite.term.portals": "传送门",
   "DioxideLite.term.retrieve": "回收",
-  "DioxideLite.term.extinguish": "灭火"
+  "DioxideLite.term.extinguish": "灭火",
+  "DioxideLite.module.dioxide_island": "灵动岛",
+  "DioxideLite.module.dioxide_island.island_style": "灵动岛样式",
+  "DioxideLite.module.dioxide_island.island_style.dioxide_original": "原版 Dioxide",
+  "DioxideLite.module.dioxide_island.island_style.onyx_opai": "OPAI Onyx",
+  "DioxideLite.module.dioxide_island.island_style.onyx_minimal": "Onyx 极简",
+  "DioxideLite.module.dioxide_island.island_style.onyx_glass": "Onyx 玻璃",
+  "DioxideLite.module.dioxide_island.music_lyrics": "音乐歌词",
+  "DioxideLite.module.dioxide_island.onyx_notifications": "Onyx 通知"
 }

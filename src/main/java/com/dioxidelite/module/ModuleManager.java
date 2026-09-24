@@ -13,6 +13,17 @@ import com.dioxidelite.module.modules.render.HudEditorModule;
 // [DioxideLite 移植] DioxideLite 模块导入
 import com.dioxidelite.module.modules.AltManagerModule;
 import com.dioxidelite.module.modules.combat.AntiBot;
+import com.dioxidelite.module.modules.combat.BedBreaker;
+import com.dioxidelite.module.modules.combat.BedDefender;
+import com.dioxidelite.module.modules.combat.BedTracker;
+import com.dioxidelite.module.modules.combat.JumpReset;
+import com.dioxidelite.module.modules.movement.AutoSprint;
+import com.dioxidelite.module.modules.movement.SafeWalk;
+import com.dioxidelite.module.modules.player.Deposit;
+import com.dioxidelite.module.modules.player.FastPlace;
+import com.dioxidelite.module.modules.player.InventoryManager;
+import com.dioxidelite.module.modules.player.NameChanger;
+import com.dioxidelite.module.modules.player.ScaffoldOnyx;
 import com.dioxidelite.module.modules.player.AntiResourcePack;
 import com.dioxidelite.module.modules.player.AntiWeb;
 import com.dioxidelite.module.modules.combat.AutoHitCrystal;
@@ -142,6 +153,10 @@ public final class ModuleManager {
         // 本次一并补上。
         // --- COMBAT ---
         register(AntiBot.INSTANCE);
+        register(BedBreaker.INSTANCE);
+        register(BedDefender.INSTANCE);
+        register(BedTracker.INSTANCE);
+        register(JumpReset.INSTANCE);
         register(AutoHitCrystal.INSTANCE);
         register(AutoTotem.INSTANCE);
         register(Backtrack.INSTANCE);
@@ -158,6 +173,8 @@ public final class ModuleManager {
         register(MiddleClickFriend.INSTANCE);
         // --- MOVEMENT ---
         register(FlatElytraFly.INSTANCE);
+        register(AutoSprint.INSTANCE);
+        register(SafeWalk.INSTANCE);
         register(InvMove.INSTANCE);
         register(KeepSprint.INSTANCE);
         register(MovementFix.INSTANCE);
@@ -169,6 +186,11 @@ public final class ModuleManager {
         register(Velocity.INSTANCE);
         // --- PLAYER ---
         register(AntiResourcePack.INSTANCE);
+        register(Deposit.INSTANCE);
+        register(FastPlace.INSTANCE);
+        register(InventoryManager.INSTANCE);
+        register(NameChanger.INSTANCE);
+        register(ScaffoldOnyx.INSTANCE);
         register(AntiWeb.INSTANCE);
         register(AutoMLG.INSTANCE);
         register(AutoTool.INSTANCE);

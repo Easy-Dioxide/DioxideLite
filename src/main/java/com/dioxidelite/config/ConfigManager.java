@@ -873,8 +873,10 @@ public final class ConfigManager {
         if (mode != null && mode.isJsonPrimitive()
                 && ("Modern".equalsIgnoreCase(mode.getAsString())
                 || "Panel".equalsIgnoreCase(mode.getAsString())
-                || "Flux".equalsIgnoreCase(mode.getAsString()))) {
-            settings.addProperty("Mode", "Pop");
+                || "Flux".equalsIgnoreCase(mode.getAsString())
+                || "Pop".equalsIgnoreCase(mode.getAsString())
+                || "LiquidGlass".equalsIgnoreCase(mode.getAsString()))) {
+            settings.addProperty("Mode", "Setsuna");
         }
     }
 
