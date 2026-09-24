@@ -26,6 +26,9 @@ public final class ClickGui extends Module {
     public enum Mode { Drop, Pop }
 
     public final EnumSetting<Mode> mode = add(new EnumSetting<>("Mode", Mode.Pop));
+    public final EnumSetting<DioxideThemeController.Theme> theme = add(
+            new EnumSetting<>("Theme", DioxideThemeController.Theme.LIQUID_GLASS)
+                    .onChange(DioxideThemeController::setTheme));
     public final BooleanSetting daylightMode = add(new BooleanSetting("Daylight Mode", false)
             .visibleWhen(() -> mode.is(Mode.Pop)));
     public final IntSetting popBackgroundBlur = add(new IntSetting("Background Blur", 5, 0, 10, 1)
