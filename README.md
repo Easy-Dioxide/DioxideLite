@@ -36,13 +36,59 @@
 | --- | --- |
 | ![网易云音乐](docs/screenshots/07-music-netease.png) | ![QQ音乐](docs/screenshots/08-music-qq.png) |
 
-## Lua 脚本
+## Lua 脚本使用教程
 
-DioxideLite 内置 Luaj 脚本沙箱，把 `.lua` 文件放进 `<配置目录>/scripts/`，游戏内 Lua 面板即可加载。脚本可注册模块、绑定 `tick` / `render` 回调，调用 `player` / `world` / `input` / `action` 等受限 API。
+DioxideLite 内置 Luaj 脚本沙箱，支持游戏内动态加载、运行、停止自定义 Lua 脚本。
+
+### 基础操作
+
+1. 按 **右 Shift** 打开 ClickGUI，进入 `Player` 分类，开启 `LuaScript` 总开关。
+2. Lua 模块面板参数：
+   - `Script Path`：脚本目录，默认 `<配置目录>/dioxidelite/scripts/`，客户端启动自动创建。
+   - `Reload`：重新扫描文件夹内全部脚本。
+   - `Run / Stop`：启动 / 终止当前选中脚本。
+   - `Print Console`：脚本控制台，查看 `print` 输出、语法与运行报错。
+3. 使用流程：
+   - 将 `.lua` 脚本文件放入 `dioxidelite/scripts/`。
+   - 在面板选中目标脚本，点击 `Run` 运行；使用完毕点 `Stop` 终止。
+
+### DioxideLite Lua 核心 API
+
+```lua
+-- 获取本地玩家对象
+local player = dioxidelite:getPlayer()
+-- 获取游戏世界对象
+local world  = dioxidelite:getWorld()
+-- 向游戏聊天框发送消息
+dioxidelite:sendChat("脚本消息")
+-- 获取玩家射线检测信息
+local ray = dioxidelite:getRaycast()
+-- 设置玩家视角（yaw 水平，pitch 垂直）
+dioxidelite:setYawPitch(yaw, pitch)
+-- 判断按键是否按住，支持 mouse_right / mouse_left / key_w 等
+local holdRight = dioxidelite:isKeyHeld("mouse_right")
+```
+
+### 自带脚本
 
 | 脚本 | 说明 |
 | --- | --- |
 | [`scripts/SpeedTelly.lua`](scripts/SpeedTelly.lua) | 仿绿玩 SpeedTelly 搭路：右键按住 + W/A/D，AIM 瞄准落点 → 放置 → FORWARD_RESET 视角前摆正疾跑 → 循环；平滑转头、角度限幅、落点有效性校验防虚空。 |
+
+#### SpeedTelly 操作方式
+
+1. 将 `SpeedTelly.lua` 放入 scripts 文件夹，加载后 `Run` 启动。
+2. 按住鼠标右键，预先瞄准搭路目标区域，脚本自动执行 speedtelly 搭路。
+   - 方块放置完成后自动回正视角，维持疾跑提速。
+   - 当前版本为硬锁视角，保证瞄准精度。
+   - 搭路距离、视角平滑系数、回正速度均可在 Lua 子面板实时调参。
+3. 松开鼠标右键，自动停止搭路循环。
+
+### 常见问题
+
+- **脚本不生效**：确认 LuaScript 模块已开启；打开控制台查看报错；脚本编码使用 UTF-8，文件名避免中文特殊字符。
+- **切换脚本**：必须先 `Stop` 当前运行脚本，再选择其他脚本 `Run`。
+- **客户端重启**：重启后脚本不会自动运行，需手动重新 `Run`；可勾选 AutoLoad 实现开机自动加载。
 
 ## 安装
 
