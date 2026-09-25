@@ -24,23 +24,28 @@ public final class WorldToScreen {
     }
 
     public static Vector3f getWorldPositionToScreen(Vec3 pos) {
-        final var camera = mc.gameRenderer.getMainCamera();
-        final Vector3f position = new Vec3(
-                pos.x - camera.position().x,
-                pos.y - camera.position().y,
-                pos.z - camera.position().z
-        ).toVector3f();
-
+        if (mc.level == null || pos == null) return null;
         CameraRenderState cameraState = mc.gameRenderer.getGameRenderState().levelRenderState.cameraRenderState;
-        Matrix4f viewProjectionMatrix = new Matrix4f(cameraState.projectionMatrix).mul(cameraState.viewRotationMatrix);
-
-        final int[] viewport = new int[]{0, 0, mc.getWindow().getWidth(), mc.getWindow().getHeight()};
-        final Vector4f out = new Vector4f();
-
-        viewProjectionMatrix.project(position, viewport, out);
-        out.y = viewport[3] - out.y;
-
-        return new Vector3f(out.x, out.y, out.z);
+        Matrix4f viewProjection = new Matrix4f(cameraState.projectionMatrix).mul(cameraState.viewRotationMatrix);
+        Vec3 camera = mc.gameRenderer.getMainCamera().position();
+        float rx = (float) (pos.x - camera.x);
+        float ry = (float) (pos.y - camera.y);
+        float rz = (float) (pos.z - camera.z);
+        Vector4f clip = new Vector4f(rx, ry, rz, 1.0F).mul(viewProjection);
+        if (!Float.isFinite(clip.x) || !Float.isFinite(clip.y) || !Float.isFinite(clip.z)
+                || !Float.isFinite(clip.w) || clip.w <= 0.0001F) {
+            return null;
+        }
+        float invW = 1.0F / clip.w;
+        float ndcX = clip.x * invW;
+        float ndcY = clip.y * invW;
+        float ndcZ = clip.z * invW;
+        float guiWidth = mc.getWindow().getGuiScaledWidth();
+        float guiHeight = mc.getWindow().getGuiScaledHeight();
+        return new Vector3f(
+                (ndcX + 1.0F) * 0.5F * guiWidth,
+                (1.0F - ndcY) * 0.5F * guiHeight,
+                ndcZ);
     }
 
     public static Vector4d getEntityPositionsOn2D(LivingEntity target, float tickDelta) {
@@ -57,57 +62,57 @@ public final class WorldToScreen {
     }
 
     public static Vector4d projectAbsoluteAABBOn2D(AABB absoluteBoundingBox) {
-        final int[] viewport = new int[]{0, 0, mc.getWindow().getWidth(), mc.getWindow().getHeight()};
+        if (absoluteBoundingBox == null || mc.level == null) return null;
         CameraRenderState cameraState = mc.gameRenderer.getGameRenderState().levelRenderState.cameraRenderState;
-        Matrix4f viewProjectionMatrix = new Matrix4f(cameraState.projectionMatrix).mul(cameraState.viewRotationMatrix);
+        Matrix4f viewProjection = new Matrix4f(cameraState.projectionMatrix).mul(cameraState.viewRotationMatrix);
         Vec3 cameraPos = mc.gameRenderer.getMainCamera().position();
+        float guiWidth = mc.getWindow().getGuiScaledWidth();
+        float guiHeight = mc.getWindow().getGuiScaledHeight();
+        if (guiWidth <= 0.0F || guiHeight <= 0.0F) return null;
 
-        final Vector4d projection = projectEntity(viewport, viewProjectionMatrix, absoluteBoundingBox, cameraPos);
-        if (projection == null) return null;
-
-        double guiScale = mc.getWindow().getGuiScale();
-        projection.x /= guiScale;
-        projection.y /= guiScale;
-        projection.z /= guiScale;
-        projection.w /= guiScale;
-
-        return projection;
+        Vector4d result = null;
+        for (int i = 0; i < 8; i++) {
+            float x = (float) (((i & 1) == 0 ? absoluteBoundingBox.minX : absoluteBoundingBox.maxX) - cameraPos.x);
+            float y = (float) (((i & 2) == 0 ? absoluteBoundingBox.minY : absoluteBoundingBox.maxY) - cameraPos.y);
+            float z = (float) (((i & 4) == 0 ? absoluteBoundingBox.minZ : absoluteBoundingBox.maxZ) - cameraPos.z);
+            Vector4f clip = new Vector4f(x, y, z, 1.0F).mul(viewProjection);
+            if (!Float.isFinite(clip.x) || !Float.isFinite(clip.y) || !Float.isFinite(clip.z)
+                    || !Float.isFinite(clip.w) || clip.w <= 0.0001F) continue;
+            float invW = 1.0F / clip.w;
+            float sx = (clip.x * invW + 1.0F) * 0.5F * guiWidth;
+            float sy = (1.0F - clip.y * invW) * 0.5F * guiHeight;
+            float sz = clip.z * invW;
+            if (!Float.isFinite(sx) || !Float.isFinite(sy) || !Float.isFinite(sz) || sz < -1.0F || sz > 1.0F) continue;
+            if (result == null) result = new Vector4d(sx, sy, sx, sy);
+            else {
+                result.x = Math.min(result.x, sx); result.y = Math.min(result.y, sy);
+                result.z = Math.max(result.z, sx); result.w = Math.max(result.w, sy);
+            }
+        }
+        return result;
     }
 
     public static Vector4d projectEntity(final int[] viewport, final Matrix4f matrix, final AABB absoluteBoundingBox, final Vec3 cameraPos) {
-        final Vector4f out = new Vector4f();
+        if (viewport == null || matrix == null || absoluteBoundingBox == null || cameraPos == null) return null;
+        // Legacy callers are kept source-compatible, but use the same guarded
+        // homogeneous projection rules as the main GUI-space path.
         Vector4d result = null;
-        boolean hasProjectedPoint = false;
-
+        Vector4f clip = new Vector4f();
         for (int i = 0; i < 8; i++) {
-            Vector3f point = new Vector3f(
-                    ((i & 1) == 0 ? (float) absoluteBoundingBox.minX : (float) absoluteBoundingBox.maxX) - (float) cameraPos.x,
-                    ((i & 2) == 0 ? (float) absoluteBoundingBox.minY : (float) absoluteBoundingBox.maxY) - (float) cameraPos.y,
-                    ((i & 4) == 0 ? (float) absoluteBoundingBox.minZ : (float) absoluteBoundingBox.maxZ) - (float) cameraPos.z
-            );
-
-            matrix.project(point, viewport, out);
-            out.y = viewport[3] - out.y;
-
-            if (!Float.isFinite(out.x) || !Float.isFinite(out.y) || !Float.isFinite(out.z)) {
-                continue;
-            }
-            if (out.z < 0.0f || out.z > 1.0f) {
-                continue;
-            }
-
-            hasProjectedPoint = true;
-
-            if (result == null) {
-                result = new Vector4d(out.x, out.y, out.x, out.y);
-            } else {
-                result.x = Math.min(result.x, out.x);
-                result.y = Math.min(result.y, out.y);
-                result.z = Math.max(result.z, out.x);
-                result.w = Math.max(result.w, out.y);
-            }
+            float x = (float) (((i & 1) == 0 ? absoluteBoundingBox.minX : absoluteBoundingBox.maxX) - cameraPos.x);
+            float y = (float) (((i & 2) == 0 ? absoluteBoundingBox.minY : absoluteBoundingBox.maxY) - cameraPos.y);
+            float z = (float) (((i & 4) == 0 ? absoluteBoundingBox.minZ : absoluteBoundingBox.maxZ) - cameraPos.z);
+            clip.set(x, y, z, 1.0F).mul(matrix);
+            if (!Float.isFinite(clip.x) || !Float.isFinite(clip.y) || !Float.isFinite(clip.z) || !Float.isFinite(clip.w) || clip.w <= 0.0001F) continue;
+            float invW = 1.0F / clip.w;
+            double sx = (clip.x * invW + 1.0F) * 0.5 * viewport[2];
+            double sy = (1.0 - clip.y * invW) * 0.5 * viewport[3];
+            double sz = clip.z * invW;
+            if (sz < -1.0 || sz > 1.0 || !Double.isFinite(sx) || !Double.isFinite(sy)) continue;
+            if (result == null) result = new Vector4d(sx, sy, sx, sy);
+            else { result.x = Math.min(result.x, sx); result.y = Math.min(result.y, sy); result.z = Math.max(result.z, sx); result.w = Math.max(result.w, sy); }
         }
-        return hasProjectedPoint ? result : null;
+        return result;
     }
 
     public static Vector4d projectEntity(final int[] viewport, final Matrix4f matrix, final AABB absoluteBoundingBox) {

@@ -8,8 +8,6 @@ import com.dioxidelite.module.Module;
 import com.dioxidelite.render.SkijaUi;
 import io.github.humbleui.skija.Canvas;
 import io.github.humbleui.skija.Paint;
-import io.github.humbleui.skija.Path;
-import io.github.humbleui.skija.PathBuilder;
 import net.minecraft.util.Mth;
 import net.minecraft.world.entity.player.Player;
 
@@ -27,7 +25,7 @@ public final class Compass extends Module {
     private static final int CLOSE_ENEMY_COLOR = 0xF2FF3B30;
 
     private Paint arrowPaint;
-    private Path arrowShape;
+    private Paint linePaint;
 
     private Compass() {
         super("Compass", Category.RENDER);
@@ -35,14 +33,12 @@ public final class Compass extends Module {
 
     @Override
     protected void onEnable() {
+        // Do not retain a native Skija Path created during module enable.
+        // On some Windows/Skija combinations PathBuilder.detach() can cross the
+        // native boundary while the render context is still being initialised,
+        // which was the direct cause of the reported EXCEPTION_ACCESS_VIOLATION.
         arrowPaint = new Paint().setAntiAlias(true).setColor(COLOR);
-        try (PathBuilder builder = new PathBuilder()) {
-            builder.moveTo(0.0F, -ARROW_SIZE);
-            builder.lineTo(-ARROW_SIZE * 0.65F, ARROW_SIZE * 0.8F);
-            builder.lineTo(ARROW_SIZE * 0.65F, ARROW_SIZE * 0.8F);
-            builder.close();
-            arrowShape = builder.detach();
-        }
+        linePaint = new Paint().setAntiAlias(true).setStrokeWidth(1.5F).setStrokeCap(io.github.humbleui.skija.PaintStrokeCap.ROUND);
     }
 
     @Override
@@ -51,15 +47,15 @@ public final class Compass extends Module {
             arrowPaint.close();
             arrowPaint = null;
         }
-        if (arrowShape != null) {
-            arrowShape.close();
-            arrowShape = null;
+        if (linePaint != null) {
+            linePaint.close();
+            linePaint = null;
         }
     }
 
     @Listen
     private void onRender2D(Render2DEvent event) {
-        if (noPlayer() || arrowPaint == null) {
+        if (noPlayer() || arrowPaint == null || linePaint == null) {
             return;
         }
 
@@ -101,14 +97,17 @@ public final class Compass extends Module {
     }
 
     private void drawArrow(Canvas canvas, float centerX, float centerY, float angle) {
-        if (arrowShape == null) return;
-        int save = canvas.save();
-        try {
-            canvas.translate(centerX, centerY);
-            canvas.rotate((float) Math.toDegrees(angle));
-            canvas.drawPath(arrowShape, arrowPaint);
-        } finally {
-            canvas.restoreToCount(save);
-        }
+        // Draw the triangle as three line segments instead of a retained native
+        // Path. This avoids PathBuilder/Path lifetime issues on low-end drivers.
+        float tipX = (float) Math.sin(angle) * ARROW_SIZE;
+        float tipY = (float) -Math.cos(angle) * ARROW_SIZE;
+        float leftX = (float) Math.sin(angle - 2.45) * ARROW_SIZE * 0.9F;
+        float leftY = (float) -Math.cos(angle - 2.45) * ARROW_SIZE * 0.9F;
+        float rightX = (float) Math.sin(angle + 2.45) * ARROW_SIZE * 0.9F;
+        float rightY = (float) -Math.cos(angle + 2.45) * ARROW_SIZE * 0.9F;
+        linePaint.setColor(arrowPaint.getColor());
+        canvas.drawLine(centerX + tipX, centerY + tipY, centerX + leftX, centerY + leftY, linePaint);
+        canvas.drawLine(centerX + leftX, centerY + leftY, centerX + rightX, centerY + rightY, linePaint);
+        canvas.drawLine(centerX + rightX, centerY + rightY, centerX + tipX, centerY + tipY, linePaint);
     }
 }
