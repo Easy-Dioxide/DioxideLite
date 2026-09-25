@@ -802,11 +802,6 @@ public final class PopClickGuiScreen extends Screen implements SkijaScreen {
         }
 
         PopLayout layout = layout(logicalWidth(), logicalHeight());
-        if (button == GLFW.GLFW_MOUSE_BUTTON_LEFT
-                && settingsProgress > 0.7F
-                ) {
-            return true;
-        }
         if (categoryProgress > 0.75F && inside(mouseX, mouseY,
                 layout.listX() + 8.0F, layout.listY() + 8.0F, 28.0F, 28.0F)) {
             settingsRequested = false;

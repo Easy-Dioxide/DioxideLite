@@ -1,13 +1,10 @@
 package com.dioxidelite.mixin;
 
-import com.llamalad7.mixinextras.injector.wrapoperation.Operation;
-import com.llamalad7.mixinextras.injector.wrapoperation.WrapOperation;
 import com.dioxidelite.command.CommandManager;
 import com.dioxidelite.irc.IrcChatHandler;
 import net.minecraft.client.gui.components.EditBox;
 import net.minecraft.client.gui.screens.ChatScreen;
 import net.minecraft.client.input.KeyEvent;
-import net.minecraft.client.multiplayer.ClientPacketListener;
 import org.lwjgl.glfw.GLFW;
 import org.spongepowered.asm.mixin.Mixin;
 import org.spongepowered.asm.mixin.Shadow;
@@ -15,22 +12,18 @@ import org.spongepowered.asm.mixin.injection.At;
 import org.spongepowered.asm.mixin.injection.Inject;
 import org.spongepowered.asm.mixin.injection.callback.CallbackInfoReturnable;
 
-/** Intercepts dot commands at the chat-screen send call, before signing. */
+/** Intercepts dot commands before the chat screen sends them to the server. */
 @Mixin(ChatScreen.class)
 public abstract class ChatScreenMixin {
 
     @Shadow
     protected EditBox input;
 
-    @WrapOperation(
-            method = "handleChatInput(Ljava/lang/String;Z)V",
-            at = @At(
-                    value = "INVOKE",
-                    target = "Lnet/minecraft/client/multiplayer/ClientPacketListener;sendChat(Ljava/lang/String;)V"))
-    private void DioxideLite$handleClientCommand(ClientPacketListener listener, String message,
-                                            Operation<Void> original) {
-        if (!CommandManager.INSTANCE.handle(message) && !IrcChatHandler.handle(message)) {
-            original.call(listener, message);
+    @Inject(method = "handleChatInput(Ljava/lang/String;Z)V", at = @At("HEAD"), cancellable = true)
+    private void DioxideLite$handleClientCommand(String message, boolean addToHistory,
+                                                 org.spongepowered.asm.mixin.injection.callback.CallbackInfo ci) {
+        if (CommandManager.INSTANCE.handle(message) || IrcChatHandler.handle(message)) {
+            ci.cancel();
         }
     }
 

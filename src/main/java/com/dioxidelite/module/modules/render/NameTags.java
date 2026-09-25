@@ -99,7 +99,6 @@ public final class NameTags extends Module {
         float partialTick = mc.getDeltaTracker().getGameTimeDeltaPartialTick(true);
         double maxDistanceSq = range.get() * range.get();
         float baseScale = scale.get().floatValue();
-        double guiScale = mc.getWindow().getGuiScale();
 
         for (Player target : mc.level.players()) {
             if (!target.isAlive() || target.isSpectator()) {
@@ -138,7 +137,7 @@ public final class NameTags extends Module {
             int nameColor = TeamColorUtils.getNameColor(target, friend ? FRIEND_COLOR : NAME_COLOR).getRGB();
 
             drawList.add(new TagDrawData(name, nameColor, healthText, healthColor, getTabFlag(target),
-                    (float) (head.x / guiScale), (float) (head.y / guiScale), renderScale));
+                    head.x, head.y, renderScale));
         }
     }
 

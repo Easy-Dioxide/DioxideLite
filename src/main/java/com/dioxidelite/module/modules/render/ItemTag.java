@@ -103,7 +103,6 @@ public final class ItemTag extends Module {
 
         float partialTick = mc.getDeltaTracker().getGameTimeDeltaPartialTick(true);
         double maxDistSq = range.get() * range.get();
-        double guiScale = mc.getWindow().getGuiScale();
         InventoryVisibility inventory = InventoryVisibility.capture();
         List<ItemProjection> visibleItems = new ArrayList<>();
 
@@ -124,13 +123,13 @@ public final class ItemTag extends Module {
                     entity.zOld + (entity.getZ() - entity.zOld) * partialTick);
 
             Vector3f projected = WorldToScreen.getWorldPositionToScreen(pos);
-            if (projected.z > 1.0f || projected.z < 0.0f) {
+            if (projected == null || projected.z > 1.0f || projected.z < 0.0f) {
                 continue;
             }
 
             String name = fitName(stack.getHoverName().getString());
             visibleItems.add(new ItemProjection(entity.getId(), pos,
-                    (float) (projected.x / guiScale), (float) (projected.y / guiScale),
+                    projected.x, projected.y,
                     new DrawData(stack.copy(), name, stack.getCount(), itemNameColor(stack))));
         }
 

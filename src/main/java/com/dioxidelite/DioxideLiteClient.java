@@ -1,9 +1,10 @@
 package com.dioxidelite;
 
-import com.dioxidelite.event.EventBus;
 import com.dioxidelite.config.ConfigManager;
+import com.dioxidelite.event.EventBus;
 import com.dioxidelite.event.Listen;
 import com.dioxidelite.module.ModuleManager;
+import com.dioxidelite.runtime.FeatureRuntime;
 import com.dioxidelite.integration.apollo.ApolloTeamNetworking;
 import net.fabricmc.api.ClientModInitializer;
 import net.fabricmc.fabric.api.client.event.lifecycle.v1.ClientLifecycleEvents;
@@ -17,11 +18,7 @@ public final class DioxideLiteClient implements ClientModInitializer {
         ApolloTeamNetworking.init();
         EventBus.INSTANCE.subscribe(this);
         ClientLifecycleEvents.CLIENT_STARTED.register(client -> {
-            try {
-                ConfigManager.INSTANCE.load();
-            } catch (Throwable error) {
-                DioxideLite.LOGGER.error("Failed to load DioxideLite config", error);
-            }
+            FeatureRuntime.INSTANCE.activate();
         });
         ClientLifecycleEvents.CLIENT_STOPPING.register(client -> {
             try {

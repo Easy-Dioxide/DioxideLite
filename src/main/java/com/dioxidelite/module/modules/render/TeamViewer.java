@@ -166,7 +166,6 @@ public final class TeamViewer extends EpsilonHudModule {
         }
         float partialTick = mc.getDeltaTracker().getGameTimeDeltaPartialTick(true);
         UUID self = mc.player.getUUID();
-        double guiScale = mc.getWindow().getGuiScale();
         Map<UUID, MemberFrame> markerMembers = new HashMap<>();
         for (MemberFrame member : frame) {
             markerMembers.put(member.uuid, member);
@@ -183,13 +182,13 @@ public final class TeamViewer extends EpsilonHudModule {
                 continue;
             }
             Vector3f projected = projectMarker(position.add(0.0, markerHeight.get(), 0.0));
-            if (!Float.isFinite(projected.x) || !Float.isFinite(projected.y)
+            if (projected == null || !Float.isFinite(projected.x) || !Float.isFinite(projected.y)
                     || projected.z < 0.0F || projected.z > 1.0F) {
                 continue;
             }
             nextEntries.add(new DrawEntry(
-                    projected.x / (float) guiScale,
-                    projected.y / (float) guiScale,
+                    projected.x,
+                    projected.y,
                     member.color));
         }
         synchronized (this) {

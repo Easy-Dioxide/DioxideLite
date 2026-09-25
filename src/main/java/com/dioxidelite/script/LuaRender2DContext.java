@@ -216,8 +216,8 @@ final class LuaRender2DContext {
     private LuaValue project(Vec3 position) {
         Vector3f projected = WorldToScreen.getWorldPositionToScreen(position);
         if (!validProjection(projected)) return LuaValue.NIL;
-        float screenX = (float) (projected.x / event.guiScale());
-        float screenY = (float) (projected.y / event.guiScale());
+        float screenX = projected.x;
+        float screenY = projected.y;
         LuaTable result = new LuaTable();
         result.set("x", screenX);
         result.set("y", screenY);
@@ -240,8 +240,8 @@ final class LuaRender2DContext {
                 for (double z : zs) {
                     Vector3f projected = WorldToScreen.getWorldPositionToScreen(new Vec3(x, y, z));
                     if (!validProjection(projected)) return LuaValue.NIL;
-                    float screenX = (float) (projected.x / event.guiScale());
-                    float screenY = (float) (projected.y / event.guiScale());
+                    float screenX = projected.x;
+                    float screenY = projected.y;
                     minX = Math.min(minX, screenX);
                     minY = Math.min(minY, screenY);
                     maxX = Math.max(maxX, screenX);

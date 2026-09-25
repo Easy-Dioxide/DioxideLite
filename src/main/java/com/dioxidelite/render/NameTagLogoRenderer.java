@@ -6,18 +6,16 @@ import com.dioxidelite.module.modules.player.IrcModule;
 import com.dioxidelite.module.modules.render.LegendWatch;
 import com.dioxidelite.module.modules.render.NameTags;
 import com.dioxidelite.util.legendwatch.LegendSuffixUtil;
-import io.github.humbleui.skija.Canvas;
+import com.dioxidelite.util.render.WorldToScreen;
 import io.github.humbleui.skija.Image;
 import io.github.humbleui.skija.Paint;
 import io.github.humbleui.skija.SamplingMode;
 import io.github.humbleui.types.Rect;
-import net.minecraft.client.Camera;
-import net.minecraft.client.CameraType;
+import io.github.humbleui.skija.Canvas;
 import net.minecraft.client.Minecraft;
 import net.minecraft.resources.Identifier;
 import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.phys.Vec3;
-import org.joml.Matrix4f;
 import org.joml.Vector3f;
 
 /**
@@ -54,19 +52,7 @@ public final class NameTagLogoRenderer {
         if (!LegendWatch.INSTANCE.clientLogoEnabled()
                 && !LegendWatch.INSTANCE.ircLogoEnabled()) return;
 
-        Camera camera = mc.gameRenderer.getMainCamera();
-        Vec3 camPos = camera.position();
-        double farSq = PROJECTION_FAR_SQ;
-        float fovDeg = camera.getFov();
-        if (mc.options.getCameraType() != CameraType.FIRST_PERSON) fovDeg *= 1.28F;
-        final int screenWidth = mc.getWindow().getScreenWidth();
-        final int screenHeight = mc.getWindow().getScreenHeight();
-        final double guiScale = event.guiScale() <= 0.0 ? 1.0 : event.guiScale();
-        final Matrix4f viewRot = camera.getViewRotationMatrix(new Matrix4f());
-        final float focal = (screenHeight * 0.5F)
-                / (float) Math.tan(Math.toRadians(fovDeg) * 0.5F);
-        final Vector3f rel = new Vector3f();
-
+        Vec3 camPos = mc.gameRenderer.getMainCamera().position();
         for (Player player : mc.level.players()) {
             if (player == null || player.isRemoved()) continue;
             String clean = LegendSuffixUtil.cleanUsername(player.getName().getString());
@@ -78,19 +64,14 @@ public final class NameTagLogoRenderer {
 
             Vec3 pos = player.position();
             double anchorY = pos.y + player.getDimensions(player.getPose()).height() + 0.55;
-            if (pos.distanceToSqr(camPos) > farSq) continue;
+            if (pos.distanceToSqr(camPos) > PROJECTION_FAR_SQ) continue;
 
-            rel.set((float) (pos.x - camPos.x), (float) (anchorY - camPos.y),
-                    (float) (pos.z - camPos.z));
-            float rx = rel.x, ry = rel.y, rz = rel.z;
-            rel.x = viewRot.m00() * rx + viewRot.m01() * ry + viewRot.m02() * rz;
-            rel.y = viewRot.m10() * rx + viewRot.m11() * ry + viewRot.m12() * rz;
-            rel.z = viewRot.m20() * rx + viewRot.m21() * ry + viewRot.m22() * rz;
-            float depth = -rel.z;
-            if (depth < 0.15F) continue;
+            Vector3f projected = WorldToScreen.getWorldPositionToScreen(
+                    new Vec3(pos.x, anchorY, pos.z));
+            if (projected == null || projected.z < 0.0F || projected.z > 1.0F) continue;
 
-            float gx = (float) (screenWidth * 0.5 + (rel.x / depth) * focal) / (float) guiScale;
-            float gy = (float) (screenHeight * 0.5 - (rel.y / depth) * focal) / (float) guiScale;
+            float gx = projected.x;
+            float gy = projected.y;
             float size = LegendWatch.INSTANCE.clientLogoSize().get().floatValue();
             float tagScale = NameTags.INSTANCE.scale.get().floatValue();
             float boxWidth = NameTags.INSTANCE.getTagBoxWidth(player);

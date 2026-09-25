@@ -619,13 +619,12 @@ public final class UHCDetector extends Module {
                 detection.box().maxY + 0.75,
                 (detection.box().minZ + detection.box().maxZ) * 0.5);
         Vector3f projected = WorldToScreen.getWorldPositionToScreen(labelPos);
-        if (projected.z < 0.0f || projected.z > 1.0f) {
+        if (projected == null || projected.z < 0.0f || projected.z > 1.0f) {
             return;
         }
 
-        double guiScale = mc.getWindow().getGuiScale();
-        float x = (float) (projected.x / guiScale);
-        float y = (float) (projected.y / guiScale);
+        float x = projected.x;
+        float y = projected.y;
         float screenWidth = mc.getWindow().getGuiScaledWidth();
         float screenHeight = mc.getWindow().getGuiScaledHeight();
         if (x < 0.0f || y < 0.0f || x > screenWidth || y > screenHeight) {
