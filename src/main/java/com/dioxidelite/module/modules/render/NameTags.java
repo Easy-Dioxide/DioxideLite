@@ -125,7 +125,7 @@ public final class NameTags extends Module {
             Vec3 current = WorldToScreen.interpolate(target, partialTick);
             Vector3f head = WorldToScreen.getWorldPositionToScreen(
                     current.add(0.0, heightOffset.get() + target.getEyeHeight(), 0.0));
-            if (head.z > 1.0f || head.z < 0.0f) {
+            if (head == null || head.z > 1.0f || head.z < 0.0f) {
                 continue;
             }
 

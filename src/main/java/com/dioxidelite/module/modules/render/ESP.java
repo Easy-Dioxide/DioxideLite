@@ -396,7 +396,7 @@ public final class ESP extends Module {
 
             Vector3f head = WorldToScreen.getWorldPositionToScreen(
                     current.add(0.0, target.getEyeHeight() + 0.15, 0.0));
-            if (head.z < 0.0F || head.z > 1.0F) {
+            if (head == null || head.z < 0.0F || head.z > 1.0F) {
                 continue;
             }
 
