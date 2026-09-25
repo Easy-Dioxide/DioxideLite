@@ -12,9 +12,9 @@ import org.joml.Vector4d;
 import org.joml.Vector4f;
 
 /**
- * Projects world-space positions into screen space. Returned coordinates are in
- * raw window pixels (top-left origin); divide by {@code mc.getWindow().getGuiScale()}
- * to convert into the GUI-scaled space that the Skija overlay draws in.
+ * Projects world-space positions into GUI-scaled screen space (top-left origin).
+ * The result uses the same logical coordinate system as Render2DEvent and the
+ * shared Skija canvas; callers must not divide it by the GUI scale again.
  */
 public final class WorldToScreen {
 

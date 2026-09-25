@@ -274,8 +274,8 @@ public final class SkijaRenderer
             Canvas canvas = surface.getCanvas();
             int save = canvas.save();
             try {
-                canvas.scale(width / window.getGuiScaledWidth(),
-                        height / window.getGuiScaledHeight());
+                applyGuiTransform(canvas, width, height,
+                        window.getGuiScaledWidth(), window.getGuiScaledHeight());
                 painter.accept(canvas);
             } finally {
                 canvas.restoreToCount(save);
@@ -339,6 +339,18 @@ public final class SkijaRenderer
         paint(width, height, framebuffer, guiWidth, guiHeight, painter, false);
     }
 
+    private static void applyGuiTransform(Canvas canvas, int pixelWidth, int pixelHeight,
+                                          float guiWidth, float guiHeight) {
+        if (guiWidth <= 0.0F || guiHeight <= 0.0F) {
+            return;
+        }
+        float scale = Math.min(pixelWidth / guiWidth, pixelHeight / guiHeight);
+        float offsetX = (pixelWidth - guiWidth * scale) * 0.5F;
+        float offsetY = (pixelHeight - guiHeight * scale) * 0.5F;
+        canvas.translate(offsetX, offsetY);
+        canvas.scale(scale, scale);
+    }
+
     private static void paint(int width, int height, int framebuffer,
                               float guiWidth, float guiHeight,
                               java.util.function.Consumer<Canvas> painter,
@@ -363,7 +375,7 @@ public final class SkijaRenderer
             Canvas canvas = surface.getCanvas();
             int save = canvas.save();
             try {
-                canvas.scale(width / guiWidth, height / guiHeight);
+                applyGuiTransform(canvas, width, height, guiWidth, guiHeight);
                 painter.accept(canvas);
             } finally {
                 canvas.restoreToCount(save);

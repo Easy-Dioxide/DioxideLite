@@ -21,6 +21,7 @@ import net.minecraft.world.level.GameType;
 import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.List;
+import java.util.concurrent.atomic.AtomicReference;
 
 /**
  * DioxideLite Dynamic Island.
@@ -65,8 +66,22 @@ public final class DioxideDynamicIsland {
 
     /** Padding around the island body for glow spill; baked into the cache. */
     private static final float GLOW_PAD = 14f;
+    private static final long COMMAND_NOTICE_MILLIS = 2800L;
+    private final AtomicReference<CommandNotice> commandNotice = new AtomicReference<>();
 
     private DioxideDynamicIsland() {}
+
+    public void showCommandNotice(String title, String detail, Severity severity) {
+        commandNotice.set(new CommandNotice(
+                truncate(title == null ? "Command" : title, 28),
+                truncate(detail == null ? "Executed" : detail, 42),
+                severity == null ? Severity.INFO : severity,
+                System.currentTimeMillis() + COMMAND_NOTICE_MILLIS));
+    }
+
+    public enum Severity { INFO, SUCCESS, ERROR }
+
+    private record CommandNotice(String title, String detail, Severity severity, long expiresAt) {}
 
     public static DioxideDynamicIsland getInstance() {
         return INSTANCE;
@@ -105,12 +120,17 @@ public final class DioxideDynamicIsland {
         String server = cachedServer;
         String fps = cachedFpsText;
         int ping = cachedPing;
+        CommandNotice notice = activeNotice();
 
-        float targetW = expanded
+        float targetW = notice != null
+                ? Math.min(screenW - 24f, 300f)
+                : expanded
                 ? Math.min(screenW - 24f, Math.max(340f, Math.min(470f, 300f + players.size() * 2f)))
                 : Math.min(screenW - 24f, Math.max(176f,
                         SkijaUi.textWidth(DioxideLite.NAME + " " + DioxideLite.VERSION, 8.5f) + 82f));
-        float targetH = expanded
+        float targetH = notice != null
+                ? 42f
+                : expanded
                 ? Math.min(screenH - 24f, 84f + Math.max(0, ((players.size() + 5) / 6) - 1) * 14f)
                 : 30f;
 
@@ -129,7 +149,9 @@ public final class DioxideDynamicIsland {
         DioxideIslandModule.Style style = DioxideIslandModule.INSTANCE.style.get();
         drawIsland(canvas, x, y, width, height, radius, expanded, style);
 
-        if (expanded) {
+        if (notice != null) {
+            drawCommandNotice(canvas, notice, x, y, width, height, style);
+        } else if (expanded) {
             drawExpanded(canvas, mc, players, server, ping, x, y, width, height);
         } else {
             drawCompact(canvas, mc, server, fps, ping, x, y, width, height, style);
@@ -167,6 +189,34 @@ public final class DioxideDynamicIsland {
             cachedTitleWidth = SkijaUi.textWidth(DioxideLite.NAME, 9.5f);
             cachedVersionWidth = SkijaUi.textWidth("v" + DioxideLite.VERSION, 8.5f);
         }
+    }
+
+    private CommandNotice activeNotice() {
+        if (!DioxideIslandModule.INSTANCE.onyxNotifications.get()) return null;
+        CommandNotice notice = commandNotice.get();
+        if (notice == null) return null;
+        if (notice.expiresAt() <= System.currentTimeMillis()) {
+            commandNotice.compareAndSet(notice, null);
+            return null;
+        }
+        return notice;
+    }
+
+    private static void drawCommandNotice(Canvas canvas, CommandNotice notice, float x, float y,
+                                          float w, float h, DioxideIslandModule.Style style) {
+        int color = switch (notice.severity()) {
+            case SUCCESS -> 0xFF7FE0A8;
+            case ERROR -> 0xFFFF8C8C;
+            case INFO -> accentColor(style);
+        };
+        SkijaUi.boldText(canvas, notice.title(), x + 14f, y + 7f, 10f,
+                primaryColor(style), 9f);
+        SkijaUi.text(canvas, notice.detail(), x + 14f, y + 22f, 9f,
+                color, 8f);
+        float progress = Math.max(0f, Math.min(1f,
+                (notice.expiresAt() - System.currentTimeMillis()) / (float) COMMAND_NOTICE_MILLIS));
+        SkijaUi.rounded(canvas, x + 14f, y + h - 5f, Math.max(8f, (w - 28f) * progress),
+                1.5f, 0.75f, color);
     }
 
     private void drawCompact(Canvas canvas, Minecraft mc, String server,

@@ -557,9 +557,8 @@ public final class SpawnerFinder extends Module {
             return;
         }
 
-        double guiScale = mc.getWindow().getGuiScale();
-        float x = (float) (projected.x / guiScale);
-        float y = (float) (projected.y / guiScale);
+        float x = projected.x;
+        float y = projected.y;
         if (x < 0.0F || y < 0.0F || x > mc.getWindow().getGuiScaledWidth() || y > mc.getWindow().getGuiScaledHeight()) {
             return;
         }

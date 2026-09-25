@@ -15,6 +15,7 @@ import com.mojang.brigadier.suggestion.SuggestionsBuilder;
 import com.dioxidelite.DioxideLite;
 import com.dioxidelite.command.commands.BuiltInCommands;
 import com.dioxidelite.util.player.ChatUtils;
+import com.dioxidelite.ui.dioxide.DioxideDynamicIsland;
 
 import java.io.IOException;
 import java.nio.charset.StandardCharsets;
@@ -72,8 +73,12 @@ public final class CommandManager {
         String commandBody = message.substring(activePrefix.length());
         try {
             execute(commandBody);
+            DioxideDynamicIsland.getInstance().showCommandNotice(
+                    "Command executed", prefix + commandBody, DioxideDynamicIsland.Severity.SUCCESS);
         } catch (Throwable error) {
             executor.handleException(error);
+            DioxideDynamicIsland.getInstance().showCommandNotice(
+                    "Command error", error.getMessage(), DioxideDynamicIsland.Severity.ERROR);
         } finally {
             appendHistory(commandBody);
         }

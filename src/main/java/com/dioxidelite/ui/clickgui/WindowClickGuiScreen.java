@@ -86,6 +86,10 @@ public final class WindowClickGuiScreen extends Screen implements SkijaScreen {
     private static final int TRACK = argb(255, 67, 71, 82);
     private static final int CONFIG_GREEN = argb(255, 85, 255, 85);
     private static final int DELETE_BACKGROUND = argb(230, 145, 38, 38);
+    private static final int ONYX_BACKDROP = argb(76, 1, 4, 8);
+    private static final int ONYX_BODY = argb(236, 10, 13, 18);
+    private static final int ONYX_EDGE = argb(190, 142, 214, 255);
+    private static final int ONYX_SETTING = argb(210, 17, 22, 30);
     private static final Paint GRADIENT_PAINT = new Paint().setAntiAlias(false);
     private static final Gson STATE_GSON = new GsonBuilder().setPrettyPrinting().create();
     private static final String STATE_FILE_NAME = "drop-clickgui-state.json";
@@ -256,7 +260,7 @@ public final class WindowClickGuiScreen extends Screen implements SkijaScreen {
 
         canvas.save();
         canvas.scale(activeScale, activeScale);
-        SkijaUi.fill(canvas, 0.0F, 0.0F, logicalWidth + 1.0F, logicalHeight + 1.0F, BACKDROP);
+        SkijaUi.fill(canvas, 0.0F, 0.0F, logicalWidth + 1.0F, logicalHeight + 1.0F, backdropColor());
         for (Panel panel : panels) {
             panel.render(canvas, logicalHeight);
         }
@@ -421,7 +425,7 @@ public final class WindowClickGuiScreen extends Screen implements SkijaScreen {
                     EXPAND_SPEED, animationDelta);
             float bodyHeight = bodyHeight(screenHeight);
             SkijaUi.fill(canvas, x - 1.0F, y - 1.0F, panelWidth + 2.0F,
-                    HEADER_HEIGHT + 2.0F, PANEL_EDGE);
+                    HEADER_HEIGHT + 2.0F, panelEdgeColor());
             drawGradientRect(canvas, x, y, panelWidth, HEADER_HEIGHT,
                     mixColor(headerColor, 0xFF172229, 0.24F), headerColor);
             SkijaUi.icon(canvas, icon, x + 5.0F, y, HEADER_HEIGHT,
@@ -441,8 +445,8 @@ public final class WindowClickGuiScreen extends Screen implements SkijaScreen {
             float bodyX = bodyX();
             float bodyWidth = bodyWidth();
             SkijaUi.fill(canvas, bodyX - 1.0F, bodyY, bodyWidth + 2.0F,
-                    bodyHeight + 1.0F, PANEL_EDGE);
-            SkijaUi.fill(canvas, bodyX, bodyY, bodyWidth, bodyHeight, BODY);
+                    bodyHeight + 1.0F, panelEdgeColor());
+            SkijaUi.fill(canvas, bodyX, bodyY, bodyWidth, bodyHeight, bodyColor());
             canvas.save();
             canvas.clipRect(Rect.makeXYWH(bodyX, bodyY, bodyWidth, bodyHeight));
             renderContent(canvas, bodyY - scroll, bodyY, bodyHeight);
@@ -521,7 +525,7 @@ public final class WindowClickGuiScreen extends Screen implements SkijaScreen {
         protected final void drawSettingSection(Canvas canvas, float rowY, float height) {
             SkijaUi.fill(canvas, x + SECTION_INSET, rowY + 1.0F,
                     panelWidth - SECTION_INSET * 2.0F,
-                    Math.max(1.0F, height - 2.0F), SETTING_BACKGROUND);
+                    Math.max(1.0F, height - 2.0F), settingBackground());
         }
 
         private float bodyX() {
@@ -1503,7 +1507,26 @@ public final class WindowClickGuiScreen extends Screen implements SkijaScreen {
 
     private static int accent() {
         Color configured = ClickGui.INSTANCE.accent.get();
+        if (ClickGui.INSTANCE.mode.is(ClickGui.Mode.OpenOnyx)) {
+            configured = new Color(155, 215, 255);
+        }
         return argb(255, configured.getRed(), configured.getGreen(), configured.getBlue());
+    }
+
+    private static int backdropColor() {
+        return ClickGui.INSTANCE.mode.is(ClickGui.Mode.OpenOnyx) ? ONYX_BACKDROP : BACKDROP;
+    }
+
+    private static int bodyColor() {
+        return ClickGui.INSTANCE.mode.is(ClickGui.Mode.OpenOnyx) ? ONYX_BODY : BODY;
+    }
+
+    private static int panelEdgeColor() {
+        return ClickGui.INSTANCE.mode.is(ClickGui.Mode.OpenOnyx) ? ONYX_EDGE : PANEL_EDGE;
+    }
+
+    private static int settingBackground() {
+        return ClickGui.INSTANCE.mode.is(ClickGui.Mode.OpenOnyx) ? ONYX_SETTING : SETTING_BACKGROUND;
     }
 
     private static String fit(String text, float maxWidth, boolean bold) {

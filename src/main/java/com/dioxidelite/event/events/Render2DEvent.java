@@ -36,7 +36,7 @@ public final class Render2DEvent extends Event {
         return height;
     }
 
-    /** The current GUI scale factor, for converting raw pixel projections. */
+    /** The current GUI scale factor exposed for scripts that need it explicitly. */
     public double guiScale() {
         return guiScale;
     }

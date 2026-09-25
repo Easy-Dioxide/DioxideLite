@@ -2,7 +2,7 @@
 
 **DioxideLite** 是一个基于 Skija 渲染的 Minecraft 视觉客户端（Fabric），为 Minecraft **26.1.2** 打造，专注流畅的 HUD 视觉、ClickGUI 与聊天联动。
 
-> 当前版本：**v2.1.5** · 平台：Fabric · 游戏版本：Minecraft 26.1.2 · JDK 25
+> 当前版本：**v2.2.0** · 平台：Fabric · 游戏版本：Minecraft 26.1.2 · JDK 25
 
 ---
 
@@ -20,7 +20,7 @@
 
 ## 截图
 
-| v2.1.5 主菜单 | ClickGUI |
+| v2.2.0 主菜单 | ClickGUI |
 | --- | --- |
 | ![主菜单](docs/screenshots/v214-main-menu.png) | ![ClickGUI](docs/screenshots/02-clickgui.png) |
 
@@ -94,7 +94,7 @@ local holdRight = dioxidelite:isKeyHeld("mouse_right")
 
 1. 安装 **Fabric Loader ≥ 0.19.2**，游戏版本 **26.1.2**。
 2. 安装 **Fabric API**（26.1.2 对应版本）。
-3. 将 `DioxideLite-2.1.5.jar` 放入 `.minecraft/mods`。
+3. 将 `DioxideLite-2.2.0.jar` 放入 `.minecraft/mods`。
 4. 启动游戏。`右 Shift` 打开 ClickGUI，灵动岛默认开启。
 
 ## IRC 使用
@@ -112,7 +112,7 @@ local holdRight = dioxidelite:isKeyHeld("mouse_right")
 .\gradlew.bat clean build
 ```
 
-产物位于 `build/libs/DioxideLite-2.1.5.jar`（含 sources.jar）。
+产物位于 `build/libs/DioxideLite-2.2.0.jar`（含 sources.jar）。
 
 > 注意：构建依赖 `libs/nested/` 下的内嵌库与 `src/main/java/tritium`、`src/main/java/repackage`（音频 / JSyn 库），均已随仓库提供。
 
@@ -120,6 +120,7 @@ local holdRight = dioxidelite:isKeyHeld("mouse_right")
 
 | 版本 | Devlog |
 | --- | --- |
+| v2.2.0 | [devlog-2.2.0.md](devlog-2.2.0.md) — Render 优化 + ClickGUI 优化 + 编译修复 |
 | v2.1.5 | [devlog-2.1.5.md](devlog-2.1.5.md) — RenderStable OnyxPort + 编译修复 |
 | v2.1.4 | [devlog-2.1.4-onyx-engine-migration-cn.md](devlog-2.1.4-onyx-engine-migration-cn.md) — Onyx Engine 迁移 + 11 个新模块 |
 | v2.1.3 | [devlog-2.1.3-bilingual.md](devlog-2.1.3-bilingual.md) — OpenOnyx 视觉适配 + OPAI_ONYX 主题 + 多分辨率窗口图标 |

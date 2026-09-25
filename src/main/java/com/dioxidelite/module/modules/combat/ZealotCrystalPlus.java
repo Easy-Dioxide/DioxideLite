@@ -1716,14 +1716,13 @@ public final class ZealotCrystalPlus extends Module {
 
     private Vector2f projectToScreen(Vec3 pos) {
         Vector3f projected = WorldToScreen.getWorldPositionToScreen(pos);
-        if (projected.z < 0.0F || projected.z > 1.0F) return null;
+        if (projected == null || projected.z < 0.0F || projected.z > 1.0F) return null;
 
-        float guiScale = (float) mc.getWindow().getGuiScale();
-        float x = projected.x / guiScale;
-        float y = projected.y / guiScale;
+        float x = projected.x;
+        float y = projected.y;
         if (x < 0.0F || y < 0.0F
-                || x > mc.getWindow().getWidth() / guiScale
-                || y > mc.getWindow().getHeight() / guiScale) {
+                || x > mc.getWindow().getGuiScaledWidth()
+                || y > mc.getWindow().getGuiScaledHeight()) {
             return null;
         }
         return new Vector2f(x, y);

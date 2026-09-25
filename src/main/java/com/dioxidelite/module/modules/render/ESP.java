@@ -376,7 +376,6 @@ public final class ESP extends Module {
 
     private void rebuildPlayerDrawList(double maxRangeSq, PoseStack poseStack) {
         float partialTick = mc.getDeltaTracker().getGameTimeDeltaPartialTick(true);
-        double guiScale = mc.getWindow().getGuiScale();
         float baseInfoScale = infoScale.get().floatValue();
 
         for (Player target : mc.level.players()) {
@@ -410,7 +409,7 @@ public final class ESP extends Module {
             playerDrawList.add(new PlayerDrawData(
                     (float) projected.x, (float) projected.y, (float) projected.z, (float) projected.w,
                     boxColor, healthRatio, buildArmor(target), buildEquipment(target), buildEffects(target),
-                    (float) (head.x / guiScale), (float) (head.y / guiScale), renderInfoScale));
+                    (float) head.x, (float) head.y, renderInfoScale));
         }
     }
 
