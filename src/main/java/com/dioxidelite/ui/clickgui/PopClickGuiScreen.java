@@ -112,6 +112,9 @@ public final class PopClickGuiScreen extends Screen implements SkijaScreen {
     private Setting<?> draggingNumber;
     private ColorSetting draggingColor;
     private int draggingColorChannel = -1;
+    private int activeDragButton = -1;
+    private float dragCursorX;
+    private float dragCursorY;
     private float draggingTrackX;
     private float draggingTrackWidth;
     private float espDragStartX;
@@ -908,6 +911,9 @@ public final class PopClickGuiScreen extends Screen implements SkijaScreen {
                 if (channel >= 0 && channel < channels) {
                     draggingColor = colorSetting;
                     draggingColorChannel = channel;
+                    activeDragButton = GLFW.GLFW_MOUSE_BUTTON_LEFT;
+                    dragCursorX = mouseX;
+                    dragCursorY = mouseY;
                     draggingTrackX = currentSettingsX(layout) + 28.0F;
                     draggingTrackWidth = layout.panelWidth() - 76.0F;
                     updateColor(mouseX);
@@ -928,14 +934,11 @@ public final class PopClickGuiScreen extends Screen implements SkijaScreen {
     @Override
     public boolean mouseDragged(MouseButtonEvent event, double dragX, double dragY) {
         if (closing) return true;
-        float mouseX = (float) logical(event.x());
-        float mouseY = (float) logical(event.y());
-        if (draggingNumber != null) {
-            updateNumber(mouseX);
-            return true;
-        }
-        if (draggingColor != null) {
-            updateColor(mouseX);
+        if (draggingNumber != null || draggingColor != null) {
+            dragCursorX += (float) dragX / activeScale;
+            dragCursorY += (float) dragY / activeScale;
+            if (draggingNumber != null) updateNumber(dragCursorX);
+            else updateColor(dragCursorX);
             return true;
         }
         return super.mouseDragged(event, dragX, dragY);
@@ -944,11 +947,15 @@ public final class PopClickGuiScreen extends Screen implements SkijaScreen {
     @Override
     public boolean mouseReleased(MouseButtonEvent event) {
         if (closing) return true;
+        boolean consumed = draggingNumber != null || draggingColor != null;
         draggingNumber = null;
         draggingColor = null;
         draggingColorChannel = -1;
+        activeDragButton = -1;
+        dragCursorX = 0.0F;
+        dragCursorY = 0.0F;
         activeScale = configuredScale();
-        return super.mouseReleased(event);
+        return consumed || super.mouseReleased(event);
     }
 
     @Override

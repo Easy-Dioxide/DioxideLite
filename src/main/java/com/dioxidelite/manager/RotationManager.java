@@ -305,6 +305,11 @@ public final class RotationManager {
         }
     }
 
+    /** Whether silent rotations are intentionally mirrored to the third-person model. */
+    public boolean isRenderAnimationEnabled() {
+        return renderAnimation;
+    }
+
     public boolean isSmoothed() {
         return smoothed;
     }

@@ -181,6 +181,9 @@ public final class WindowClickGuiScreen extends Screen implements SkijaScreen {
     private float draggingTrackWidth;
     private ColorSetting draggingColor;
     private int draggingColorChannel = -1;
+    private int activeDragButton = -1;
+    private float dragCursorX;
+    private float dragCursorY;
 
     private Module capturingModule;
     private KeybindSetting capturingKeybind;
@@ -290,20 +293,20 @@ public final class WindowClickGuiScreen extends Screen implements SkijaScreen {
 
     @Override
     public boolean mouseDragged(MouseButtonEvent event, double dragX, double dragY) {
-        float mouseX = (float) logical(event.x());
-        float mouseY = (float) logical(event.y());
-        if (draggingPanel != null) {
-            draggingPanel.x = mouseX - dragOffsetX;
-            draggingPanel.y = mouseY - dragOffsetY;
-            draggingPanel.clampPosition(logicalWidth(), logicalHeight());
-            return true;
-        }
-        if (draggingNumber != null) {
-            updateNumber(mouseX);
-            return true;
-        }
-        if (draggingColor != null) {
-            updateColor(mouseX);
+        if (draggingPanel != null || draggingNumber != null || draggingColor != null) {
+            // Treat dragX/dragY as the authoritative delta. This avoids stale
+            // MouseButtonEvent coordinates on 26.1 input paths.
+            dragCursorX += (float) dragX / activeScale;
+            dragCursorY += (float) dragY / activeScale;
+            if (draggingPanel != null) {
+                draggingPanel.x = dragCursorX - dragOffsetX;
+                draggingPanel.y = dragCursorY - dragOffsetY;
+                draggingPanel.clampPosition(logicalWidth(), logicalHeight());
+            } else if (draggingNumber != null) {
+                updateNumber(dragCursorX);
+            } else {
+                updateColor(dragCursorX);
+            }
             return true;
         }
         return super.mouseDragged(event, dragX, dragY);
@@ -315,6 +318,9 @@ public final class WindowClickGuiScreen extends Screen implements SkijaScreen {
         draggingNumber = null;
         draggingColor = null;
         draggingColorChannel = -1;
+        activeDragButton = -1;
+        dragCursorX = 0.0F;
+        dragCursorY = 0.0F;
         activeScale = configuredScale();
         clampPanels();
         return super.mouseReleased(event);
@@ -464,6 +470,8 @@ public final class WindowClickGuiScreen extends Screen implements SkijaScreen {
                     draggingPanel = this;
                     dragOffsetX = mouseX - x;
                     dragOffsetY = mouseY - y;
+                    dragCursorX = mouseX;
+                    dragCursorY = mouseY;
                 }
                 return true;
             }
@@ -1010,6 +1018,9 @@ public final class WindowClickGuiScreen extends Screen implements SkijaScreen {
                     if (channel >= 0 && channel < channels) {
                         draggingColor = colorSetting;
                         draggingColorChannel = channel;
+                        activeDragButton = GLFW.GLFW_MOUSE_BUTTON_LEFT;
+                        dragCursorX = mouseX;
+                        dragCursorY = mouseY;
                         draggingTrackX = colorTrackX();
                         draggingTrackWidth = colorTrackWidth();
                         updateColor(mouseX);
@@ -1133,6 +1144,9 @@ public final class WindowClickGuiScreen extends Screen implements SkijaScreen {
 
     private void beginNumberDrag(Setting<?> setting, float trackX, float trackWidth, float mouseX) {
         draggingNumber = setting;
+        activeDragButton = GLFW.GLFW_MOUSE_BUTTON_LEFT;
+        dragCursorX = mouseX;
+        dragCursorY = 0.0F;
         draggingTrackX = trackX;
         draggingTrackWidth = trackWidth;
         updateNumber(mouseX);

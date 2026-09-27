@@ -50,13 +50,19 @@ public final class WorldToScreen {
 
     public static Vector4d getEntityPositionsOn2D(LivingEntity target, float tickDelta) {
         final Vec3 position = interpolate(target, tickDelta);
-        final float width = target.getBbWidth() / 2f;
-        final float height = target.getBbHeight() + (target.isCrouching() ? 0.1f : 0.2f);
-
+        // Use the entity's actual collision/render bounds for this frame, then
+        // translate those bounds to the same interpolated origin used by the
+        // camera projection. The old code rebuilt a synthetic box from
+        // getBbWidth()/getBbHeight(), which could differ from the render state
+        // during crouch/pose transitions and make the 2D ESP appear offset.
+        final AABB actual = target.getBoundingBox();
+        final Vec3 current = new Vec3(target.getX(), target.getY(), target.getZ());
+        final double dx = position.x - current.x;
+        final double dy = position.y - current.y;
+        final double dz = position.z - current.z;
         final AABB boundingBox = new AABB(
-                position.x - width, position.y, position.z - width,
-                position.x + width, position.y + height, position.z + width
-        );
+                actual.minX + dx, actual.minY + dy, actual.minZ + dz,
+                actual.maxX + dx, actual.maxY + dy, actual.maxZ + dz);
 
         return projectAbsoluteAABBOn2D(boundingBox);
     }

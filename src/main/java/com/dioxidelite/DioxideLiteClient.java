@@ -2,6 +2,7 @@ package com.dioxidelite;
 
 import com.dioxidelite.config.ConfigManager;
 import com.dioxidelite.event.EventBus;
+import com.dioxidelite.ui.dioxide.DioxideDynamicIsland;
 import com.dioxidelite.event.Listen;
 import com.dioxidelite.module.ModuleManager;
 import com.dioxidelite.runtime.FeatureRuntime;
@@ -17,6 +18,7 @@ public final class DioxideLiteClient implements ClientModInitializer {
         ModuleManager.INSTANCE.init();
         ApolloTeamNetworking.init();
         EventBus.INSTANCE.subscribe(this);
+        EventBus.INSTANCE.subscribe(DioxideDynamicIsland.getInstance());
         ClientLifecycleEvents.CLIENT_STARTED.register(client -> {
             FeatureRuntime.INSTANCE.activate();
         });

@@ -1719,7 +1719,11 @@ public final class MusicScreen extends AbstractSkijaScreen {
 
     private void closeQrImage() {
         if (qrImage != null) {
-            qrImage.close();
+            // The previous frame may still be in Skia/GPU submission when the QR
+            // login worker reports SCANNED/CONFIRMED. Retire the native image for
+            // a few frames instead of closing it immediately; this prevents a
+            // use-after-close inside Skija during the login transition.
+            SkijaRenderer.deferClose(qrImage);
             qrImage = null;
         }
         qrImageAddress = "";

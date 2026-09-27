@@ -1,6 +1,11 @@
 package com.dioxidelite.ui.dioxide;
 
 import com.dioxidelite.module.modules.player.IrcModule;
+import com.dioxidelite.command.CommandManager;
+import com.dioxidelite.event.Listen;
+import com.dioxidelite.event.Priority;
+import com.dioxidelite.event.events.CharInputEvent;
+import com.dioxidelite.event.events.KeyInputEvent;
 import com.dioxidelite.module.modules.render.DioxideIslandModule;
 import tritium.ncm.music.CloudMusic;
 import tritium.ncm.music.NcmLyrics;
@@ -17,6 +22,7 @@ import net.minecraft.client.Minecraft;
 import net.minecraft.client.multiplayer.PlayerInfo;
 import net.minecraft.resources.Identifier;
 import net.minecraft.world.level.GameType;
+import org.lwjgl.glfw.GLFW;
 
 import java.util.ArrayList;
 import java.util.Comparator;
@@ -69,6 +75,14 @@ public final class DioxideDynamicIsland {
     private static final long COMMAND_NOTICE_MILLIS = 2800L;
     private final AtomicReference<CommandNotice> commandNotice = new AtomicReference<>();
 
+    // Dot-command input is handled directly by the island when the player is in-game.
+    // The normal CommandManager remains the single source of truth for parsing/execution.
+    private boolean commandMode;
+    private boolean tabExpanded;
+    private final StringBuilder commandInput = new StringBuilder(".");
+    private String commandHint = ".bind  .t  .config  .help";
+    private long commandModeStartedAt;
+
     private DioxideDynamicIsland() {}
 
     public void showCommandNotice(String title, String detail, Severity severity) {
@@ -89,6 +103,104 @@ public final class DioxideDynamicIsland {
 
     /** Last island render duration (ns), for the debug performance HUD. */
     public static volatile long lastIslandRenderNanos;
+
+    /** Whether the island currently owns the raw Tab key / command input. */
+    public boolean ownsInput() {
+        return commandMode || tabExpanded;
+    }
+
+    @Listen(priority = Priority.HIGH)
+    private void onKeyInput(KeyInputEvent event) {
+        Minecraft mc = Minecraft.getInstance();
+        if (mc == null || mc.screen != null || mc.player == null
+                || !DioxideIslandModule.INSTANCE.isEnabled()) {
+            return;
+        }
+
+        int key = event.key();
+        if (key == GLFW.GLFW_KEY_TAB) {
+            if (event.action() == GLFW.GLFW_PRESS || event.action() == GLFW.GLFW_REPEAT) {
+                tabExpanded = true;
+            } else if (event.action() == GLFW.GLFW_RELEASE) {
+                tabExpanded = false;
+            }
+            event.cancel();
+            return;
+        }
+
+        if (!commandMode) return;
+
+        if (event.action() != GLFW.GLFW_PRESS && event.action() != GLFW.GLFW_REPEAT) {
+            if (event.action() == GLFW.GLFW_RELEASE) event.cancel();
+            return;
+        }
+
+        if (key == GLFW.GLFW_KEY_ESCAPE) {
+            commandMode = false;
+            commandInput.setLength(0);
+            event.cancel();
+        } else if (key == GLFW.GLFW_KEY_BACKSPACE) {
+            if (commandInput.length() > 1) commandInput.deleteCharAt(commandInput.length() - 1);
+            refreshCommandHint();
+            event.cancel();
+        } else if (key == GLFW.GLFW_KEY_ENTER || key == GLFW.GLFW_KEY_KP_ENTER) {
+            String command = commandInput.toString().trim();
+            commandMode = false;
+            commandInput.setLength(0);
+            commandHint = ".bind  .t  .config  .help";
+            if (command.length() > 1) CommandManager.INSTANCE.handle(command);
+            else showCommandNotice("Client Commands", ".bind  .t  .config", Severity.INFO);
+            event.cancel();
+        } else if (key == GLFW.GLFW_KEY_TAB) {
+            refreshCommandHint();
+            event.cancel();
+        }
+    }
+
+    @Listen(priority = Priority.HIGH)
+    private void onCharInput(CharInputEvent event) {
+        Minecraft mc = Minecraft.getInstance();
+        if (mc == null || mc.screen != null || mc.player == null
+                || !DioxideIslandModule.INSTANCE.isEnabled()) return;
+
+        if (!commandMode) {
+            if (event.allowedChatCharacter() && ".".equals(event.text())) {
+                commandMode = true;
+                commandModeStartedAt = System.currentTimeMillis();
+                commandInput.setLength(0);
+                commandInput.append('.');
+                refreshCommandHint();
+                event.cancel();
+            }
+            return;
+        }
+
+        if (event.allowedChatCharacter() && event.text() != null && !event.text().isEmpty()) {
+            if (commandInput.length() < 160) commandInput.append(event.text());
+            refreshCommandHint();
+            event.cancel();
+        }
+    }
+
+    private void refreshCommandHint() {
+        String current = commandInput.toString();
+        if (current.length() <= 1) {
+            commandHint = ".bind  .t  .config  .help";
+            return;
+        }
+        String completed = CommandManager.INSTANCE.complete(current, current.length());
+        if (completed != null && !completed.equals(current)) {
+            commandHint = completed;
+            return;
+        }
+        String partial = current.substring(1).toLowerCase(java.util.Locale.ROOT);
+        commandHint = CommandManager.INSTANCE.commands().stream()
+                .map(command -> "." + command.name())
+                .filter(name -> name.toLowerCase(java.util.Locale.ROOT).startsWith("." + partial))
+                .limit(4)
+                .reduce((a, b) -> a + "  " + b)
+                .orElse("No matching client command");
+    }
 
     /** Releases native Skija resources when the renderer shuts down. */
     public void close() {
@@ -114,7 +226,7 @@ public final class DioxideDynamicIsland {
         if (!island.isEnabled() || canvas == null || mc == null || mc.player == null || mc.screen != null) return;
         long t0 = System.nanoTime();
         try {
-        boolean expanded = mc.options != null && mc.options.keyPlayerList.isDown();
+        boolean expanded = tabExpanded;
         updateDataCache(mc, expanded);
         List<PlayerInfo> players = expanded ? cachedPlayers : List.of();
         String server = cachedServer;
@@ -122,13 +234,17 @@ public final class DioxideDynamicIsland {
         int ping = cachedPing;
         CommandNotice notice = activeNotice();
 
-        float targetW = notice != null
+        float targetW = commandMode
+                ? Math.min(screenW - 24f, 390f)
+                : notice != null
                 ? Math.min(screenW - 24f, 300f)
                 : expanded
                 ? Math.min(screenW - 24f, Math.max(340f, Math.min(470f, 300f + players.size() * 2f)))
                 : Math.min(screenW - 24f, Math.max(176f,
                         SkijaUi.textWidth(DioxideLite.NAME + " " + DioxideLite.VERSION, 8.5f) + 82f));
-        float targetH = notice != null
+        float targetH = commandMode
+                ? 48f
+                : notice != null
                 ? 42f
                 : expanded
                 ? Math.min(screenH - 24f, 84f + Math.max(0, ((players.size() + 5) / 6) - 1) * 14f)
@@ -149,7 +265,9 @@ public final class DioxideDynamicIsland {
         DioxideIslandModule.Style style = DioxideIslandModule.INSTANCE.style.get();
         drawIsland(canvas, x, y, width, height, radius, expanded, style);
 
-        if (notice != null) {
+        if (commandMode) {
+            drawCommandInput(canvas, x, y, width, height, style);
+        } else if (notice != null) {
             drawCommandNotice(canvas, notice, x, y, width, height, style);
         } else if (expanded) {
             drawExpanded(canvas, mc, players, server, ping, x, y, width, height);
@@ -200,6 +318,20 @@ public final class DioxideDynamicIsland {
             return null;
         }
         return notice;
+    }
+
+    private void drawCommandInput(Canvas canvas, float x, float y, float w, float h,
+                                  DioxideIslandModule.Style style) {
+        String value = commandInput.length() == 0 ? "." : commandInput.toString();
+        SkijaUi.boldText(canvas, "Dioxide", x + 12f, y + 7f, 10f, primaryColor(style), 8.5f);
+        SkijaUi.text(canvas, value + "_", x + 12f, y + 21f, 10f,
+                accentColor(style), 9f);
+        SkijaUi.text(canvas, truncate(commandHint, 58), x + 12f, y + 34f, 8f,
+                mutedColor(style), 7f);
+        float age = Math.max(0f, (System.currentTimeMillis() - commandModeStartedAt) / 1000f);
+        float pulse = 0.55f + 0.45f * (float) Math.sin(age * 5.5f);
+        SkijaUi.rounded(canvas, x + w - 18f, y + 20f, 4f, 4f, 2f,
+                (accentColor(style) & 0x00FFFFFF) | ((int) (pulse * 255f) << 24));
     }
 
     private static void drawCommandNotice(Canvas canvas, CommandNotice notice, float x, float y,
