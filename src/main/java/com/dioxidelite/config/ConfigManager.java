@@ -15,7 +15,7 @@ import com.dioxidelite.module.modules.ClickGui;
 import com.dioxidelite.setting.Setting;
 import com.dioxidelite.ui.hud.EpsilonHudModule;
 import com.dioxidelite.ui.hud.HUD;
-import com.dioxidelite.ui.hud.ModuleListHUD;
+import com.dioxidelite.ui.hud.OnyxArraylistHUD;
 import com.dioxidelite.ui.hud.Notifications;
 import com.dioxidelite.ui.hud.WatermarkHUD;
 
@@ -856,10 +856,10 @@ public final class ConfigManager {
             applyLegacy(settings, "Watermark Y", WatermarkHUD.INSTANCE.yPosition);
             WatermarkHUD.INSTANCE.setEnabled(masterEnabled && legacyBoolean(settings, "Watermark", true));
         }
-        if (!modules.has(ModuleListHUD.INSTANCE.id())) {
-            applyLegacy(settings, "Array List X", ModuleListHUD.INSTANCE.xPosition);
-            applyLegacy(settings, "Array List Y", ModuleListHUD.INSTANCE.yPosition);
-            ModuleListHUD.INSTANCE.setEnabled(masterEnabled && legacyBoolean(settings, "Array List", true));
+        if (!modules.has(OnyxArraylistHUD.INSTANCE.id())) {
+            applyLegacy(settings, "Array List X", OnyxArraylistHUD.INSTANCE.xPosition);
+            applyLegacy(settings, "Array List Y", OnyxArraylistHUD.INSTANCE.yPosition);
+            OnyxArraylistHUD.INSTANCE.setEnabled(masterEnabled && legacyBoolean(settings, "Array List", true));
         }
     }
 

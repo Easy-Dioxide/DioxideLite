@@ -58,6 +58,8 @@ public final class OnyxArraylistHUD extends EpsilonHudModule {
             .visibleWhen(() -> style.get() == Style.PILLS));
     public final DoubleSetting rowSpacing = add(new DoubleSetting("Row Spacing", 0.0, 0.0, 6.0, 0.5));
     public final DoubleSetting animSpeed = add(new DoubleSetting("Animation Speed", 1.0, 0.25, 3.0, 0.05));
+    public final DoubleSetting screenMargin = add(new DoubleSetting("Screen Margin", 4.0, 0.0, 20.0, 0.5));
+    public final BooleanSetting autoAlign = add(new BooleanSetting("Auto Align", true));
 
     private final Map<Module, Float> anim = new IdentityHashMap<>();
 
@@ -96,8 +98,14 @@ public final class OnyxArraylistHUD extends EpsilonHudModule {
         float totalH = active.size() * rowH + (active.size() - 1) * gap;
         updateBounds(maxW, totalH);
 
-        float x = event.width() - maxW - 4.0f;
-        float y = 4.0f;
+        float margin = screenMargin.get().floatValue();
+        float x;
+        if (autoAlign.get()) {
+            x = event.width() - maxW - margin;
+        } else {
+            x = xPosition.get().floatValue();
+        }
+        float y = yPosition.get().floatValue();
         long now = System.currentTimeMillis();
         int rainbowTick = (int)(now / 50L);
 

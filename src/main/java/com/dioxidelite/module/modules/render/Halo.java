@@ -69,6 +69,7 @@ public final class Halo extends Module {
 
     private Halo() {
         super("Halo", Category.RENDER);
+        setEnabled(true);
     }
 
     private static final RenderPipeline HALO_PIPELINE = RenderPipeline.builder(RenderPipelines.ENTITY_SNIPPET)
