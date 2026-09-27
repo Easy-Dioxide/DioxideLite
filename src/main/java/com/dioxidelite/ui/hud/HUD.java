@@ -31,7 +31,7 @@ public final class HUD extends Module {
     public final BooleanSetting whiteMode = add(new BooleanSetting("White Mode", false));
 
     public final BooleanSetting watermark = control("Watermark", false, WatermarkHUD.INSTANCE);
-    public final BooleanSetting arrayList = control("Array List", true, ModuleListHUD.INSTANCE);
+    public final BooleanSetting arrayList = control("Array List", true, OnyxArraylistHUD.INSTANCE);
     public final BooleanSetting fps = control("FPS", false, FPSHUD.INSTANCE);
     public final BooleanSetting bps = control("BPS", false, BPSHUD.INSTANCE);
     public final BooleanSetting coordinates = control("Coordinates", false, CoordinatesHUD.INSTANCE);
@@ -98,7 +98,7 @@ public final class HUD extends Module {
         synchronizing = true;
         try {
             watermark.set(WatermarkHUD.INSTANCE.isEnabled());
-            arrayList.set(ModuleListHUD.INSTANCE.isEnabled());
+            arrayList.set(OnyxArraylistHUD.INSTANCE.isEnabled());
             fps.set(FPSHUD.INSTANCE.isEnabled());
             bps.set(BPSHUD.INSTANCE.isEnabled());
             coordinates.set(CoordinatesHUD.INSTANCE.isEnabled());
@@ -119,7 +119,7 @@ public final class HUD extends Module {
 
     public BooleanSetting componentSetting(Module module) {
         if (module == WatermarkHUD.INSTANCE) return watermark;
-        if (module == ModuleListHUD.INSTANCE) return arrayList;
+        if (module == OnyxArraylistHUD.INSTANCE) return arrayList;
         if (module == FPSHUD.INSTANCE) return fps;
         if (module == BPSHUD.INSTANCE) return bps;
         if (module == CoordinatesHUD.INSTANCE) return coordinates;
@@ -140,7 +140,7 @@ public final class HUD extends Module {
     public List<EpsilonHudModule> components() {
         return List.of(
                 WatermarkHUD.INSTANCE,
-                ModuleListHUD.INSTANCE,
+                OnyxArraylistHUD.INSTANCE,
                 FPSHUD.INSTANCE,
                 BPSHUD.INSTANCE,
                 CoordinatesHUD.INSTANCE,
@@ -168,7 +168,7 @@ public final class HUD extends Module {
 
     private void applyControls() {
         WatermarkHUD.INSTANCE.setEnabled(watermark.get());
-        ModuleListHUD.INSTANCE.setEnabled(arrayList.get());
+        OnyxArraylistHUD.INSTANCE.setEnabled(arrayList.get());
         FPSHUD.INSTANCE.setEnabled(fps.get());
         BPSHUD.INSTANCE.setEnabled(bps.get());
         CoordinatesHUD.INSTANCE.setEnabled(coordinates.get());
@@ -186,7 +186,7 @@ public final class HUD extends Module {
 
     private static void disableHudModules() {
         WatermarkHUD.INSTANCE.setEnabled(false);
-        ModuleListHUD.INSTANCE.setEnabled(false);
+        OnyxArraylistHUD.INSTANCE.setEnabled(false);
         FPSHUD.INSTANCE.setEnabled(false);
         BPSHUD.INSTANCE.setEnabled(false);
         CoordinatesHUD.INSTANCE.setEnabled(false);

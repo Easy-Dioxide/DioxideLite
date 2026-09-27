@@ -95,7 +95,6 @@ import com.dioxidelite.ui.hud.HUD;
 import com.dioxidelite.ui.hud.HudFusionManager;
 import com.dioxidelite.ui.hud.InventoryHUD;
 import com.dioxidelite.ui.hud.KeybindOverlayHUD;
-import com.dioxidelite.ui.hud.ModuleListHUD;
 import com.dioxidelite.ui.hud.Notifications;
 import com.dioxidelite.ui.hud.OnyxArraylistHUD;
 import com.dioxidelite.ui.hud.OnyxNotifsHUD;
@@ -241,7 +240,6 @@ public final class ModuleManager {
         register(GlobalBlurModule.INSTANCE);
         register(WatermarkHUD.INSTANCE);
         register(PerformanceHUD.INSTANCE);
-        register(ModuleListHUD.INSTANCE);
         register(FPSHUD.INSTANCE);
         register(BPSHUD.INSTANCE);
         register(CoordinatesHUD.INSTANCE);
