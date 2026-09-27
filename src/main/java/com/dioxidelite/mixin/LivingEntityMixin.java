@@ -18,6 +18,7 @@ import com.dioxidelite.event.events.GroundJumpEvent;
 import com.dioxidelite.event.events.JumpEvent;
 import com.dioxidelite.event.events.RotationAnimationEvent;
 import com.dioxidelite.module.modules.movement.NoJumpDelay;
+import com.dioxidelite.manager.RotationManager;
 import com.dioxidelite.module.modules.movement.Scaffold;
 import net.minecraft.client.Minecraft;
 import net.minecraft.world.entity.LivingEntity;
@@ -62,10 +63,22 @@ public class LivingEntityMixin {
     private float dioxidelite$modifyHeadYaw(LivingEntity entity, Operation<Float> original) {
         if (entity == Minecraft.getInstance().player) {
             RotationAnimationEvent event = EventBus.INSTANCE.post(new RotationAnimationEvent(
-                    entity.getYRot(), 0.0f, 0.0f, 0.0f));
+                    entity.getYRot(), entity.yRotO, entity.getXRot(), entity.xRotO));
             return event.getYaw();
         }
         return original.call(entity);
+    }
+
+    @Inject(method = "tickHeadTurn", at = @At("TAIL"))
+    private void dioxidelite$syncAnimatedHead(CallbackInfo ci) {
+        LivingEntity self = (LivingEntity) (Object) this;
+        Minecraft minecraft = Minecraft.getInstance();
+        RotationManager rotations = RotationManager.INSTANCE;
+        if (self == minecraft.player && rotations.isActive() && rotations.isRenderAnimationEnabled()) {
+            float yaw = rotations.getYaw();
+            self.yHeadRotO = self.yHeadRot;
+            self.yHeadRot = yaw;
+        }
     }
 
     @ModifyExpressionValue(

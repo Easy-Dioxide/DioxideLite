@@ -6,6 +6,8 @@ import com.dioxidelite.event.EventBus;
 import com.dioxidelite.event.events.TickEvent;
 import com.dioxidelite.render.SkijaRenderer;
 import com.dioxidelite.ui.SkijaScreen;
+import com.dioxidelite.ui.hud.HudEditorScreen;
+import net.minecraft.client.gui.screens.ChatScreen;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.User;
 import net.minecraft.client.gui.screens.LoadingOverlay;
@@ -71,6 +73,9 @@ public class MinecraftMixin implements MinecraftSessionAccessor {
                     ? accessor.dioxidelite$getCurrentProgress()
                     : -1.0F;
             SkijaRenderer.renderLoading(progress);
+        } else if (minecraft.screen instanceof ChatScreen
+                && HudEditorScreen.isOverlayActive()) {
+            SkijaRenderer.renderHudEditorOverlay();
         } else if (minecraft.screen instanceof SkijaScreen skijaScreen) {
             // One Skija submission per frame. PopClickGuiScreen gets its background
             // blur from vanilla's extraction pipeline, so there is no reason to

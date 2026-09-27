@@ -393,8 +393,12 @@ public final class ESP extends Module {
                 continue;
             }
 
+            // Anchor the info row to the same interpolated bounding box used by
+            // the ESP rectangle. This prevents a second, independently rounded
+            // eye-height calculation from drifting away from the player.
+            double headY = target.getBoundingBox().maxY + (current.y - target.getY()) + 0.08;
             Vector3f head = WorldToScreen.getWorldPositionToScreen(
-                    current.add(0.0, target.getEyeHeight() + 0.15, 0.0));
+                    new Vec3(current.x, headY, current.z));
             if (head == null || head.z < 0.0F || head.z > 1.0F) {
                 continue;
             }

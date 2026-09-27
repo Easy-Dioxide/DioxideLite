@@ -48,6 +48,7 @@ import org.lwjgl.system.MemoryStack;
 
 import java.nio.ByteBuffer;
 import java.nio.IntBuffer;
+import java.util.ArrayDeque;
 import java.util.HashMap;
 import java.util.Map;
 
@@ -80,6 +81,8 @@ public final class SkijaRenderer
     private static int targetFramebuffer = -1;
     private static int targetSamples = -1;
     private static int targetStencilBits = -1;
+    private static int lastGuiWidth = -1;
+    private static int lastGuiHeight = -1;
     private static int themedFramebuffer = -1;
     private static int themedColorTexture = -1;
     private static Image frameBackdropSnapshot;
@@ -95,6 +98,10 @@ public final class SkijaRenderer
 
     /** Cached blur filters; creating native ImageFilter objects per HUD per frame is expensive on iGPUs. */
     private static final Map<Integer, ImageFilter> BACKDROP_BLUR_FILTERS = new HashMap<>();
+    /** Native images retired by screens; keep them alive for a few submitted frames
+     * so the GPU cannot reference freed Skia resources after a QR/login transition. */
+    private static final ArrayDeque<RetiredResource> RETIRED_RESOURCES = new ArrayDeque<>();
+    private static long renderFrameSerial;
     /** Reused paint for backdrop blits; creating a native Paint per HUD blur was needless. */
     private static final Paint BACKDROP_PAINT = new Paint().setAntiAlias(true);
 
@@ -103,6 +110,25 @@ public final class SkijaRenderer
 
     /** Last full overlay pass duration (ns), for the debug performance HUD. */
     public static volatile long lastOverlayNanos;
+
+    public static void deferClose(AutoCloseable resource) {
+        if (resource == null) return;
+        synchronized (RETIRED_RESOURCES) {
+            RETIRED_RESOURCES.addLast(new RetiredResource(resource, renderFrameSerial + 3));
+        }
+    }
+
+    private static void retireReadyResources() {
+        synchronized (RETIRED_RESOURCES) {
+            while (!RETIRED_RESOURCES.isEmpty()
+                    && RETIRED_RESOURCES.peekFirst().readyFrame <= renderFrameSerial) {
+                RetiredResource retired = RETIRED_RESOURCES.removeFirst();
+                try { retired.resource.close(); } catch (Throwable ignored) {}
+            }
+        }
+    }
+
+    private record RetiredResource(AutoCloseable resource, long readyFrame) {}
 
     public static String rendererString() {
         return RENDERER_STRING;
@@ -174,6 +200,15 @@ public final class SkijaRenderer
      * Fires {@link Render2DEvent} so enabled modules can draw a HUD/world overlay
      * with the shared Skija canvas. Called every frame no GUI is open.
      */
+    /** Renders the non-exclusive HUD editor above vanilla screens such as ChatScreen. */
+    public static void renderHudEditorOverlay() {
+        if (failed) return;
+        Window window = Minecraft.getInstance().getWindow();
+        float scaledWidth = window.getGuiScaledWidth();
+        float scaledHeight = window.getGuiScaledHeight();
+        paintOverlay(canvas -> com.dioxidelite.ui.hud.HudEditorScreen.renderOverlay(canvas), false);
+    }
+
     public static void renderOverlay() {
         Window window = Minecraft.getInstance().getWindow();
         float scaledWidth = window.getGuiScaledWidth();
@@ -285,16 +320,18 @@ public final class SkijaRenderer
                 SkijaUi.releaseRetiredFontResources();
             }
         } catch (Throwable throwable) {
-            failed = true;
-            DioxideLite.LOGGER.error("Skija overlay renderer failed; disabling it for this session", throwable);
+            recoverFromNativeFailure(throwable);
         } finally {
+            // The snapshot is only needed during this overlay pass. Clear the
+            // global reference before releasing it so no later HUD can sample a
+            // closed native Image.
             frameBackdropSnapshot = null;
             if (backdropDownsampled != null) {
                 try { backdropDownsampled.close(); } catch (Throwable ignored) {}
                 backdropDownsampled = null;
             }
             if (backdrop != null) {
-                backdrop.close();
+                try { backdrop.close(); } catch (Throwable ignored) {}
             }
             previous.restore();
         }
@@ -321,15 +358,29 @@ public final class SkijaRenderer
             Window window = minecraft.getWindow();
             int width = window.getWidth();
             int height = window.getHeight();
-            if (width <= 0 || height <= 0) {
+            int guiWidth = window.getGuiScaledWidth();
+            int guiHeight = window.getGuiScaledHeight();
+            if (width <= 0 || height <= 0 || guiWidth <= 0 || guiHeight <= 0) {
                 return;
             }
 
-            paint(width, height, 0, window.getGuiScaledWidth(),
-                    window.getGuiScaledHeight(), painter, captureBackdrop);
+            // Window dragging/fullscreen changes can briefly update the drawable
+            // size and GUI size on different frames. Invalidate the Skija target
+            // and backdrop cache together so HUD coordinates are never rendered
+            // against a stale framebuffer mapping.
+            if (lastGuiWidth != guiWidth || lastGuiHeight != guiHeight
+                    || targetWidth != width || targetHeight != height) {
+                invalidateResizeState();
+            }
+            lastGuiWidth = guiWidth;
+            lastGuiHeight = guiHeight;
+
+            paint(width, height, 0, guiWidth, guiHeight, painter, captureBackdrop);
         } catch (Throwable throwable) {
-            failed = true;
-            DioxideLite.LOGGER.error("Skija renderer failed; disabling it for this session", throwable);
+            // A resize or native texture retirement can invalidate Skija's GL
+            // surface for one frame. Recover instead of permanently disabling all
+            // HUD rendering for the rest of the session.
+            recoverFromNativeFailure(throwable);
         }
     }
 
@@ -341,20 +392,24 @@ public final class SkijaRenderer
 
     private static void applyGuiTransform(Canvas canvas, int pixelWidth, int pixelHeight,
                                           float guiWidth, float guiHeight) {
-        if (guiWidth <= 0.0F || guiHeight <= 0.0F) {
+        if (guiWidth <= 0.0F || guiHeight <= 0.0F || pixelWidth <= 0 || pixelHeight <= 0) {
             return;
         }
-        float scale = Math.min(pixelWidth / guiWidth, pixelHeight / guiHeight);
-        float offsetX = (pixelWidth - guiWidth * scale) * 0.5F;
-        float offsetY = (pixelHeight - guiHeight * scale) * 0.5F;
-        canvas.translate(offsetX, offsetY);
-        canvas.scale(scale, scale);
+        // Minecraft's GUI coordinate space already represents the complete
+        // logical window. Use the two live framebuffer ratios rather than a
+        // min() scale with letterboxing. The latter can visibly compress/shift
+        // HUDs for a frame while the native window is being resized.
+        float scaleX = pixelWidth / guiWidth;
+        float scaleY = pixelHeight / guiHeight;
+        canvas.scale(scaleX, scaleY);
     }
 
     private static void paint(int width, int height, int framebuffer,
                               float guiWidth, float guiHeight,
                               java.util.function.Consumer<Canvas> painter,
                               boolean captureBackdrop) {
+        renderFrameSerial++;
+        retireReadyResources();
         GlState previous = GlState.capture();
         Image backdrop = null;
         try {
@@ -385,8 +440,7 @@ public final class SkijaRenderer
                 SkijaUi.releaseRetiredFontResources();
             }
         } catch (Throwable throwable) {
-            failed = true;
-            DioxideLite.LOGGER.error("Skija renderer failed; disabling it for this session", throwable);
+            recoverFromNativeFailure(throwable);
         } finally {
             frameBackdropSnapshot = null;
             if (backdropDownsampled != null) {
@@ -571,6 +625,34 @@ public final class SkijaRenderer
         }
     }
 
+    private static void invalidateResizeState() {
+        backdropRequested = false;
+        if (frameBackdropSnapshot != null) {
+            try { frameBackdropSnapshot.close(); } catch (Throwable ignored) {}
+            frameBackdropSnapshot = null;
+        }
+        if (backdropDownsampled != null) {
+            try { backdropDownsampled.close(); } catch (Throwable ignored) {}
+            backdropDownsampled = null;
+        }
+        closeSurface();
+    }
+
+    private static void recoverFromNativeFailure(Throwable throwable) {
+        DioxideLite.LOGGER.warn("Recovering Skija renderer after a transient native/resize error", throwable);
+        try {
+            invalidateResizeState();
+            if (context != null) {
+                try { context.close(); } catch (Throwable ignored) {}
+                context = null;
+            }
+        } catch (Throwable ignored) {
+        }
+        // Keep the renderer alive. A subsequent frame recreates the backend
+        // render target against the current window dimensions.
+        failed = false;
+    }
+
     public static void close() {
         if (context == null) {
             return;
@@ -591,10 +673,17 @@ public final class SkijaRenderer
             try { filter.close(); } catch (Throwable ignored) {}
         }
         BACKDROP_BLUR_FILTERS.clear();
+        synchronized (RETIRED_RESOURCES) {
+            while (!RETIRED_RESOURCES.isEmpty()) {
+                try { RETIRED_RESOURCES.removeFirst().resource.close(); } catch (Throwable ignored) {}
+            }
+        }
         DioxideDynamicIsland.getInstance().close();
         SkijaUi.close();
         context.close();
         context = null;
+        lastGuiWidth = -1;
+        lastGuiHeight = -1;
     }
 
     private static void ensureSurface(int width, int height, int framebuffer, int samples, int stencilBits) {

@@ -68,6 +68,7 @@ import com.dioxidelite.module.modules.combat.ZealotCrystalPlus;
 import com.dioxidelite.module.modules.render.BlockHighlight;
 import com.dioxidelite.module.modules.render.CameraClip;
 import com.dioxidelite.module.modules.render.Compass;
+import com.dioxidelite.module.modules.render.Halo;
 import com.dioxidelite.module.modules.render.ItemTag;
 import com.dioxidelite.module.modules.render.DioxideIslandModule;
 import com.dioxidelite.module.modules.render.GlobalBlurModule;
@@ -220,6 +221,7 @@ public final class ModuleManager {
         register(BlockHighlight.INSTANCE);
         register(CameraClip.INSTANCE);
         register(Compass.INSTANCE);
+        register(Halo.INSTANCE);
         register(DeltaForceStyle.INSTANCE);
         register(ItemTag.INSTANCE);
         register(KillEffect.INSTANCE);

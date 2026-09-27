@@ -2,9 +2,12 @@ package com.dioxidelite.mixin;
 
 import com.dioxidelite.command.CommandManager;
 import com.dioxidelite.irc.IrcChatHandler;
+import com.dioxidelite.ui.hud.HudEditorScreen;
 import net.minecraft.client.gui.components.EditBox;
 import net.minecraft.client.gui.screens.ChatScreen;
 import net.minecraft.client.input.KeyEvent;
+import net.minecraft.client.input.CharacterEvent;
+import net.minecraft.client.input.MouseButtonEvent;
 import org.lwjgl.glfw.GLFW;
 import org.spongepowered.asm.mixin.Mixin;
 import org.spongepowered.asm.mixin.Shadow;
@@ -27,8 +30,47 @@ public abstract class ChatScreenMixin {
         }
     }
 
-    @Inject(method = "keyPressed", at = @At("HEAD"), cancellable = true)
+    @Inject(method = "mouseClicked", at = @At("HEAD"), cancellable = true, require = 0)
+    private void DioxideLite$hudEditorMouseClicked(MouseButtonEvent event, boolean doubleClick, CallbackInfoReturnable<Boolean> cir) {
+        if (HudEditorScreen.overlayMouseClicked(event, doubleClick)) {
+            cir.setReturnValue(true);
+        }
+    }
+
+    @Inject(method = "mouseDragged", at = @At("HEAD"), cancellable = true, require = 0)
+    private void DioxideLite$hudEditorMouseDragged(MouseButtonEvent event, double dragX, double dragY, CallbackInfoReturnable<Boolean> cir) {
+        if (HudEditorScreen.overlayMouseDragged(event, dragX, dragY)) {
+            cir.setReturnValue(true);
+        }
+    }
+
+    @Inject(method = "mouseReleased", at = @At("HEAD"), cancellable = true, require = 0)
+    private void DioxideLite$hudEditorMouseReleased(MouseButtonEvent event, CallbackInfoReturnable<Boolean> cir) {
+        if (HudEditorScreen.overlayMouseReleased(event)) {
+            cir.setReturnValue(true);
+        }
+    }
+
+    @Inject(method = "mouseScrolled", at = @At("HEAD"), cancellable = true, require = 0)
+    private void DioxideLite$hudEditorMouseScrolled(double mouseX, double mouseY, double horizontalAmount, double verticalAmount, CallbackInfoReturnable<Boolean> cir) {
+        if (HudEditorScreen.overlayMouseScrolled(mouseX, mouseY, horizontalAmount, verticalAmount)) {
+            cir.setReturnValue(true);
+        }
+    }
+
+    @Inject(method = "charTyped", at = @At("HEAD"), cancellable = true, require = 0)
+    private void DioxideLite$hudEditorCharTyped(CharacterEvent event, CallbackInfoReturnable<Boolean> cir) {
+        if (HudEditorScreen.overlayCharTyped(event)) {
+            cir.setReturnValue(true);
+        }
+    }
+
+    @Inject(method = "keyPressed", at = @At("HEAD"), cancellable = true, require = 0)
     private void DioxideLite$completeClientCommand(KeyEvent event, CallbackInfoReturnable<Boolean> cir) {
+        if (HudEditorScreen.overlayKeyPressed(event)) {
+            cir.setReturnValue(true);
+            return;
+        }
         if (event.key() != GLFW.GLFW_KEY_TAB) {
             return;
         }

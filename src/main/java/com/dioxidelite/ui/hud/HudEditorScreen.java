@@ -41,6 +41,9 @@ import java.util.Set;
 /** Direct-manipulation HUD editor with contextual settings beside the selected element. */
 public final class HudEditorScreen extends Screen implements SkijaScreen {
 
+    /** Optional non-exclusive editor instance rendered on top of the vanilla chat screen. */
+    private static HudEditorScreen overlayInstance;
+
     private static final float EDGE_MARGIN = 6.0F;
     private static final float SIDEBAR_WIDTH = 150.0F;
     private static final float SIDEBAR_HEADER = 22.0F;
@@ -93,6 +96,72 @@ public final class HudEditorScreen extends Screen implements SkijaScreen {
 
     public HudEditorScreen() {
         super(Component.literal("DioxideLite HUD Editor"));
+    }
+
+    /** Opens the editor as an overlay without replacing the currently open chat screen. */
+    public static void openOverlay() {
+        if (overlayInstance == null) {
+            overlayInstance = new HudEditorScreen();
+        }
+        overlayInstance.syncOverlaySize();
+        overlayInstance.lastFrameNanos = System.nanoTime();
+    }
+
+    public static boolean isOverlayActive() {
+        return overlayInstance != null;
+    }
+
+    public static void closeOverlay() {
+        if (overlayInstance == null) return;
+        overlayInstance.finishTextEditing();
+        ConfigManager.INSTANCE.save();
+        NotificationManager.INSTANCE.post(NotificationType.SUCCESS, "HUD Editor", "Layout saved");
+        overlayInstance = null;
+    }
+
+    public static void renderOverlay(Canvas canvas) {
+        if (overlayInstance == null) return;
+        overlayInstance.syncOverlaySize();
+        overlayInstance.renderSkija(canvas);
+    }
+
+    public static boolean overlayMouseClicked(MouseButtonEvent event, boolean doubleClick) {
+        return overlayInstance != null && overlayInstance.mouseClicked(event, doubleClick);
+    }
+
+    public static boolean overlayMouseDragged(MouseButtonEvent event, double dragX, double dragY) {
+        return overlayInstance != null && overlayInstance.mouseDragged(event, dragX, dragY);
+    }
+
+    public static boolean overlayMouseReleased(MouseButtonEvent event) {
+        return overlayInstance != null && overlayInstance.mouseReleased(event);
+    }
+
+    public static boolean overlayMouseScrolled(double mouseX, double mouseY, double horizontalAmount, double verticalAmount) {
+        return overlayInstance != null
+                && overlayInstance.mouseScrolled(mouseX, mouseY, horizontalAmount, verticalAmount);
+    }
+
+    public static boolean overlayKeyPressed(KeyEvent event) {
+        if (overlayInstance == null) return false;
+        if (event.key() == GLFW.GLFW_KEY_ESCAPE && overlayInstance.editingString == null
+                && overlayInstance.editingColor == null) {
+            closeOverlay();
+            return true;
+        }
+        return overlayInstance.keyPressed(event);
+    }
+
+    public static boolean overlayCharTyped(CharacterEvent event) {
+        return overlayInstance != null && overlayInstance.charTyped(event);
+    }
+
+    private void syncOverlaySize() {
+        if (minecraft == null) return;
+        this.width = minecraft.getWindow().getGuiScaledWidth();
+        this.height = minecraft.getWindow().getGuiScaledHeight();
+        this.mouseX = (int) minecraft.mouseHandler.getScaledXPos(minecraft.getWindow());
+        this.mouseY = (int) minecraft.mouseHandler.getScaledYPos(minecraft.getWindow());
     }
 
     @Override
@@ -477,7 +546,10 @@ public final class HudEditorScreen extends Screen implements SkijaScreen {
         float resetX = doneX - 5.0F - BUTTON_WIDTH;
         float actionY = height - 8.0F - BUTTON_HEIGHT;
         if (contains(x, y, doneX, actionY, BUTTON_WIDTH, BUTTON_HEIGHT)) {
-            if (event.button() == GLFW.GLFW_MOUSE_BUTTON_LEFT) onClose();
+            if (event.button() == GLFW.GLFW_MOUSE_BUTTON_LEFT) {
+                if (overlayInstance == this) closeOverlay();
+                else onClose();
+            }
             return true;
         }
         if (contains(x, y, resetX, actionY, BUTTON_WIDTH, BUTTON_HEIGHT)) {

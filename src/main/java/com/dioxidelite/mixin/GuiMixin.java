@@ -3,6 +3,7 @@ package com.dioxidelite.mixin;
 import com.dioxidelite.module.modules.render.NoRender;
 import com.dioxidelite.module.modules.render.DeltaForceStyle;
 import com.dioxidelite.ui.hud.ScoreboardHUD;
+import com.dioxidelite.ui.dioxide.DioxideDynamicIsland;
 import net.minecraft.client.DeltaTracker;
 import net.minecraft.client.gui.Gui;
 import net.minecraft.client.gui.GuiGraphicsExtractor;
@@ -46,6 +47,14 @@ public class GuiMixin {
         if (!DioxideLite$scoreboardPosePushed) return;
         graphics.pose().popMatrix();
         DioxideLite$scoreboardPosePushed = false;
+    }
+
+    @Inject(method = "extractTabList", at = @At("HEAD"), cancellable = true)
+    private void DioxideLite$hideVanillaTabList(GuiGraphicsExtractor graphics,
+                                                  DeltaTracker deltaTracker, CallbackInfo ci) {
+        if (DioxideDynamicIsland.getInstance().ownsInput()) {
+            ci.cancel();
+        }
     }
 
     @Inject(method = "extractHotbarAndDecorations", at = @At("HEAD"), cancellable = true)

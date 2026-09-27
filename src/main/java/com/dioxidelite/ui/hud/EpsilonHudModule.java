@@ -21,6 +21,8 @@ public abstract class EpsilonHudModule extends Module {
     private final float defaultHeight;
     private float renderedWidth;
     private float renderedHeight;
+    private float lastScreenWidth = -1.0F;
+    private float lastScreenHeight = -1.0F;
 
     protected EpsilonHudModule(String name, int defaultX, int defaultY,
                                float defaultWidth, float defaultHeight) {
@@ -51,6 +53,7 @@ public abstract class EpsilonHudModule extends Module {
     private void renderOpacityLayer(Render2DEvent event) {
         if (!usesSharedOpacityLayer()) return;
         int alpha = opacityAlpha();
+        onHudViewportChanged(event.width(), event.height());
         if (alpha >= 255) {
             renderHud(event);
             return;
@@ -108,6 +111,20 @@ public abstract class EpsilonHudModule extends Module {
     protected final void updateBounds(float width, float height) {
         renderedWidth = Math.max(4.0F, width);
         renderedHeight = Math.max(4.0F, height);
+    }
+
+    /**
+     * Invalidates only the cached editor bounds when Minecraft's logical GUI size changes.
+     * Persisted positions remain normalized (0..1000), so resizing never converts them
+     * through stale pixel coordinates.
+     */
+    public final void onHudViewportChanged(float screenWidth, float screenHeight) {
+        if (screenWidth <= 0.0F || screenHeight <= 0.0F) return;
+        if (lastScreenWidth == screenWidth && lastScreenHeight == screenHeight) return;
+        lastScreenWidth = screenWidth;
+        lastScreenHeight = screenHeight;
+        renderedWidth = Math.max(4.0F, Math.min(renderedWidth, screenWidth));
+        renderedHeight = Math.max(4.0F, Math.min(renderedHeight, screenHeight));
     }
 
     public final float hudX(float screenWidth) {
