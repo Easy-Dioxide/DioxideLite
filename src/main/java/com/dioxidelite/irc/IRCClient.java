@@ -36,6 +36,7 @@ public final class IRCClient {
 
     private static final int INITIAL_RECONNECT_DELAY = 2000;
     private static final int MAX_RECONNECT_DELAY = 30000;
+    private static final int HEARTBEAT_INTERVAL_SECONDS = 300; // 5 minutes
 
     private final String username;
     private final IRCClientConfig config;
@@ -54,6 +55,7 @@ public final class IRCClient {
     private volatile Thread messageListener;
     private volatile ScheduledExecutorService scheduler;
     private volatile ScheduledFuture<?> reconnectTask;
+    private volatile ScheduledFuture<?> heartbeatTask;
 
     private volatile Runnable stateListener;
 
@@ -160,6 +162,7 @@ public final class IRCClient {
             onlineUsers.add(username);
             notifyStateChanged();
             sendGameMessage("§a[OpticsValleyIRC] 已连接到IRC服务器");
+            startHeartbeat();
             startMessageListener(newSocket, newIn);
         } catch (UnknownHostException e) {
             closeQuietly(null, null, newSocket);
@@ -383,6 +386,7 @@ public final class IRCClient {
     }
 
     private void closeResourcesLocked() {
+        cancelHeartbeat();
         Socket currentSocket = socket;
         BufferedReader currentIn = in;
         PrintWriter currentOut = out;
@@ -453,6 +457,41 @@ public final class IRCClient {
         if (currentTask != null) {
             currentTask.cancel(false);
             reconnectTask = null;
+        }
+    }
+
+    private void startHeartbeat() {
+        cancelHeartbeat();
+        try {
+            heartbeatTask = getOrCreateScheduler().scheduleAtFixedRate(() -> {
+                if (!connected) {
+                    return;
+                }
+                Socket currentSocket = socket;
+                PrintWriter currentOut = out;
+                if (currentSocket == null || currentOut == null) {
+                    handleDisconnect(currentSocket, "心跳检测: 连接已丢失");
+                    return;
+                }
+                try {
+                    currentOut.println("\u200B"); // zero-width space keep-alive
+                    if (currentOut.checkError()) {
+                        handleDisconnect(currentSocket, "心跳检测: 发送失败");
+                    }
+                } catch (RuntimeException e) {
+                    handleDisconnect(currentSocket, "心跳检测异常: " + e.getMessage());
+                }
+            }, HEARTBEAT_INTERVAL_SECONDS, HEARTBEAT_INTERVAL_SECONDS, TimeUnit.SECONDS);
+        } catch (RejectedExecutionException e) {
+            DioxideLite.LOGGER.warn("IRC心跳任务提交失败", e);
+        }
+    }
+
+    private void cancelHeartbeat() {
+        ScheduledFuture<?> task = heartbeatTask;
+        if (task != null) {
+            task.cancel(false);
+            heartbeatTask = null;
         }
     }
 
