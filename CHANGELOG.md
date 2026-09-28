@@ -52,6 +52,80 @@
 
 ---
 
+## v2.2.0（2026-09-25）
+
+### 核心变更
+- 版本升级至 2.2.0。
+- Render 模块优化：ESP / NameTags / ItemTag / SpawnerFinder / TeamViewer / UHCDetector。
+- ClickGUI 优化：PopClickGuiScreen / WindowClickGuiScreen。
+- SkijaRenderer / DioxideDynamicIsland / DioxideThemeController 优化。
+- LuaRender2DContext 优化。
+- WorldToScreen 投影修复。
+
+### 修复
+- ItemTag.java 语法错误（缺少右括号）。
+- NameTagLogoRenderer.java 重复代码块 + 缺少 Vector3f import。
+
+### 保持不变
+- 主菜单 UI（砂狼白子背景）
+- Dynamic Island 4 样式
+- ClickGUI 4 主题
+- Lua 脚本沙箱
+
+---
+
+## v2.1.5（2026-09-25）
+
+### 核心变更
+- 版本固定为 2.1.5。
+- Render 模块稳定性修复：Compass / ESP / NameTags / WorldToScreen。
+- referenceTargetScanner 修复 Villager 编译错误（26.1.2 mapping）。
+- ClickGui.Mode.Pop → Setsuna 修复。
+
+### 已移植的 reference 模块（全量）
+
+**Combat（18 个）**：KillAura / KillAuraPlus / AntiBot / AutoTotem / Surround / Criticals / Backtrack / Burrow / FakeLag / MaceAura / SpearKill / ZealotCrystalPlus / BedBreaker / BedDefender / BedTracker / JumpReset / AttackRing / CombatVisuals
+
+**Movement（14 个）**：Scaffold / Velocity / NoSlow / Speed / Sprint / MovementFix / InvMove / NoFall / NoJumpDelay / KeepSprint / FlatElytraFly / AutoSprint / SafeWalk / LegacyScaffoldEngine
+
+**Player（16+ 个）**：ChestStealer / InvManager / AutoTool / BedAura / FastBreak / FastCraft / AutoMLG / AntiWeb / GhostHand / PacketEat / FakePlayer / AntiResourcePack / IrcModule / NetEaseMusicModule / Deposit / FastPlace / InventoryManager / NameChanger
+
+**Render（20+ 个）**：ESP / HoleESP / Tracers / OreTracers / SpawnerFinder / UHCDetector / Xray / Chams / BlockHighlight / FullBright / GlobalBlur / Radar / TargetHUD / Watermark / PotionHUD / Notifications / MusicLyrics / Dynamic Island / NameTags / Compass / KillEffect / LegendWatch / TeamViewer / DeltaForceStyle
+
+### reference 引擎层
+- CombatEngine — KillAura 目标获取
+- MovementEngine — Auto Sprint / Safe Walk
+- PlayerEngine — Name Changer
+- ClientEngine — 生命周期/上下文边界
+- referenceTargetScanner — 目标扫描
+
+### 保持不变
+- 主菜单 UI（砂狼白子背景）
+- Dynamic Island 4 样式（DIOXIDE / SIGNATURE_DARK / MINIMAL / GLASS）
+- ClickGUI 4 主题（LIQUID_GLASS / MINIMAL / SIGNATURE / SIGNATURE_DARK）
+
+---
+
+## v2.1.4（2026-09-24）
+
+### 核心变更
+- 版本固定为 2.1.4。
+- Combat / Movement / Player / Client 增加统一 reference backend 层。
+- KillAura 的目标获取改由 `CombatEngine` 负责，保留 DioxideLite 原有 ClickGUI、TargetHUD 与视觉链。
+- Auto Sprint、Safe Walk 改由 `MovementEngine` 负责。
+- Name Changer 改由 `PlayerEngine` 负责。
+- `ClientEngine` 作为客户端生命周期/上下文边界，渲染仍使用 DioxideLite 的 Skija 链。
+
+### 兼容策略
+reference client 的源码包含大量旧 Minecraft mapping/API（旧版 Entity、Packet、Minecraft 类）。直接复制原类会导致 26.1.2 编译失败，因此 2.1.4 使用当前 Minecraft API 重建 reference backend，而不是把旧 mapping 硬塞进主源码。
+
+### 保持不变
+- 主菜单 UI 不修改。
+- Dynamic Island / OPAI reference 样式体系保留。
+- DioxideLite 版本号为 2.1.4。
+
+---
+
 ## v2.1.3（2026-09-24）
 
 - 参考客户端表现层集成，对接已有 DioxideLite 功能面。
@@ -59,6 +133,34 @@
 - 灵动岛网易云歌词行集成，失败隔离 API 访问。
 - 通知 HUD 样式：DIOXIDE、REFERENCEX、OPAI；显示时长可在 ClickGUI 配置。
 - 渲染保持在 Skija 路径上，未替换 OpenGL 渲染器。
+
+---
+
+## v2.1.2（2026-09-23）
+
+### Windows 运行失败（关键修复）
+**问题**：v2.1.1 的 jar 中缺少 Skija、ViaVersion、Luaj、WebRTC、Cadence、Kotlin 等运行时依赖，Windows 上启动直接报 `NoClassDefFoundError`。
+
+**原因**：`build.gradle.kts` 中这些依赖用的是 `implementation`（只编译时可用），没有用 `include` 打包进 jar。
+
+**修复**：全部改为 `include`，Fabric Loom 自动打包成 nested jar：
+- nested jars 从 67 个 → 94 个
+- jar 体积从 85M → 96M
+- 新增打包：Skija (Windows + Linux)、ViaVersion 全系列、Luaj、WebRTC、Cadence、Kotlin stdlib、JJWT、MinecraftAuth、ViaLegacy、ViaBedrock 等
+
+### 品牌清理
+全量替换所有 setsuna/setsunavia 字样为 dioxidelite/dioxidelitevia：
+- 注释中的移植来源说明
+- 包名 `com.viaversion.setsunavia` → `com.viaversion.dioxidelitevia`
+- `fabric.mod.json` entrypoint / provides / custom 字段
+- `mixins.json` package 名
+- lang 文件中的翻译键和用户可见文本
+- 资源目录 `assets/setsunavia/` → `assets/dioxidelitevia/`
+
+### 自定义
+- 主菜单背景替换为自定义角色背景（cover 模式，居中裁剪不拉伸）
+- 支持用户通过 Options → Import 导入自定义背景图
+- 支持 Reset 恢复默认
 
 ---
 
@@ -99,7 +201,7 @@
 - **IRC 命令分发**：`IrcChatHandler` 接入聊天发送链路，`.` 前缀命令在客户端本地处理，其余消息走原版发送。
 
 ### 修复
-- **ChatScreenMixin 崩溃**：`@Inject(method = "charTyped")` 在 MC 26.1.2 的 `ChatScreen` 中不存在（该方法已迁移至 `KeyboardHandler`），导致 Mixin 注入失败无法启动 —— 移除失效的 `charTyped` / `mouseDragged` / `mouseReleased` 注入点（`mouseDragged` / `mouseReleased` 在 26.1.2 `ChatScreen` 中亦不存在），保留有效的 `keyPressed` / `mouseClicked` / `handleChatInput` 注入。
+- **ChatScreenMixin 崩溃**：`@Inject(method = "charTyped")` 在 MC 26.1.2 的 `ChatScreen` 中不存在（该方法已迁移至 `KeyboardHandler`），导致 Mixin 注入失败无法启动 —— 移除失效的 `charTyped` / `mouseDragged` / `mouseReleased` 注入点，保留有效的 `keyPressed` / `mouseClicked` / `handleChatInput` 注入。
 - **ScaffoldBlockHUD 编译错误**：`(float) stayTime.get()` 对装箱 `Double` 强转不合法 —— 改为 `((Number) stayTime.get()).floatValue()`。
 - **构建排除修复**：`sourceSets` 移除对 `tritium/**` 与 `repackage/**` 的误排除（音乐视觉依赖与音频库参与编译打包）。
 
