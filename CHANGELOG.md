@@ -1,16 +1,58 @@
-## 2.1.3
-
-- the reference client presentation integration layer for the existing DioxideLite feature surface.
-- Dynamic Island styles: DIOXIDE, SIGNATURE_DARK, MINIMAL, GLASS.
-- Dynamic Island NetEase lyric line integration with failure-isolated API access.
-- Notification HUD styles: DIOXIDE, REFERENCEX, OPAI; configurable display duration remains persisted in ClickGUI.
-- Kept all rendering on the existing Skija path; no OpenGL renderer replacement.
-
 # 更新日志（CHANGELOG）
 
 本文件汇总 DioxideLite 各版本更新记录。最新版本见顶部。
 
 ---
+
+## v2.2.2（2026-09-28）
+
+### 多平台移植
+- **PlatformSupport 统一 OS 分发层**：所有 OS 相关行为（打开文件夹、读取 CPU 名称、桌面集成）按平台分发，不再硬编码 Windows 路径。
+- **支持平台**：Windows x64、Linux x64、macOS arm64（Apple Silicon）、macOS x64——一个 jar 全平台通用。
+- **零额外 native 依赖**：全部用 JDK API + OS 自带 helper 进程实现。
+- **构建参数**：`-Pskija_platforms` / `-Pwebrtc_platforms` 可按需选择打包平台。
+
+### ClickGUI 双模式
+- **LegacyStyle**（默认）：传统窗口式 ClickGUI。
+- **Setsuna**：径向/轮盘式 ClickGUI。
+- **共享强调色**：Accent 颜色统一作用于所有客户端 UI。
+- **GUI Scale**：65%–125% 可调。
+- **背景模糊**：Setsuna 模式下可调（0–10）。
+
+### Render 模块重组
+- **RenderModuleRegistry**：统一注册入口。
+- **大量渲染模块移入 `render/advanced/` 子包**：ESP、Boxes、BedESP、GlowESP、SkeletonESP、TargetESP、ContainerESP、Chams、ChinaHat、Wings、CapeChanger、SkinChanger、Trails、Trajectories、JumpCircles、Camera、Freelook、Zoom、FogBlur、FogRemove、Fullbright、Crosshair、Skybox、Animations、Ambience 等。
+
+### 品牌清理
+- 移除所有 `setsuna` 字样，统一为 DioxideLite 品牌。
+- 窗口标题、任务栏图标、About 信息全部 DioxideLite。
+
+### 其他
+- **Tritium NCM**：DeviceIdGenerator 更新。
+- **语言文件**：en_us / zh_cn 更新。
+- **IRC 心跳**：客户端内置 5 分钟心跳保活，断线自动重连。
+
+---
+
+## v2.2.1（2026-09-27）
+
+### 视觉
+- HUD 窗口大小调整修复
+- 聊天编辑器功能
+- ChatScreenMixin 崩溃修复
+- Halo 模块（碧蓝档案光环渲染）
+- Onyx HUD 移植（ArrayList / Notifications / PotionHUD）
+- 删除原版 ModuleListHUD，OnyxArrayList 右对齐自适应
+
+### 验证
+- 构建成功
+- 游戏启动正常
+- 主菜单砂狼白子背景显示正常
+- 游戏内 HUD + ArrayList 显示正常
+
+---
+
+## 2.1.3
 
 ## v2.1.1（2026-09-21）
 

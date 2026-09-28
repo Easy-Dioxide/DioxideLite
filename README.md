@@ -14,6 +14,20 @@ multi-platform **2.2.2** build.
 
 ---
 
+## v2.2.2 更新摘要
+
+- **多平台移植**：PlatformSupport 统一 OS 分发层，支持 Windows / Linux / macOS（Intel + Apple Silicon），零额外 native 依赖
+- **ClickGUI 双模式**：LegacyStyle（传统窗口）+ Setsuna（径向轮盘），共享强调色，GUI Scale 可调
+- **Render 模块重组**：RenderModuleRegistry 统一注册，大量渲染模块移入 `render/advanced/` 子包
+- **品牌清理**：移除 setsuna 字样，全部统一 DioxideLite 品牌
+- **IRC 心跳**：5 分钟保活 + 断线自动重连
+- **Halo 模块**：碧蓝档案头顶光环渲染，默认启用
+- **Onyx HUD**：ArrayList 右对齐自适应 + Notifications + PotionHUD
+
+详细更新记录见 [CHANGELOG.md](CHANGELOG.md) 和 [devlog-2.2.2.md](devlog-2.2.2.md)。
+
+---
+
 ## 1. Building
 
 Requirements: JDK 25 (`JAVA_HOME` must point at it), an internet connection for the first
