@@ -122,16 +122,18 @@ local holdRight = dioxidelite:isKeyHeld("mouse_right")
 
 ## 更新日志
 
-| 版本 | Devlog |
+完整版本记录见 [CHANGELOG.md](CHANGELOG.md)。
+
+| 版本 | 摘要 |
 | --- | --- |
-| v2.2.1 | [devlog-2.2.1.md](devlog-2.2.1.md) — HUD resize + chat editor + ChatScreenMixin 修复 + Halo 模块 |
-| v2.2.0 | [devlog-2.2.0.md](devlog-2.2.0.md) — Render 优化 + ClickGUI 优化 + 编译修复 |
-| v2.1.5 | [devlog-2.1.5.md](devlog-2.1.5.md) — RenderStable OnyxPort + 编译修复 |
-| v2.1.4 | [devlog-2.1.4-onyx-engine-migration-cn.md](devlog-2.1.4-onyx-engine-migration-cn.md) — Onyx Engine 迁移 + 11 个新模块 |
-| v2.1.3 | [devlog-2.1.3-bilingual.md](devlog-2.1.3-bilingual.md) — OpenOnyx 视觉适配 + OPAI_ONYX 主题 + 多分辨率窗口图标 |
-| v2.1.2 | [devlog-2.1.2.md](devlog-2.1.2.md) — 修复 Windows 运行失败 + 去除 setsuna 字样 + 自定义背景 |
-| v2.1.1 | [devlog-2.1.1.md](devlog-2.1.1.md) — 视觉模块全量移植 + Music 模块 + 灵动岛 + Lua 脚本沙箱 |
-| v2.1.0 | [devlog-2.1.0.md](devlog-2.1.0.md) — 初始 Skija 渲染 + ClickGUI + IRC 联动 |
+| v2.2.1 | Halo 模块 + Onyx HUD 移植 + IRC 心跳保活 + ChatScreenMixin 修复 |
+| v2.2.0 | Render 优化 + ClickGUI 优化 + 编译修复 |
+| v2.1.5 | RenderStable OnyxPort — Render 稳定性修复 + Onyx 模块全量移植 |
+| v2.1.4 | OpenOnyx Engine Migration — Onyx backend 层 |
+| v2.1.3 | OpenOnyx 视觉适配 + OPAI_ONYX 主题 + 多分辨率窗口图标 |
+| v2.1.2 | 修复 Windows 运行失败 + 去除 setsuna 字样 + 自定义背景 |
+| v2.1.1 | 视觉模块全量移植 + Music 模块 + 灵动岛 + Lua 脚本沙箱 |
+| v2.1.0 | 初始 Skija 渲染 + ClickGUI + IRC 联动 |
 
 ## 许可
 
