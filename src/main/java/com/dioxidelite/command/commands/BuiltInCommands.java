@@ -1,7 +1,7 @@
 package com.dioxidelite.command.commands;
 
 // ---------------------------------------------------------------------------
-// 移植来源：DioxideLite（上游开源版）com/dioxidelite/command/commands/BuiltInCommands.java
+// 移植来源：DioxideLite（来源开源版）com/dioxidelite/command/commands/BuiltInCommands.java
 // 变更：包名/导入 com.dioxidelite.* -> com.dioxidelite.*，mixin 方法前缀
 //       dioxidelite$ -> dioxidelite$，字符串中的 dioxidelite -> dioxidelite。
 //       逻辑逐行保留，未做功能改动。
@@ -18,6 +18,7 @@ import com.dioxidelite.command.builder.CommandBuilder;
 import com.dioxidelite.command.builder.ParameterBuilder;
 import com.dioxidelite.config.ConfigManager;
 import com.dioxidelite.manager.FriendManager;
+import com.dioxidelite.util.client.PlatformSupport;
 import com.dioxidelite.module.Category;
 import com.dioxidelite.module.Module;
 import com.dioxidelite.module.ModuleManager;
@@ -609,7 +610,7 @@ public final class BuiltInCommands {
         Command browse = CommandBuilder.begin("browse")
                 .handler(context -> {
                     try {
-                        java.awt.Desktop.getDesktop().open(ConfigManager.INSTANCE.configDirectory().toFile());
+                        PlatformSupport.openDirectory(ConfigManager.INSTANCE.configDirectory());
                     } catch (Exception error) {
                         throw new CommandException("Failed to open the config directory.", error, List.of());
                     }

@@ -13,6 +13,7 @@ import com.dioxidelite.module.modules.render.GlobalBlurModule;
 import com.dioxidelite.ui.dioxide.DioxideDynamicIsland;
 
 import com.dioxidelite.ui.screen.VanillaScreenTheme;
+import com.dioxidelite.util.client.PlatformSupport;
 import io.github.humbleui.skija.BackendRenderTarget;
 import io.github.humbleui.skija.BackendTexture;
 import io.github.humbleui.skija.ColorAlphaType;
@@ -187,6 +188,15 @@ public final class SkijaRenderer
 
     private static boolean failed;
     private static boolean backdropBlurFailed;
+    /**
+     * Sticky flag for "Skija's GL backend cannot be created on this context".
+     *
+     * <p>{@code DirectContext.makeGL()} returns {@code null} when the current context does not
+     * expose what Skia Ganesh needs. macOS hands out a 3.2 core-profile context, so this is the
+     * failure mode to expect there; without the flag every frame would retry, log and allocate,
+     * so the renderer is disabled once and the vanilla HUD keeps working.</p>
+     */
+    private static boolean contextUnavailable;
 
     private SkijaRenderer() {
     }
@@ -416,6 +426,10 @@ public final class SkijaRenderer
             GL30.glBindFramebuffer(GL30.GL_FRAMEBUFFER, framebuffer);
             canonicalizePixelStore();
             ensureSurface(width, height, framebuffer, 0, 0);
+            if (surface == null) {
+                // No GL context for Skija on this machine; keep the vanilla frame untouched.
+                return;
+            }
 
             if (!DioxideLite$frameHasVisualWork) {
                 return;
@@ -687,8 +701,18 @@ public final class SkijaRenderer
     }
 
     private static void ensureSurface(int width, int height, int framebuffer, int samples, int stencilBits) {
+        if (contextUnavailable) {
+            return;
+        }
         if (context == null) {
             context = DirectContext.makeGL();
+            if (context == null) {
+                contextUnavailable = true;
+                DioxideLite.LOGGER.warn(
+                        "Skija could not create an OpenGL context on {} - DioxideLite UI rendering is disabled for this session",
+                        PlatformSupport.describe());
+                return;
+            }
         }
         if (surface != null
                 && targetWidth == width

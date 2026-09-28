@@ -1,6 +1,7 @@
 package com.dioxidelite.render;
 
 import com.dioxidelite.DioxideLite;
+import com.dioxidelite.util.client.PlatformSupport;
 import io.github.humbleui.skija.Canvas;
 import io.github.humbleui.skija.BlendMode;
 import io.github.humbleui.skija.Data;
@@ -39,11 +40,34 @@ public final class SkijaUi {
     public static final String CLIENT_FONT = "Client";
     private static final float FONT_SIZE = 9.0F;
     private static final long MAX_IMPORTED_FONT_BYTES = 64L * 1024L * 1024L;
-    private static final String[] FONT_FAMILIES = {
+    private static final String[] WINDOWS_FONT_FAMILIES = {
             "Microsoft YaHei UI",
             "Microsoft YaHei",
-            "Segoe UI"
+            "Segoe UI",
+            "Arial"
     };
+    /** PingFang SC is the Simplified-Chinese system font of current macOS releases (Apple Silicon and Intel). */
+    private static final String[] MACOS_FONT_FAMILIES = {
+            "PingFang SC",
+            "Hiragino Sans GB",
+            "Heiti SC",
+            "STHeiti",
+            "Songti SC",
+            "Apple SD Gothic Neo",
+            "Helvetica Neue",
+            "Arial"
+    };
+    private static final String[] LINUX_FONT_FAMILIES = {
+            "Noto Sans CJK SC",
+            "Source Han Sans SC",
+            "WenQuanYi Micro Hei",
+            "DejaVu Sans",
+            "Liberation Sans"
+    };
+    /** Installed fallback fonts, most preferred first; resolved once for the host OS. */
+    private static final String[] FONT_FAMILIES = PlatformSupport.isMacOS()
+            ? MACOS_FONT_FAMILIES
+            : (PlatformSupport.isWindows() ? WINDOWS_FONT_FAMILIES : LINUX_FONT_FAMILIES);
 
     private static final Paint SHAPE_PAINT = new Paint().setAntiAlias(false);
     private static final Paint GRADIENT_PAINT = new Paint().setAntiAlias(true).setDither(true);
@@ -830,7 +854,14 @@ public final class SkijaUi {
                 return typeface;
             }
         }
-        return null;
+        // Last resort: the platform's own default UI font (SF on macOS, Segoe on Windows,
+        // Cantarell/DejaVu on Linux). Keeps glyph fallback working even when none of the
+        // named families above exist on this machine.
+        try {
+            return manager.matchFamilyStyle(null, style);
+        } catch (RuntimeException ignored) {
+            return null;
+        }
     }
 
     public enum IconSet {

@@ -1,6 +1,6 @@
 package tritium.ncm;
 
-import com.sun.jna.platform.win32.Advapi32Util;
+import com.dioxidelite.util.client.PlatformSupport;
 import tritium.ncm.api.CloudMusicApi;
 
 import java.net.NetworkInterface;
@@ -8,8 +8,6 @@ import java.nio.charset.StandardCharsets;
 import java.security.MessageDigest;
 import java.util.LinkedHashMap;
 import java.util.Map;
-
-import static com.sun.jna.platform.win32.WinReg.HKEY_LOCAL_MACHINE;
 
 /**
  * Generate a unique device ID from the device,
@@ -20,10 +18,18 @@ public final class DeviceIdGenerator {
     private static final String SALT = "Would you rather watch a tree grow or a knee grow";
 
     public static String generate() {
+        String fingerprint;
         try {
-            String fingerprint = collect();
+            fingerprint = collect();
 //            System.out.println(fingerprint);
-
+        } catch (Throwable error) {
+            // Never let device fingerprinting take the whole music subsystem down: fall back to the
+            // parts of the fingerprint that cannot fail.
+            fingerprint = System.getProperty("os.name", "unknown") + '|'
+                    + System.getProperty("os.arch", "unknown") + '|'
+                    + System.getProperty("user.home", "unknown");
+        }
+        try {
             MessageDigest sha256 = MessageDigest.getInstance("SHA-256");
             sha256.update(SALT.getBytes(StandardCharsets.UTF_8));
             sha256.update(fingerprint.getBytes(StandardCharsets.UTF_8));
@@ -70,16 +76,13 @@ public final class DeviceIdGenerator {
         properties.put("OSVersion", System.getProperty("os.version"));
         properties.put("Arch", System.getProperty("os.arch"));
 
-        // cpu name
+        // cpu name（Windows 走 reg.exe，macOS 走 sysctl，Linux 读 /proc/cpuinfo —— 见 PlatformSupport）
         try {
-            String processorNameString = Advapi32Util.registryGetStringValue
-                    (HKEY_LOCAL_MACHINE,
-                            "HARDWARE\\DESCRIPTION\\System\\CentralProcessor\\0\\",
-                            "ProcessorNameString");
+            String processorNameString = PlatformSupport.cpuName();
 
-            if (processorNameString != null)
+            if (processorNameString != null && !processorNameString.isBlank())
                 properties.put("CPU", processorNameString);
-        } catch (Exception ignored) {}
+        } catch (Throwable ignored) {}
 
         // adapter mac addr
         try {

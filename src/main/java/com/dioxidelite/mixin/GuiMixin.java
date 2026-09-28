@@ -1,6 +1,7 @@
 package com.dioxidelite.mixin;
 
-import com.dioxidelite.module.modules.render.NoRender;
+import com.dioxidelite.module.modules.render.advanced.NoRender;
+import com.dioxidelite.module.modules.render.advanced.Crosshair;
 import com.dioxidelite.module.modules.render.DeltaForceStyle;
 import com.dioxidelite.ui.hud.ScoreboardHUD;
 import com.dioxidelite.ui.dioxide.DioxideDynamicIsland;
@@ -19,6 +20,26 @@ public class GuiMixin {
 
     @Unique
     private boolean DioxideLite$deltaHotbarPosePushed;
+
+    /** 自定义准星开启时隐藏原版准星（准星本体由模块在 2D 画布层绘制）。 */
+    @Inject(method = "extractCrosshair", at = @At("HEAD"), cancellable = true)
+    private void DioxideLite$hideVanillaCrosshair(GuiGraphicsExtractor graphics, DeltaTracker deltaTracker,
+                                                  CallbackInfo ci) {
+        if (Crosshair.INSTANCE.isEnabled()) {
+            ci.cancel();
+        }
+    }
+
+    /** NoRender：隐藏 BOSS 血条。 */
+    @Inject(method = "extractBossOverlay", at = @At("HEAD"), cancellable = true)
+    private void DioxideLite$hideBossOverlay(GuiGraphicsExtractor graphics, DeltaTracker deltaTracker,
+                                             CallbackInfo ci) {
+        NoRender noRender = NoRender.INSTANCE;
+        if (noRender.isEnabled() && noRender.bossBar.get()) {
+            ci.cancel();
+        }
+    }
+
 
     @Unique
     private boolean DioxideLite$scoreboardPosePushed;
@@ -96,7 +117,7 @@ public class GuiMixin {
     @Inject(method = "extractEffects", at = @At("HEAD"), cancellable = true)
     private void DioxideLite$hidePotionEffects(GuiGraphicsExtractor graphics, DeltaTracker deltaTracker, CallbackInfo ci) {
         NoRender noRender = NoRender.INSTANCE;
-        if (noRender.isEnabled() && noRender.potionEffects.get()) {
+        if (noRender.isEnabled() && noRender.badEffects.get()) {
             ci.cancel();
         }
     }

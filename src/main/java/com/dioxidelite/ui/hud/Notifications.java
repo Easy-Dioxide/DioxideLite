@@ -22,7 +22,7 @@ public final class Notifications extends EpsilonHudModule {
     private static final int EXIT_TIME = 220;
 
     public enum Position { TOP_CENTER, TOP_RIGHT, TOP_LEFT, BOTTOM_RIGHT, BOTTOM_LEFT, CUSTOM }
-    public enum Style { DIOXIDE, ONYX, OPAI }
+    public enum Style { DIOXIDE, STACK, GLASS }
 
     // Off by default: enabling/disabling modules must not spam the top-right
     // corner. Users can re-enable from the ClickGUI.
@@ -170,32 +170,32 @@ public final class Notifications extends EpsilonHudModule {
 
     private int styleAccent(NotificationManager.Entry entry) {
         return switch (style.get()) {
-            case ONYX -> entry.type().color();
-            case OPAI -> 0xFF9BD7FF;
+            case STACK -> entry.type().color();
+            case GLASS -> 0xFF9BD7FF;
             case DIOXIDE -> entry.type().color();
         };
     }
 
     private int stylePanel() {
         return switch (style.get()) {
-            case ONYX -> 150;
-            case OPAI -> 205;
+            case STACK -> 150;
+            case GLASS -> 205;
             case DIOXIDE -> 184;
         };
     }
 
     private int styleText() {
         return switch (style.get()) {
-            case ONYX -> 0xFFF1F4F8;
-            case OPAI -> 0xFFF7FAFF;
+            case STACK -> 0xFFF1F4F8;
+            case GLASS -> 0xFFF7FAFF;
             case DIOXIDE -> UiTheme.TEXT;
         };
     }
 
     private int styleMuted() {
         return switch (style.get()) {
-            case ONYX -> 0xFFADB6C2;
-            case OPAI -> 0xFFB9C7D8;
+            case STACK -> 0xFFADB6C2;
+            case GLASS -> 0xFFB9C7D8;
             case DIOXIDE -> UiTheme.TEXT_MUTED;
         };
     }

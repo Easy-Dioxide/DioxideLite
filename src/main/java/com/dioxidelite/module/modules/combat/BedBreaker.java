@@ -4,7 +4,7 @@ import com.dioxidelite.module.Category;
 import com.dioxidelite.module.Module;
 import com.dioxidelite.module.modules.player.BedAura;
 
-/** OpenOnyx BedBreaker entry mapped to DioxideLite's BedAura/bed-breaking engine. */
+/** the reference client BedBreaker entry mapped to DioxideLite's BedAura/bed-breaking engine. */
 public final class BedBreaker extends Module {
     public static final BedBreaker INSTANCE = new BedBreaker();
     private BedBreaker() { super("Bed Breaker", Category.COMBAT); }

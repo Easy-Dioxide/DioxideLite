@@ -66,23 +66,48 @@ public final class PopClickGuiScreen extends Screen implements SkijaScreen {
     private static final float PANEL_GAP = 10.0F;
     private static final float SCROLL_STEP = 24.0F;
 
-    private static final int BACKDROP = argb(70, 2, 8, 12);
-    private static final int PANEL = argb(224, 17, 23, 28);
-    private static final int PANEL_INNER = argb(205, 25, 32, 38);
-    private static final int PANEL_EDGE = argb(155, 102, 210, 238);
-    private static final int ROW = argb(92, 255, 255, 255);
-    private static final int ROW_HOVER = argb(24, 122, 214, 238);
-    private static final int TEXT = 0xFFF3F7F8;
-    private static final int TEXT_DIM = 0xFFA3AFB4;
-    private static final int TEXT_FAINT = 0xFF68767C;
-    private static final int TRACK = 0xFF3A464D;
-    private static final int LIGHT_PANEL = argb(240, 248, 250, 252);
-    private static final int LIGHT_PANEL_INNER = argb(224, 235, 240, 243);
-    private static final int LIGHT_ROW_HOVER = argb(58, 82, 174, 214);
-    private static final int LIGHT_TEXT = 0xFF1D282E;
-    private static final int LIGHT_TEXT_DIM = 0xFF59686F;
-    private static final int LIGHT_TEXT_FAINT = 0xFF929DA2;
-    private static final int LIGHT_TRACK = 0xFFC9D3D8;
+    // ---- modern palette ----------------------------------------------
+    // Values are re-derived from the accent setting every frame (the reference client seeds its whole
+    // theme from a single accent colour the same way), so the GUI follows the ClickGui "Accent"
+    // slider instead of a hard-coded purple.
+    private static int BACKDROP = argb(70, 2, 8, 12);
+    private static int PANEL = argb(224, 17, 23, 28);
+    private static int PANEL_INNER = argb(205, 25, 32, 38);
+    private static int PANEL_EDGE = argb(155, 102, 210, 238);
+    private static int ROW = argb(92, 255, 255, 255);
+    private static int ROW_HOVER = argb(24, 122, 214, 238);
+    private static int TEXT = 0xFFF3F7F8;
+    private static int TEXT_DIM = 0xFFA3AFB4;
+    private static int TEXT_FAINT = 0xFF68767C;
+    private static int TRACK = 0xFF3A464D;
+    private static int LIGHT_PANEL = argb(240, 248, 250, 252);
+    private static int LIGHT_PANEL_INNER = argb(224, 235, 240, 243);
+    private static int LIGHT_ROW_HOVER = argb(58, 82, 174, 214);
+    private static int LIGHT_TEXT = 0xFF1D282E;
+    private static int LIGHT_TEXT_DIM = 0xFF59686F;
+    private static int LIGHT_TEXT_FAINT = 0xFF929DA2;
+    private static int LIGHT_TRACK = 0xFFC9D3D8;
+
+    /** Rebuilds the reference palette from the accent colour. */
+    private static void refreshTheme() {
+        GuiPalette.seed(accent());
+        BACKDROP = GuiPalette.backdrop(1.0F);
+        PANEL = GuiPalette.panel();
+        PANEL_INNER = GuiPalette.panelInner();
+        PANEL_EDGE = GuiPalette.edge();
+        ROW_HOVER = GuiPalette.hover();
+        TEXT = GuiPalette.text();
+        TEXT_DIM = GuiPalette.textDim();
+        TEXT_FAINT = GuiPalette.textFaint();
+        TRACK = GuiPalette.track();
+        LIGHT_PANEL = GuiPalette.lightPanel();
+        LIGHT_PANEL_INNER = GuiPalette.lightPanelInner();
+        LIGHT_ROW_HOVER = GuiPalette.lightHover();
+        LIGHT_TEXT = GuiPalette.lightText();
+        LIGHT_TEXT_DIM = GuiPalette.lightTextDim();
+        LIGHT_TEXT_FAINT = GuiPalette.lightTextFaint();
+        LIGHT_TRACK = GuiPalette.lightTrack();
+    }
 
     private static final Paint RING_PAINT = new Paint()
             .setAntiAlias(true)
@@ -199,6 +224,7 @@ public final class PopClickGuiScreen extends Screen implements SkijaScreen {
 
     @Override
     public void renderSkija(Canvas canvas) {
+        refreshTheme();
         updateAnimations();
         if (completeCloseWhenReady()) return;
         float logicalWidth = logicalWidth();
@@ -234,6 +260,7 @@ public final class PopClickGuiScreen extends Screen implements SkijaScreen {
 
     private void updateAnimations() {
         long now = System.nanoTime();
+        GuiEffects.advance(delta);
         delta = Math.min(0.05F, Math.max(0.0F,
                 (now - lastFrame) / 1_000_000_000.0F));
         lastFrame = now;
@@ -283,8 +310,8 @@ public final class PopClickGuiScreen extends Screen implements SkijaScreen {
         float intro = smooth(introProgress);
         float collapse = smooth(categoryProgress);
 
-        RING_PAINT.setStrokeWidth(1.0F)
-                .setColor(withAlpha(accent(), Math.round(70.0F * intro * (1.0F - collapse))));
+        RING_PAINT.setStrokeWidth(1.1F)
+                .setColor(withAlpha(themeEdge(), Math.round(190.0F * intro * (1.0F - collapse))));
         canvas.drawCircle(centerX, centerY, ringRadius * intro, RING_PAINT);
 
         for (Category category : CATEGORIES) {
@@ -307,7 +334,7 @@ public final class PopClickGuiScreen extends Screen implements SkijaScreen {
             int color = categoryColor(category);
             SkijaUi.rounded(canvas, x - radius - 1.0F, y - radius - 1.0F,
                     radius * 2.0F + 2.0F, radius * 2.0F + 2.0F, radius + 1.0F,
-                    withAlpha(color, Math.round(120.0F * disappear)));
+                    withAlpha(themeEdge(), Math.round(150.0F * disappear)));
             SkijaUi.rounded(canvas, x - radius, y - radius, radius * 2.0F,
                     radius * 2.0F, radius, withAlpha(theme(0xFF11191E, 0xFFF7F9FA),
                             Math.round(238.0F * disappear)));
@@ -383,12 +410,12 @@ public final class PopClickGuiScreen extends Screen implements SkijaScreen {
         float panelY = lerp(startY, layout.listY(), progress);
         float panelWidth = lerp(startSize, layout.panelWidth(), progress);
         float panelHeight = lerp(startSize, layout.listHeight(), progress);
-        float radius = lerp(BUBBLE_RADIUS, 9.0F, progress);
+        float radius = lerp(BUBBLE_RADIUS, GuiPalette.PANEL_RADIUS, progress);
         int categoryColor = categoryColor(selectedCategory);
 
         SkijaUi.rounded(canvas, panelX - 1.0F, panelY - 1.0F,
                 panelWidth + 2.0F, panelHeight + 2.0F, radius + 1.0F,
-                withAlpha(categoryColor, Math.round(150.0F * progress)));
+                withAlpha(themeEdge(), Math.round(215.0F * progress)));
         SkijaUi.rounded(canvas, panelX, panelY, panelWidth, panelHeight, radius,
                 withAlpha(themePanel(), Math.round(255.0F * progress)));
         if (progress < 0.36F) return;
@@ -402,7 +429,7 @@ public final class PopClickGuiScreen extends Screen implements SkijaScreen {
         canvas.save();
         canvas.clipRect(Rect.makeXYWH(panelX, bodyY, panelWidth, bodyHeight));
         float rowY = bodyY - moduleScroll;
-        List<Module> modules = ModuleManager.INSTANCE.modulesIn(selectedCategory);
+        List<Module> modules = (ModuleManager.INSTANCE.modulesIn(selectedCategory));
         for (Module module : modules) {
             renderModuleRow(canvas, module, panelX, rowY, panelWidth, contentAlpha);
             rowY += MODULE_ROW_HEIGHT;
@@ -436,12 +463,14 @@ public final class PopClickGuiScreen extends Screen implements SkijaScreen {
         boolean hovered = inside(pointerX, pointerY, x + 7.0F, y + 2.0F,
                 width - 14.0F, MODULE_ROW_HEIGHT - 4.0F);
         float enabled = moduleEnabled.getOrDefault(module, module.isEnabled() ? 1.0F : 0.0F);
-        if (hovered || enabled > 0.01F) {
-            SkijaUi.rounded(canvas, x + 7.0F, y + 2.0F, width - 14.0F,
-                    MODULE_ROW_HEIGHT - 4.0F, 5.0F,
-                    withAlpha(hovered ? theme(ROW_HOVER, LIGHT_ROW_HOVER) : categoryColor(selectedCategory),
-                            Math.round((hovered ? 180.0F : 28.0F + enabled * 36.0F) * alpha)));
-        }
+        int cardColor = enabled > 0.5F
+                ? theme(ROW_HOVER, LIGHT_ROW_HOVER)
+                : themePanelInner();
+        float energy = Math.max(enabled, hovered ? 0.6F : 0.3F);
+        GuiEffects.moduleAura(canvas, x + 7.0F, y + 2.0F, width - 14.0F,
+                MODULE_ROW_HEIGHT - 4.0F, GuiPalette.CARD_RADIUS, cardColor,
+                0xFFFFFFFF, categoryColor(selectedCategory), module.name().hashCode(),
+                energy, alpha);
         SkijaUi.text(canvas, fit(module.name(), width - 54.0F, 7.6F, false),
                 x + 14.0F, y, MODULE_ROW_HEIGHT,
                 withAlpha(mix(themeTextDim(), themeText(), enabled), Math.round(255.0F * alpha)), 7.6F);
@@ -461,9 +490,9 @@ public final class PopClickGuiScreen extends Screen implements SkijaScreen {
         int color = categoryColor(selectedCategory);
 
         SkijaUi.rounded(canvas, x - 1.0F, y - 1.0F,
-                layout.panelWidth() + 2.0F, height + 2.0F, 10.0F,
-                withAlpha(color, Math.round(145.0F * progress)));
-        SkijaUi.rounded(canvas, x, y, layout.panelWidth(), height, 9.0F,
+                layout.panelWidth() + 2.0F, height + 2.0F, GuiPalette.PANEL_RADIUS + 1.0F,
+                withAlpha(themeEdge(), Math.round(215.0F * progress)));
+        SkijaUi.rounded(canvas, x, y, layout.panelWidth(), height, GuiPalette.PANEL_RADIUS,
                 withAlpha(themePanel(), Math.round(255.0F * progress)));
         if (progress < 0.18F) return;
 
@@ -680,7 +709,7 @@ public final class PopClickGuiScreen extends Screen implements SkijaScreen {
             drawRight(canvas, fit(fontSetting.displayValue(), 66.0F, 7.0F, false),
                     x + width - 13.0F, y, SETTING_ROW_HEIGHT, valueColor, 7.0F);
         } else if (setting instanceof EnumSetting<?> enumSetting) {
-            drawRight(canvas, fit(enumSetting.get().name(), 66.0F, 7.0F, false),
+            drawRight(canvas, fit(enumSetting.displayValue(), 66.0F, 7.0F, false),
                     x + width - 13.0F, y, SETTING_ROW_HEIGHT, valueColor, 7.0F);
             // [DioxideLite 移植] 音乐配色预设的只读色卡预览（DioxideLite）。
             // 需与下方 settingHeight() 的 EXTRA_HEIGHT 分支成对存在。
@@ -838,7 +867,7 @@ public final class PopClickGuiScreen extends Screen implements SkijaScreen {
         if (!inside(mouseX, mouseY, layout.listX(), layout.listY() + HEADER_HEIGHT,
                 layout.panelWidth(), layout.listHeight() - HEADER_HEIGHT)) return false;
         float rowY = layout.listY() + HEADER_HEIGHT - moduleScroll;
-        for (Module module : ModuleManager.INSTANCE.modulesIn(selectedCategory)) {
+        for (Module module : (ModuleManager.INSTANCE.modulesIn(selectedCategory))) {
             if (inside(mouseX, mouseY, layout.listX(), rowY,
                     layout.panelWidth(), MODULE_ROW_HEIGHT)) {
                 if (button == GLFW.GLFW_MOUSE_BUTTON_LEFT) {
@@ -1265,7 +1294,7 @@ public final class PopClickGuiScreen extends Screen implements SkijaScreen {
 
     private void clampScrolls(PopLayout layout) {
         float moduleContent = selectedCategory == null ? 0.0F
-                : ModuleManager.INSTANCE.modulesIn(selectedCategory).size() * MODULE_ROW_HEIGHT;
+                : (ModuleManager.INSTANCE.modulesIn(selectedCategory)).size() * MODULE_ROW_HEIGHT;
         moduleScroll = clamp(moduleScroll, 0.0F,
                 Math.max(0.0F, moduleContent - (layout.listHeight() - HEADER_HEIGHT)));
         settingScroll = clamp(settingScroll, 0.0F,
@@ -1460,7 +1489,12 @@ public final class PopClickGuiScreen extends Screen implements SkijaScreen {
     }
 
     private int themeValue() {
-        return theme(accent(), LIGHT_TEXT);
+        return theme(GuiPalette.primary(), LIGHT_TEXT);
+    }
+
+    /** Thin light edge used by every GUI surface. */
+    private int themeEdge() {
+        return theme(PANEL_EDGE, LIGHT_TEXT_DIM);
     }
 
     private static float distance(float firstX, float firstY, float secondX, float secondY) {

@@ -1,7 +1,7 @@
 package com.dioxidelite.module.modules.combat;
 
 // ---------------------------------------------------------------------------
-// 移植来源：DioxideLite（上游开源版）com/dioxidelite/module/modules/combat/KillAura.java
+// 移植来源：DioxideLite（来源开源版）com/dioxidelite/module/modules/combat/KillAura.java
 // 变更：包名/导入 com.dioxidelite.* -> com.dioxidelite.*，mixin 方法前缀
 //       dioxidelite$ -> dioxidelite$，字符串中的 dioxidelite -> dioxidelite。
 //       逻辑逐行保留，未做功能改动。
@@ -26,7 +26,7 @@ import com.dioxidelite.mixin.KeyMappingAccessor;
 import com.dioxidelite.module.Category;
 import com.dioxidelite.module.Module;
 import com.dioxidelite.module.modules.combat.killaura.HeypixelKillAuraEngine;
-import com.dioxidelite.onyx.engine.OnyxCombatEngine;
+import com.dioxidelite.core.engine.CombatEngine;
 import com.dioxidelite.module.modules.movement.KeepSprint;
 import com.dioxidelite.module.modules.movement.Scaffold;
 import com.dioxidelite.module.modules.movement.Velocity;
@@ -349,7 +349,7 @@ public final class KillAura extends Module {
     }
 
     private final HeypixelKillAuraEngine heypixelEngine = new HeypixelKillAuraEngine(mc);
-    private final OnyxCombatEngine onyxCombatEngine = new OnyxCombatEngine();
+    private final CombatEngine combatEngine = new CombatEngine();
     private EntityHitResult heypixelLookaheadHit;
     private boolean heypixelRuntimeActive;
     private int grimAttackKeepTicks;
@@ -489,7 +489,7 @@ public final class KillAura extends Module {
         }
 
         double acquireRange = getAcquireRange();
-        List<LivingEntity> targets = onyxCombatEngine.acquireTargets(
+        List<LivingEntity> targets = combatEngine.acquireTargets(
                 acquireRange,
                 player.get(),
                 mob.get(),

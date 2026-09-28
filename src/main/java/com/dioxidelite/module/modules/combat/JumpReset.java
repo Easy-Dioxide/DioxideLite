@@ -7,7 +7,7 @@ import com.dioxidelite.module.Module;
 import com.dioxidelite.setting.settings.BooleanSetting;
 import com.dioxidelite.setting.settings.IntSetting;
 
-/** OpenOnyx JumpReset registration; jump input is only changed while grounded after damage state. */
+/** the reference client JumpReset registration; jump input is only changed while grounded after damage state. */
 public final class JumpReset extends Module {
     public static final JumpReset INSTANCE = new JumpReset();
     private final IntSetting chance = add(new IntSetting("Chance", 100, 0, 100, 1));

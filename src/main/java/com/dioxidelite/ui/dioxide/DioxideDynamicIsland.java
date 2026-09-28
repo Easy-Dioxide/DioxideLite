@@ -33,7 +33,7 @@ import java.util.concurrent.atomic.AtomicReference;
  * DioxideLite Dynamic Island.
  *
  * <p>Visual/QoL only. This is an independent Skija implementation of the
- * rounded OPAI-style island presentation: dark glass body, white inner edge,
+ * rounded glass island presentation: dark glass body, white inner edge,
  * soft neon glow, logo-led status content and smooth morphing while the player
  * list key is held. No automation/client-module state is read here.</p>
  */
@@ -310,7 +310,7 @@ public final class DioxideDynamicIsland {
     }
 
     private CommandNotice activeNotice() {
-        if (!DioxideIslandModule.INSTANCE.onyxNotifications.get()) return null;
+        if (!DioxideIslandModule.INSTANCE.notifications.get()) return null;
         CommandNotice notice = commandNotice.get();
         if (notice == null) return null;
         if (notice.expiresAt() <= System.currentTimeMillis()) {
@@ -451,7 +451,7 @@ public final class DioxideDynamicIsland {
     }
 
     /**
-     * OPAI-like glass pill: glow, deep-black body, inner white edge, top gloss.
+     * Glass pill: glow, deep-black body, inner white edge, top gloss.
      * The whole static body (including its glow layers) is pre-rendered into an
      * off-screen cache per collapsed/expanded state; animation only repositions
      * or scales the cached texture instead of re-running blur passes every frame.
@@ -609,43 +609,43 @@ public final class DioxideDynamicIsland {
 
     private static int primaryColor(DioxideIslandModule.Style style) {
         return switch (style) {
-            case OPEN_ONYX -> 0xFFFFFFFF;
-            case DIOXIDE_OPAI -> 0xFFF5F8FF;
+            case CLASSIC -> 0xFFFFFFFF;
+            case DIOXIDE -> 0xFFF5F8FF;
         };
     }
 
     private static int mutedColor(DioxideIslandModule.Style style) {
         return switch (style) {
-            case OPEN_ONYX -> 0xFFB7BCC5;
-            case DIOXIDE_OPAI -> 0xFF91A0B4;
+            case CLASSIC -> 0xFFB7BCC5;
+            case DIOXIDE -> 0xFF91A0B4;
         };
     }
 
     private static int accentColor(DioxideIslandModule.Style style) {
         return switch (style) {
-            case OPEN_ONYX -> 0xFF9BD7FF;
-            case DIOXIDE_OPAI -> 0xFF8BD7FF;
+            case CLASSIC -> 0xFF9BD7FF;
+            case DIOXIDE -> 0xFF8BD7FF;
         };
     }
 
     private static int islandBodyColor(DioxideIslandModule.Style style) {
         return switch (style) {
-            case OPEN_ONYX -> 0xF20A0C10;
-            case DIOXIDE_OPAI -> 0xEE05070A;
+            case CLASSIC -> 0xF20A0C10;
+            case DIOXIDE -> 0xEE05070A;
         };
     }
 
     private static int islandEdgeColor(DioxideIslandModule.Style style) {
         return switch (style) {
-            case OPEN_ONYX -> 0xA8FFFFFF;
-            case DIOXIDE_OPAI -> 0x99FFFFFF;
+            case CLASSIC -> 0xA8FFFFFF;
+            case DIOXIDE -> 0x99FFFFFF;
         };
     }
 
     private static int islandGlowColor(DioxideIslandModule.Style style) {
         return switch (style) {
-            case OPEN_ONYX -> 0x329BD7FF;
-            case DIOXIDE_OPAI -> 0x28000000;
+            case CLASSIC -> 0x329BD7FF;
+            case DIOXIDE -> 0x28000000;
         };
     }
 }

@@ -30,7 +30,7 @@ import java.util.function.Function;
 
 /**
  * Blue Archive halo rendered above the player's head.
- * Ported from https://github.com/opai-client/blue-archive-halo (MC 1.8.9).
+ * Ported from the reference client repository (MC 1.8.9).
  */
 public final class Halo extends Module {
 
@@ -43,7 +43,7 @@ public final class Halo extends Module {
                 "halo/serika/layer0.png", "halo/serika/layer1.png"),
         HOSHINO("小鸟游星野", 0.06,
                 "halo/hoshino/layer0.png", "halo/hoshino/layer1.png", "halo/hoshino/layer2.png"),
-        LOGO("Opai Logo", 0.0, "halo/logo.png");
+        LOGO("Logo", 0.0, "halo/logo.png");
 
         final String label;
         final double layerSpacing;

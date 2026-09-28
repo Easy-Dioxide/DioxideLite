@@ -15,7 +15,7 @@ import com.dioxidelite.module.modules.ClickGui;
 import com.dioxidelite.setting.Setting;
 import com.dioxidelite.ui.hud.EpsilonHudModule;
 import com.dioxidelite.ui.hud.HUD;
-import com.dioxidelite.ui.hud.OnyxArraylistHUD;
+import com.dioxidelite.ui.hud.ArraylistHUD;
 import com.dioxidelite.ui.hud.Notifications;
 import com.dioxidelite.ui.hud.WatermarkHUD;
 
@@ -382,6 +382,7 @@ public final class ConfigManager {
             module.resetConfig();
         }
         migrateLegacyHud(modules);
+        migrateArraylistStyle(modules);
         migrateClickGuiMode(modules);
 
         for (Module module : ModuleManager.INSTANCE.modules()) {
@@ -487,13 +488,68 @@ public final class ConfigManager {
     private static String legacyModuleKey(String moduleId) {
         return switch (moduleId) {
             case "cheststealer" -> "stealer";
+            // 旧版本键名（带 onyx 的那批）只用于读取老配置，迁移完成后会被删除
+            case "arraylist" -> "onyx_arraylist";
+            case "notification_stack" -> "onyx_notifications";
+            case "potion_list" -> "onyx_potion_hud";
             default -> null;
         };
     }
 
     private static void removeLegacyModuleKeys(JsonObject modules) {
         modules.remove("stealer");
+        modules.remove("onyx_arraylist");
+        modules.remove("onyx_notifications");
+        modules.remove("onyx_potion_hud");
+        modules.remove("array_list");
+        modules.remove("module_list");
+        modules.remove("scaffold_onyx");
     }
+
+    /**
+     * 右上角列表统一版：老配置里可能同时存在两个列表模块（{@code onyx_arraylist} 与
+     * {@code array_list}），这里合并成新的 {@code arraylist}，并在**首次**升级时把样式设成
+     * 纯文字 / 白字 / 右对齐 / 无底色（和参考图一致）。之后用户自己改的样式不会再被覆盖
+     * —— 因为一旦迁移完成，旧键就不再存在了。
+     */
+    private static void migrateArraylistStyle(JsonObject modules) {
+        boolean legacy = modules.has("onyx_arraylist") || modules.has("array_list") || modules.has("module_list");
+        JsonElement element = modules.get("arraylist");
+        if (element == null || !element.isJsonObject()) {
+            element = modules.get("onyx_arraylist");
+        }
+        if (element == null || !element.isJsonObject()) {
+            element = modules.get("array_list");
+        }
+        if (element == null || !element.isJsonObject()) {
+            element = modules.get("module_list");
+        }
+        if (element == null || !element.isJsonObject()) {
+            return;
+        }
+        JsonObject module = element.getAsJsonObject();
+        if (legacy) {
+            JsonObject settings = module.has("settings") && module.get("settings").isJsonObject()
+                    ? module.getAsJsonObject("settings") : new JsonObject();
+            settings.addProperty("Style", "TEXT");
+            settings.addProperty("Colors", "STATIC");
+            settings.addProperty("Background", false);
+            settings.addProperty("Outline", false);
+            settings.addProperty("Blur", false);
+            settings.addProperty("Text Shadow", true);
+            settings.addProperty("Auto Align", true);
+            settings.addProperty("Screen Margin", 3.0);
+            settings.addProperty("Row Spacing", 2.0);
+            settings.addProperty("Scale", 1.0);
+            module.add("settings", settings);
+            module.addProperty("enabled", true);
+        }
+        modules.add("arraylist", module);
+        modules.remove("onyx_arraylist");
+        modules.remove("array_list");
+        modules.remove("module_list");
+    }
+
 
     private JsonObject legacyProfile(JsonObject modules) {
         JsonObject profile = new JsonObject();
@@ -856,10 +912,10 @@ public final class ConfigManager {
             applyLegacy(settings, "Watermark Y", WatermarkHUD.INSTANCE.yPosition);
             WatermarkHUD.INSTANCE.setEnabled(masterEnabled && legacyBoolean(settings, "Watermark", true));
         }
-        if (!modules.has(OnyxArraylistHUD.INSTANCE.id())) {
-            applyLegacy(settings, "Array List X", OnyxArraylistHUD.INSTANCE.xPosition);
-            applyLegacy(settings, "Array List Y", OnyxArraylistHUD.INSTANCE.yPosition);
-            OnyxArraylistHUD.INSTANCE.setEnabled(masterEnabled && legacyBoolean(settings, "Array List", true));
+        if (!modules.has(ArraylistHUD.INSTANCE.id())) {
+            applyLegacy(settings, "Array List X", ArraylistHUD.INSTANCE.xPosition);
+            applyLegacy(settings, "Array List Y", ArraylistHUD.INSTANCE.yPosition);
+            ArraylistHUD.INSTANCE.setEnabled(masterEnabled && legacyBoolean(settings, "Array List", true));
         }
     }
 

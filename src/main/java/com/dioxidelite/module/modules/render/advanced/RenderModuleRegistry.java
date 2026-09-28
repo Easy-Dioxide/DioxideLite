@@ -1,0 +1,93 @@
+package com.dioxidelite.module.modules.render.advanced;
+
+import com.dioxidelite.DioxideLite;
+import com.dioxidelite.module.Category;
+import com.dioxidelite.module.Module;
+import com.dioxidelite.module.ModuleManager;
+import com.dioxidelite.module.modules.render.HudEditorModule;
+
+import java.util.ArrayList;
+import java.util.IdentityHashMap;
+import java.util.List;
+import java.util.Map;
+
+/**
+ * Registers the additional render modules shipped in this package and retires the built-in modules
+ * they supersede.
+ *
+ * <p>Registration goes through {@link ModuleManager#registerDynamic(Module)}, so the client's own
+ * module table is not touched: the modules simply join the {@code RENDER} category and show up in
+ * both ClickGUI styles, because both screens read the module list from the manager.</p>
+ */
+public final class RenderModuleRegistry {
+
+    /** Built-in modules that are replaced by the implementations in this package. */
+    private static final String[] SUPERSEDED = {"esp", "chams", "no_render", "fullbright"};
+
+    private static boolean registered;
+
+    private RenderModuleRegistry() {
+    }
+
+    /** Called once from the client bootstrap, right after {@code ModuleManager.init()}. */
+    public static synchronized void registerAll() {
+        if (registered) {
+            return;
+        }
+        registered = true;
+        // 先下线客户端自带的全部 RENDER 模块（HUD 编辑器工具除外），再注册本包的实现，
+        // 这样它们的名字（ESP / Chams / NoRender / ...）可以原样使用，界面上只剩这一套。
+        retireBuiltInRenderModules();
+        Module[] modules = {
+                Ambience.INSTANCE, Animations.INSTANCE, Arrows.INSTANCE, BedESP.INSTANCE,
+                BlockOverlay.INSTANCE, Boxes.INSTANCE, Camera.INSTANCE, CapeChanger.INSTANCE,
+                Chams.INSTANCE, ChinaHat.INSTANCE, ContainerESP.INSTANCE, Crosshair.INSTANCE,
+                ESP.INSTANCE, FogBlur.INSTANCE, FogRemove.INSTANCE, Freelook.INSTANCE,
+                Fullbright.INSTANCE, GlowESP.INSTANCE, Hand.INSTANCE, Hurtcam.INSTANCE,
+                ItemPhysics.INSTANCE, JumpCircles.INSTANCE, NoRender.INSTANCE,
+                ParticleLimiter.INSTANCE, Particles.INSTANCE, SeeInvisibles.INSTANCE,
+                SkeletonESP.INSTANCE, SkinChanger.INSTANCE, Skybox.INSTANCE, TNTTimer.INSTANCE,
+                TargetESP.INSTANCE, Trails.INSTANCE, Trajectories.INSTANCE, Wings.INSTANCE,
+                Zoom.INSTANCE,
+        };
+        int count = 0;
+        for (Module module : modules) {
+            try {
+                ModuleManager.INSTANCE.registerDynamic(module);
+                count++;
+            } catch (Throwable error) {
+                DioxideLite.LOGGER.warn("Could not register render module {}", module.id(), error);
+            }
+        }
+        DioxideLite.LOGGER.info("Registered {} advanced render modules.", count);
+    }
+
+    /**
+     * Removes every module the client shipped in the RENDER category so this package is the only
+     * render feature set. The HUD editor tool stays registered, otherwise there would be no way to
+     * arrange the HUD layer any more.
+     */
+    private static void retireBuiltInRenderModules() {
+        List<Module> builtIn = new ArrayList<>(ModuleManager.INSTANCE.modulesIn(Category.RENDER));
+        int removed = 0;
+        for (Module module : builtIn) {
+            if (module instanceof HudEditorModule) {
+                continue;
+            }
+            try {
+                ModuleManager.INSTANCE.unregisterDynamic(module);
+                removed++;
+            } catch (Throwable error) {
+                DioxideLite.LOGGER.warn("Could not remove built-in render module {}", module.id(), error);
+            }
+        }
+        if (removed > 0) {
+            DioxideLite.LOGGER.info("Removed {} built-in render modules.", removed);
+        }
+    }
+
+    /** The built-in render module ids that this package replaces. */
+    public static List<String> replacedBuiltInIds() {
+        return List.of(SUPERSEDED);
+    }
+}

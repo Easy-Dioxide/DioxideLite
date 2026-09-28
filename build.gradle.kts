@@ -6,8 +6,9 @@
 //      mod（setsunavia / setsunavia-api / setsunavia-visuals）。DioxideLite 把
 //      协议翻译层直接内联在 com/viaversion/setsunavia/** 下，fabric.mod.json
 //      也只有一个 mod，因此这里不需要额外的 srcDirs 与 processResources 合并。
-//   2. 上游的 nested 库（67 个）通过 flatDir libs/nested 引入。若你的工程里没有
-//      libs/nested 目录，这一段会自动跳过，不影响编译。
+//   2. 上游的 nested 库（67 个）通过 flatDir libs/nested 引入。这一段默认关闭，因为它和
+//      下面的 Maven include 完全重复（skija / webrtc / viaversion / netty 各会打进两份），
+//      需要复现上游 dev 打包方式时加 -Puse_nested_libs=true。
 //   3. 26.1 起 Loom 插件坐标改为 net.fabricmc.fabric-loom，且不再需要 mappings 行。
 // ---------------------------------------------------------------------------
 
@@ -22,20 +23,76 @@ val javaVersion = project.property("java_version").toString()
 val minecraftVersion = project.property("minecraft_version").toString()
 
 val nestedLibDir = layout.projectDirectory.dir("libs/nested").asFile
-val hasNestedLibs = nestedLibDir.isDirectory
+val useNestedLibs = providers.gradleProperty("use_nested_libs").orElse("false").get().toBoolean()
+val hasNestedLibs = nestedLibDir.isDirectory && useNestedLibs
 val nestedLibraryModules = if (hasNestedLibs) (1..67).map { "nested-%03d".format(it) } else emptyList()
+
+// ---------------------------------------------------------------------------
+// 原生库平台探测
+//
+// DioxideLite 有两个带原生代码的依赖：
+//   * Skija（GPU 自绘 UI 的 Skia 绑定）
+//   * webrtc-java（基岩版 NetherNet / 语音通道）
+// 两者的产物都按 操作系统 + CPU 架构 分开发布，且都只提供“原生那部分”，Java 类在另一个
+// artifact 里。发布包必须同时打进 [Java 类 + 对应平台原生库]，否则运行期会
+// NoClassDefFoundError / UnsatisfiedLinkError。默认值按构建机自动探测，交叉打包时用
+// -Pskija_platforms=... / -Pwebrtc_platform=... 覆盖。
+// ---------------------------------------------------------------------------
+val supportedSkijaPlatforms = setOf(
+        "skija-windows-x64", "skija-windows-arm64",
+        "skija-linux-x64", "skija-linux-arm64",
+        "skija-macos-arm64", "skija-macos-x64"
+)
+val supportedWebRtcPlatforms = setOf(
+        "windows-x86_64", "windows-aarch64",
+        "linux-x86_64", "linux-aarch64",
+        "macos-aarch64", "macos-x86_64"
+)
+
+fun hostOsName(): String = System.getProperty("os.name", "").lowercase()
+fun hostArchName(): String = System.getProperty("os.arch", "").lowercase()
+fun hostIsArm(): Boolean = hostArchName().contains("aarch64") || hostArchName().contains("arm64")
+
+fun defaultSkijaPlatforms(): String = when {
+    hostOsName().contains("win") -> if (hostIsArm()) "skija-windows-arm64" else "skija-windows-x64"
+    hostOsName().contains("mac") -> if (hostIsArm()) "skija-macos-arm64" else "skija-macos-x64"
+    else -> if (hostIsArm()) "skija-linux-arm64" else "skija-linux-x64"
+}
+
+fun defaultWebRtcPlatform(): String = when {
+    hostOsName().contains("win") -> if (hostIsArm()) "windows-aarch64" else "windows-x86_64"
+    hostOsName().contains("mac") -> if (hostIsArm()) "macos-aarch64" else "macos-x86_64"
+    else -> if (hostIsArm()) "linux-aarch64" else "linux-x86_64"
+}
 
 val modMenuLocalJar = file(providers.gradleProperty("modmenu_jar")
         .orElse("libs/modmenu-18.0.0-alpha.8.jar")
         .get())
 
-val supportedWebRtcPlatforms = setOf(
-        "windows-x86_64", "windows-aarch64", "linux-x86_64", "linux-aarch64", "macos-aarch64"
-)
-val webRtcPlatform = providers.gradleProperty("webrtc_platform")
-        .orElse("windows-x86_64")
+// webrtc_platforms（逗号分隔）可以一次打进多个平台的原生库，做三平台通用包：
+//   -Pwebrtc_platforms=windows-x86_64,linux-x86_64,macos-aarch64,macos-x86_64
+// 兼容旧的单值写法 webrtc_platform=...；都没写时按构建机探测。
+val webRtcPlatforms = providers.gradleProperty("webrtc_platforms")
+        .orElse(providers.gradleProperty("webrtc_platform").orElse(defaultWebRtcPlatform()))
         .get()
-        .also { require(it in supportedWebRtcPlatforms) }
+        .split(',')
+        .map { it.trim() }
+        .filter { it.isNotEmpty() }
+        .also { platforms ->
+            require(platforms.isNotEmpty()) { "webrtc_platforms must list at least one platform" }
+            platforms.forEach { require(it in supportedWebRtcPlatforms) { "Unsupported webrtc platform: $it" } }
+        }
+
+val skijaPlatforms = providers.gradleProperty("skija_platforms")
+        .orElse(defaultSkijaPlatforms())
+        .get()
+        .split(',')
+        .map { it.trim() }
+        .filter { it.isNotEmpty() }
+        .also { platforms ->
+            require(platforms.isNotEmpty()) { "skija_platforms must list at least one platform" }
+            platforms.forEach { require(it in supportedSkijaPlatforms) { "Unsupported skija platform: $it" } }
+        }
 
 base {
     archivesName.set(modName)
@@ -172,14 +229,25 @@ dependencies {
     include("dev.kastle.netty:netty-transport-raknet:1.7.0") { exclude(group = "io.netty") }
     implementation("dev.kastle.netty:netty-transport-nethernet:1.7.0") { exclude(group = "io.netty") }
     include("dev.kastle.netty:netty-transport-nethernet:1.7.0") { exclude(group = "io.netty") }
-    implementation("dev.kastle.webrtc:webrtc-java:1.0.3:$webRtcPlatform")
-    include("dev.kastle.webrtc:webrtc-java:1.0.3:$webRtcPlatform")
+    // webrtc-java: 同样是「Java 类 + 平台原生库」两个 artifact，两个都要 include。
+    implementation("dev.kastle.webrtc:webrtc-java:1.0.3")
+    include("dev.kastle.webrtc:webrtc-java:1.0.3")
+    webRtcPlatforms.forEach { platform ->
+        implementation("dev.kastle.webrtc:webrtc-java:1.0.3:$platform")
+        include("dev.kastle.webrtc:webrtc-java:1.0.3:$platform")
+    }
 
+    // Skija: Java API 与平台原生库是两个 artifact，发布包两个都要 include。
+    // 0.2.1 的发布包漏了 skija-shared，运行期一进 UI 就 NoClassDefFoundError。
     val skijaVersion = "0.143.17"
-    implementation("io.github.humbleui:skija-windows-x64:$skijaVersion")
-    include("io.github.humbleui:skija-windows-x64:$skijaVersion")
-    implementation("io.github.humbleui:skija-linux-x64:$skijaVersion")
-    include("io.github.humbleui:skija-linux-x64:$skijaVersion")
+    implementation("io.github.humbleui:skija-shared:$skijaVersion")
+    include("io.github.humbleui:skija-shared:$skijaVersion")
+    implementation("io.github.humbleui:types:0.2.0")
+    include("io.github.humbleui:types:0.2.0")
+    skijaPlatforms.forEach { platform ->
+        implementation("io.github.humbleui:$platform:$skijaVersion")
+        include("io.github.humbleui:$platform:$skijaVersion")
+    }
 
     nestedLibraryModules.forEach { include("dioxidelite.nested:$it:1.0.0") }
 }

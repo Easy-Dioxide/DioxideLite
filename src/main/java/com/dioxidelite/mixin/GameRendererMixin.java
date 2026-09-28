@@ -1,7 +1,7 @@
 package com.dioxidelite.mixin;
 
 import com.mojang.blaze3d.vertex.PoseStack;
-import com.dioxidelite.module.modules.render.NoRender;
+import com.dioxidelite.module.modules.render.advanced.NoRender;
 import com.dioxidelite.render.SkijaRenderer;
 import com.dioxidelite.ui.screen.VanillaScreenTheme;
 import com.dioxidelite.util.client.ViewBobbingSuppressor;
@@ -26,7 +26,7 @@ public class GameRendererMixin {
     @Inject(method = "extractOptions", at = @At("TAIL"))
     private void DioxideLite$disableViewBobbing(CallbackInfo ci) {
         NoRender noRender = NoRender.INSTANCE;
-        boolean noRenderBob = noRender.isEnabled() && noRender.bobView.get();
+        boolean noRenderBob = noRender.isEnabled() && noRender.handBob.get();
         if (noRenderBob || ViewBobbingSuppressor.isSuppressed()) {
             minecraft.gameRenderer.getGameRenderState().optionsRenderState.bobView = false;
         }
@@ -35,7 +35,7 @@ public class GameRendererMixin {
     @Inject(method = "bobHurt", at = @At("HEAD"), cancellable = true)
     private void DioxideLite$disableHurtCamera(CameraRenderState cameraState, PoseStack poseStack, CallbackInfo ci) {
         NoRender noRender = NoRender.INSTANCE;
-        if (noRender.isEnabled() && noRender.hurtCam.get()) {
+        if (noRender.isEnabled() && noRender.hurtCamera.get()) {
             ci.cancel();
         }
     }

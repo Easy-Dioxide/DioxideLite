@@ -6,7 +6,7 @@ import com.dioxidelite.module.Category;
 import com.dioxidelite.module.Module;
 import com.dioxidelite.setting.settings.BooleanSetting;
 
-/** OpenOnyx FastPlace compatibility module; the cooldown hook is kept isolated in the client layer. */
+/** the reference client FastPlace compatibility module; the cooldown hook is kept isolated in the client layer. */
 public final class FastPlace extends Module {
     public static final FastPlace INSTANCE = new FastPlace();
     public final BooleanSetting place = add(new BooleanSetting("Place", true));

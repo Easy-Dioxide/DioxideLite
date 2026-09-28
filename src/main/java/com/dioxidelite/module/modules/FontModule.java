@@ -8,16 +8,13 @@ import com.dioxidelite.notification.NotificationType;
 import com.dioxidelite.render.SkijaUi;
 import com.dioxidelite.setting.settings.ButtonSetting;
 import com.dioxidelite.setting.settings.FontSetting;
+import com.dioxidelite.util.client.PlatformSupport;
+import org.lwjgl.PointerBuffer;
+import org.lwjgl.system.MemoryStack;
+import org.lwjgl.util.tinyfd.TinyFileDialogs;
 
-import java.awt.Desktop;
-import java.awt.EventQueue;
-import java.awt.FileDialog;
-import java.awt.Frame;
 import java.io.IOException;
-import java.nio.charset.StandardCharsets;
 import java.nio.file.Path;
-import java.util.Locale;
-import java.util.concurrent.CompletableFuture;
 
 /** Imports and selects fonts used by the client's Skija text renderer. */
 public final class FontModule extends Module {
@@ -42,63 +39,49 @@ public final class FontModule extends Module {
     }
 
     private void chooseFont() {
-        if (isWindows()) {
-            chooseWindowsFont();
-            return;
+        Path selected = pickFontFile();
+        if (selected != null) {
+            mc.execute(() -> importFont(selected));
         }
-        EventQueue.invokeLater(() -> {
-            try {
-                FileDialog dialog = new FileDialog((Frame) null, "Import DioxideLite font", FileDialog.LOAD);
-                dialog.setFilenameFilter((directory, name) -> {
-                    String lower = name.toLowerCase(Locale.ROOT);
-                    return lower.endsWith(".ttf") || lower.endsWith(".otf") || lower.endsWith(".ttc");
-                });
-                dialog.setVisible(true);
-                String file = dialog.getFile();
-                String directory = dialog.getDirectory();
-                dialog.dispose();
-                if (file != null && directory != null) {
-                    Path selected = Path.of(directory, file);
-                    mc.execute(() -> importFont(selected));
-                }
-            } catch (RuntimeException error) {
-                DioxideLite.LOGGER.warn("Could not open the font file picker", error);
-                mc.execute(() -> notifyResult(NotificationType.ERROR, "Could not open file picker"));
-            }
-        });
     }
 
-    private void chooseWindowsFont() {
-        CompletableFuture.supplyAsync(() -> {
-            String command = "$OutputEncoding=[Console]::OutputEncoding=[Text.Encoding]::UTF8;"
-                    + "Add-Type -AssemblyName System.Windows.Forms;"
-                    + "$dialog=New-Object System.Windows.Forms.OpenFileDialog;"
-                    + "$dialog.Title='Import DioxideLite font';"
-                    + "$dialog.Filter='Font files (*.ttf;*.otf;*.ttc)|*.ttf;*.otf;*.ttc';"
-                    + "if($dialog.ShowDialog() -eq [System.Windows.Forms.DialogResult]::OK)"
-                    + "{[Console]::Out.Write($dialog.FileName)}";
-            try {
-                Process process = new ProcessBuilder("powershell.exe", "-NoProfile", "-STA",
-                        "-WindowStyle", "Hidden", "-Command", command)
-                        .redirectErrorStream(true)
-                        .start();
-                String output = new String(process.getInputStream().readAllBytes(), StandardCharsets.UTF_8).trim();
-                int exitCode = process.waitFor();
-                if (exitCode != 0) throw new IOException("Font picker exited with code " + exitCode);
-                return output.isBlank() ? null : Path.of(output);
-            } catch (IOException error) {
-                throw new RuntimeException(error);
-            } catch (InterruptedException error) {
-                Thread.currentThread().interrupt();
-                throw new RuntimeException(error);
+    /**
+     * Native "pick a font file" dialog.
+     *
+     * <p>Uses LWJGL's tinyfd, i.e. the platform's own dialog: the Cocoa/AppleScript panel on macOS,
+     * the Win32 common dialog on Windows and GTK/zenity/xdg-desktop-portal on Linux. The previous
+     * Windows-only implementation shelled out to {@code powershell.exe} + WinForms and the fallback
+     * used {@code java.awt.FileDialog}, which on macOS needs the AppKit main thread that GLFW already
+     * owns, so opening the picker there either hung or aborted the client.</p>
+     */
+    private static Path pickFontFile() {
+        String startDirectory = null;
+        try {
+            startDirectory = SkijaUi.fontDirectory().toString();
+        } catch (IOException error) {
+            DioxideLite.LOGGER.warn("Could not resolve the font directory", error);
+        }
+        try (MemoryStack stack = MemoryStack.stackPush()) {
+            PointerBuffer patterns = stack.mallocPointer(3);
+            patterns.put(stack.UTF8("*.ttf"));
+            patterns.put(stack.UTF8("*.otf"));
+            patterns.put(stack.UTF8("*.ttc"));
+            patterns.flip();
+            String selected = TinyFileDialogs.tinyfd_openFileDialog(
+                    "Import DioxideLite font",
+                    startDirectory,
+                    patterns,
+                    "Font files (*.ttf, *.otf, *.ttc)",
+                    false);
+            if (selected == null || selected.isBlank()) {
+                return null;
             }
-        }).thenAccept(selected -> {
-            if (selected != null) mc.execute(() -> importFont(selected));
-        }).exceptionally(error -> {
-            DioxideLite.LOGGER.warn("Could not open the Windows font file picker", error);
-            mc.execute(() -> notifyResult(NotificationType.ERROR, "Could not open file picker"));
+            return Path.of(selected);
+        } catch (RuntimeException error) {
+            DioxideLite.LOGGER.warn("Could not open the font file picker", error);
+            notifyResult(NotificationType.ERROR, "Could not open file picker");
             return null;
-        });
+        }
     }
 
     private void importFont(Path source) {
@@ -121,15 +104,7 @@ public final class FontModule extends Module {
 
     private void openFontFolder() {
         try {
-            Path directory = SkijaUi.fontDirectory();
-            if (isWindows()) {
-                new ProcessBuilder("explorer.exe", directory.toString()).start();
-                return;
-            }
-            if (!Desktop.isDesktopSupported() || !Desktop.getDesktop().isSupported(Desktop.Action.OPEN)) {
-                throw new IOException("Desktop folder opening is unavailable");
-            }
-            Desktop.getDesktop().open(directory.toFile());
+            PlatformSupport.openDirectory(SkijaUi.fontDirectory());
         } catch (IOException | RuntimeException error) {
             DioxideLite.LOGGER.warn("Could not open the font directory", error);
             notifyResult(NotificationType.ERROR, "Could not open font folder");
@@ -138,9 +113,5 @@ public final class FontModule extends Module {
 
     private static void notifyResult(NotificationType type, String message) {
         NotificationManager.INSTANCE.post(type, "Font", message);
-    }
-
-    private static boolean isWindows() {
-        return System.getProperty("os.name", "").toLowerCase(Locale.ROOT).contains("win");
     }
 }
