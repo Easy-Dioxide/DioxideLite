@@ -52,7 +52,15 @@
 
 ---
 
-## 2.1.3
+## v2.1.3（2026-09-24）
+
+- 参考客户端表现层集成，对接已有 DioxideLite 功能面。
+- 灵动岛样式：DIOXIDE、SIGNATURE_DARK、MINIMAL、GLASS。
+- 灵动岛网易云歌词行集成，失败隔离 API 访问。
+- 通知 HUD 样式：DIOXIDE、REFERENCEX、OPAI；显示时长可在 ClickGUI 配置。
+- 渲染保持在 Skija 路径上，未替换 OpenGL 渲染器。
+
+---
 
 ## v2.1.1（2026-09-21）
 
