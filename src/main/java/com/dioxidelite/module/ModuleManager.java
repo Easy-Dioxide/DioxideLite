@@ -23,7 +23,6 @@ import com.dioxidelite.module.modules.player.Deposit;
 import com.dioxidelite.module.modules.player.FastPlace;
 import com.dioxidelite.module.modules.player.InventoryManager;
 import com.dioxidelite.module.modules.player.NameChanger;
-import com.dioxidelite.module.modules.player.ScaffoldOnyx;
 import com.dioxidelite.module.modules.player.AntiResourcePack;
 import com.dioxidelite.module.modules.player.AntiWeb;
 import com.dioxidelite.module.modules.combat.AutoHitCrystal;
@@ -96,9 +95,9 @@ import com.dioxidelite.ui.hud.HudFusionManager;
 import com.dioxidelite.ui.hud.InventoryHUD;
 import com.dioxidelite.ui.hud.KeybindOverlayHUD;
 import com.dioxidelite.ui.hud.Notifications;
-import com.dioxidelite.ui.hud.OnyxArraylistHUD;
-import com.dioxidelite.ui.hud.OnyxNotifsHUD;
-import com.dioxidelite.ui.hud.OnyxPotionHUD;
+import com.dioxidelite.ui.hud.ArraylistHUD;
+import com.dioxidelite.ui.hud.NotifStackHUD;
+import com.dioxidelite.ui.hud.EffectListHUD;
 import com.dioxidelite.ui.hud.PotionHUD;
 import com.dioxidelite.ui.hud.RadarHUD;
 import com.dioxidelite.ui.hud.ScoreboardHUD;
@@ -151,7 +150,7 @@ public final class ModuleManager {
         register(ClickGui.INSTANCE);
         register(FontModule.INSTANCE);
         register(HudEditorModule.INSTANCE);
-        // [DioxideLite 移植] 以下模块移植自 DioxideLite（上游开源版）。
+        // [DioxideLite 移植] 以下模块移植自 DioxideLite（来源开源版）。
         // AltManagerModule 此前从未被注册，导致该模块永远无法从 GUI 或按键打开，
         // 本次一并补上。
         // --- COMBAT ---
@@ -193,7 +192,6 @@ public final class ModuleManager {
         register(FastPlace.INSTANCE);
         register(InventoryManager.INSTANCE);
         register(NameChanger.INSTANCE);
-        register(ScaffoldOnyx.INSTANCE);
         register(AntiWeb.INSTANCE);
         register(AutoMLG.INSTANCE);
         register(AutoTool.INSTANCE);
@@ -250,9 +248,9 @@ public final class ModuleManager {
         register(ScoreboardHUD.INSTANCE);
         register(SessionInfoHUD.INSTANCE);
         register(Notifications.INSTANCE);
-        register(OnyxArraylistHUD.INSTANCE);
-        register(OnyxNotifsHUD.INSTANCE);
-        register(OnyxPotionHUD.INSTANCE);
+        register(ArraylistHUD.INSTANCE);
+        register(NotifStackHUD.INSTANCE);
+        register(EffectListHUD.INSTANCE);
         register(HUD.INSTANCE);
         EventBus.INSTANCE.subscribe(HudFusionManager.INSTANCE);
         EventBus.INSTANCE.subscribe(NameTagLogoRenderer.INSTANCE);

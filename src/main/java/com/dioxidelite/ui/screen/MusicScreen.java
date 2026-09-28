@@ -428,7 +428,7 @@ public final class MusicScreen extends AbstractSkijaScreen {
             SkijaUi.gradient(canvas, art.x() - 1, art.y(), art.width() * 0.58F, art.height(),
                     0xFF121B1C, 0x00121B1C, false, 0);
             // [DioxideLite 修复] 原为硬编码 "SETSUNA SELECTION"，机械改名残留，
-        // 会在音乐界面直接显示出上游品牌名。已改为本端品牌。
+        // 会在音乐界面直接显示出来源品牌名。已改为本端品牌。
         SkijaUi.text(canvas, "DIOXIDELITE SELECTION", hero.x() + 14, hero.y() + 12,
                     10, accent(), 6);
             SkijaUi.boldText(canvas, UiControls.ellipsize(featured.getName(), hero.width() * 0.5F),

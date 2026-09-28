@@ -5,17 +5,17 @@ import com.dioxidelite.event.events.PlayerTickEvent;
 import com.dioxidelite.module.Category;
 import com.dioxidelite.module.Module;
 import com.dioxidelite.setting.settings.BooleanSetting;
-import com.dioxidelite.onyx.engine.OnyxMovementEngine;
+import com.dioxidelite.core.engine.MovementEngine;
 
-/** OpenOnyx-compatible AutoSprint port. */
+/** the reference client-compatible AutoSprint port. */
 public final class AutoSprint extends Module {
     public static final AutoSprint INSTANCE = new AutoSprint();
     private final BooleanSetting onlyForward = add(new BooleanSetting("Only Forward", true));
-    private final OnyxMovementEngine onyx = new OnyxMovementEngine(mc);
+    private final MovementEngine reference = new MovementEngine(mc);
     private AutoSprint() { super("Auto Sprint", Category.MOVEMENT); }
     @Listen private void onTick(PlayerTickEvent.Pre event) {
         if (noPlayer()) return;
-        if (onyx.shouldSprint(onlyForward.get())) mc.options.keySprint.setDown(true);
+        if (reference.shouldSprint(onlyForward.get())) mc.options.keySprint.setDown(true);
     }
     @Override protected void onDisable() { mc.options.keySprint.setDown(false); }
 }

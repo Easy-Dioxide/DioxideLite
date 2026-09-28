@@ -1,4 +1,4 @@
-package com.dioxidelite.onyx.engine;
+package com.dioxidelite.core.engine;
 
 import com.dioxidelite.manager.FriendManager;
 import net.minecraft.client.Minecraft;
@@ -13,14 +13,14 @@ import java.util.List;
 import java.util.function.Predicate;
 
 /**
- * DioxideLite's current-Minecraft port of OpenOnyx's combat engine concepts.
+ * DioxideLite's current-Minecraft port of the reference client's combat engine concepts.
  *
- * The original OpenOnyx feature code targets an older Minecraft mapping and
+ * The original the reference client feature code targets an older Minecraft mapping and
  * cannot be copied verbatim into 26.1.2. This class preserves the important
  * engine boundary: target filtering, relation checks, range ordering and
  * deterministic selection are kept in one backend used by combat modules.
  */
-public final class OnyxCombatEngine {
+public final class CombatEngine {
     private static final Minecraft MC = Minecraft.getInstance();
 
     public List<LivingEntity> acquireTargets(double range, boolean players, boolean mobs,
@@ -50,10 +50,10 @@ public final class OnyxCombatEngine {
         return result;
     }
 
-    /** OpenOnyx-compatible scanner entry point. */
-    public List<LivingEntity> scan(double range, java.util.Set<OnyxTargetScanner.Type> types,
+    /** the reference client-compatible scanner entry point. */
+    public List<LivingEntity> scan(double range, java.util.Set<TargetScanner.Type> types,
                                    boolean invisible, int limit) {
-        return OnyxTargetScanner.scan(range, types, invisible, limit);
+        return TargetScanner.scan(range, types, invisible, limit);
     }
 
     public boolean isPotentialBot(Player player) {

@@ -7,7 +7,7 @@ import java.awt.Color;
 
 /** Presentation-only theme router. It never changes gameplay/module behaviour. */
 public final class DioxideThemeController {
-    public enum Theme { LIQUID_GLASS, MINIMAL, SIGNATURE, OPAI_ONYX }
+    public enum Theme { LIQUID_GLASS, MINIMAL, SIGNATURE, SIGNATURE_DARK }
     private static Theme current = Theme.LIQUID_GLASS;
     private DioxideThemeController() {}
     public static Theme current() { return current; }
@@ -33,9 +33,9 @@ public final class DioxideThemeController {
         ClickGui gui = ClickGui.INSTANCE;
         switch (current) {
             case LIQUID_GLASS -> { gui.mode.set(ClickGui.Mode.Setsuna); gui.daylightMode.set(false); gui.accent.set(new Color(120, 200, 255)); }
-            case MINIMAL -> { gui.mode.set(ClickGui.Mode.Drop); gui.daylightMode.set(false); gui.accent.set(new Color(205, 215, 225)); }
+            case MINIMAL -> { gui.mode.set(ClickGui.Mode.LegacyStyle); gui.daylightMode.set(false); gui.accent.set(new Color(205, 215, 225)); }
             case SIGNATURE -> { gui.mode.set(ClickGui.Mode.Setsuna); gui.daylightMode.set(true); gui.accent.set(new Color(105, 185, 255)); }
-            case OPAI_ONYX -> { gui.mode.set(ClickGui.Mode.OpenOnyx); gui.daylightMode.set(false); gui.popBackgroundBlur.set(3); gui.accent.set(new Color(155, 215, 255)); }
+            case SIGNATURE_DARK -> { gui.mode.set(ClickGui.Mode.LegacyStyle); gui.daylightMode.set(false); gui.popBackgroundBlur.set(3); gui.accent.set(new Color(155, 215, 255)); }
         }
     }
 }

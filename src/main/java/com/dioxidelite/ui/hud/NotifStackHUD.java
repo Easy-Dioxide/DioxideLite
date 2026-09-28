@@ -13,13 +13,13 @@ import io.github.humbleui.skija.Canvas;
 import java.util.List;
 
 /**
- * Onyx-style notification stack: slides in from the right edge, rounded dark
+ * modern notification stack: slides in from the right edge, rounded dark
  * panel with a left accent stripe, title + description, and a bottom progress
  * bar that drains as the notification ages.
  */
-public final class OnyxNotifsHUD extends EpsilonHudModule {
+public final class NotifStackHUD extends EpsilonHudModule {
 
-    public static final OnyxNotifsHUD INSTANCE = new OnyxNotifsHUD();
+    public static final NotifStackHUD INSTANCE = new NotifStackHUD();
 
     public enum Anchor { TOP_RIGHT, TOP_LEFT, BOTTOM_RIGHT, BOTTOM_LEFT }
 
@@ -34,8 +34,8 @@ public final class OnyxNotifsHUD extends EpsilonHudModule {
     public final BooleanSetting progressBar = add(new BooleanSetting("Progress Bar", true));
     public final BooleanSetting subtitle = add(new BooleanSetting("Subtitle", true));
 
-    private OnyxNotifsHUD() {
-        super("Onyx Notifications", Category.HUD, 0, 0, W, H);
+    private NotifStackHUD() {
+        super("Notification Stack", Category.HUD, 0, 0, W, H);
         setEnabled(true);
     }
 

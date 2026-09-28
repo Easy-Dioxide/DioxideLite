@@ -4,6 +4,41 @@
 
 ---
 
+## v2.2.2（2026-09-28）
+
+### 多平台移植（单 jar 四平台）
+- 打包 Skija 原生库：Windows x64 / Linux x64 / macOS arm64 / macOS x64 + `skija-shared` / `types`；webrtc-java 原生库覆盖四平台。
+- 新增 `PlatformSupport`（`util/client/PlatformSupport.java`）替换 Windows 专属代码路径：PowerShell / AWT 字体发现、无 JNA 设备 ID 生成、`Desktop.open` → `open` / `explorer` / `xdg-open`、tinyfd 文件对话框、字体回退。
+- `build.gradle.kts` 新增 `-Pskija_platforms` / `-Pwebrtc_platforms` 平台开关；新增 `scripts/build-macos.sh` 与 `PORTING-macos.md`。
+- 验证：Windows / Linux 构建静态验证；macOS arm64 真实会话冒烟测试；macOS x64 打包入 jar 未真机启动。
+
+### Render 模块重组（27 退役 → 35 移植）
+- 27 个内置 render 模块运行时退役，替换为 `module/modules/render/advanced/` 下 **35 个移植模块**，经 `RenderModuleRegistry` 注册：ESP / Chams / NoRender / Fullbright / Camera / Wings / Trails / TargetESP / BedESP / BlockOverlay / ItemPhysics / Particles / Trajectories / Zoom / Freelook / SkeletonESP / GlowESP / Boxes / Ambience / Skybox / FogBlur / FogRemove / Hurtcam / Hand / Crosshair / SkinChanger / CapeChanger / ChinaHat / JumpCircles / Arrows / TNTTimer / ParticleLimiter / SeeInvisibles / ContainerESP / Animations。
+- 配套 mixin：`CameraMixin` / `GameRendererMixin` / `GuiMixin` / `ItemInHandRendererMixin` / `ParticleEngineMixin` / `AbstractClientPlayerMixin` / `EntityRendererMixin` 等。
+- 新增 `core/` 引擎目录（combat / movement / player / client engines）。
+
+### 界面
+- **ClickGUI 双模式**：`LegacyStyle`（默认，圆角面板 + 粒子光晕 + 展开动画）与 `Setsuna`（环形）。
+- **HUD**：单一右对齐 ArrayList（纯文本 / 白色 / 右对齐 / 默认无背景；`Style` / `Colors` / `Row Spacing` / `Screen Margin` / `Scale` 可配置）、通知栈、药水列表。
+- **ESP 名牌**：可选客户端 Logo 图标（`ESP → Names → Icon`）；开启时自动抑制原版名牌。
+- Watermark、ClickGUI 角块、主菜单统一读取 `DioxideLite.VERSION`（= 2.2.2）。
+- Watermark `Rename` 设置默认值改为 `DioxideLite`。
+
+### 修复
+- Camera 不再锁定视角：平滑 yaw/pitch 跟随玩家而非衰减偏移。
+- Wings 不再糊屏：三角形缓冲上载不再排序 + 姿势锚定。
+- Wings / Trails / ContainerESP 轮廓改用细四边形绘制（弃用 `GL_LINES`）。
+- HUD 名牌 / Logo 图标从插值位置投影，移动时不再漂移。
+
+### 品牌清理
+- 移除客户端全部外部品牌字样（类 / 资源 / 模块名 / 语言文件）；仅保留少量遗留配置键用于一次性迁移旧配置。
+
+### 已知限制
+- Skybox / Ambience / Fog Blur 后处理、Item Physics 地面变换、Hand 挥动曲线、Camera 位置平滑 4 个上游 hook 未实现（Camera 旋转平滑可用）。
+- 发布 jar 由 patch 上游 2.2.1 archive + 本源码树关键类构建，少量 release 类比本源码旧。
+
+---
+
 ## v2.2.1（2026-09-27）
 
 ### 新增

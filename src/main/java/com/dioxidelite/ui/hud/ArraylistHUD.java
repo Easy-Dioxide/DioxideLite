@@ -19,22 +19,22 @@ import java.util.List;
 import java.util.Map;
 
 /**
- * Onyx-style right-aligned module list, ported 1:1 from OpenOnyx's ArrayListModule.
+ * modern right-aligned module list, ported 1:1 from the reference client's ArrayListModule.
  * Three row styles: Accent Bar / Pills / Text. Six colour modes: Accent / Static /
  * Fade / Gradient / Rainbow / Category.
  */
-public final class OnyxArraylistHUD extends EpsilonHudModule {
+public final class ArraylistHUD extends EpsilonHudModule {
 
-    public static final OnyxArraylistHUD INSTANCE = new OnyxArraylistHUD();
+    public static final ArraylistHUD INSTANCE = new ArraylistHUD();
 
     public enum Style { ACCENT_BAR, PILLS, TEXT }
     public enum ColorMode { ACCENT, STATIC, FADE, GRADIENT, RAINBOW, CATEGORY }
     public enum Sort { WIDTH, ALPHA }
 
-    // Onyx default: first colour 0xFF7B5FEF (purple), second 0xFF4030A0 (deep purple)
+    // reference default: first colour 0xFF7B5FEF (purple), second 0xFF4030A0 (deep purple)
     public final DoubleSetting scale = add(new DoubleSetting("Scale", 1.0, 0.5, 2.0, 0.05));
-    public final EnumSetting<Style> style = add(new EnumSetting<>("Style", Style.ACCENT_BAR));
-    public final EnumSetting<ColorMode> colorMode = add(new EnumSetting<>("Colors", ColorMode.ACCENT));
+    public final EnumSetting<Style> style = add(new EnumSetting<>("Style", Style.TEXT));
+    public final EnumSetting<ColorMode> colorMode = add(new EnumSetting<>("Colors", ColorMode.STATIC));
     public final ColorSetting firstColor = add(new ColorSetting("First Color",
             new Color(0x7B, 0x5F, 0xEF), false).visibleWhen(() ->
             colorMode.get() == ColorMode.GRADIENT || colorMode.get() == ColorMode.FADE));
@@ -56,15 +56,16 @@ public final class OnyxArraylistHUD extends EpsilonHudModule {
             .visibleWhen(() -> style.get() == Style.TEXT));
     public final BooleanSetting outline = add(new BooleanSetting("Outline", false)
             .visibleWhen(() -> style.get() == Style.PILLS));
-    public final DoubleSetting rowSpacing = add(new DoubleSetting("Row Spacing", 0.0, 0.0, 6.0, 0.5));
+    public final DoubleSetting rowSpacing = add(new DoubleSetting("Row Spacing", 2.0, 0.0, 6.0, 0.5));
     public final DoubleSetting animSpeed = add(new DoubleSetting("Animation Speed", 1.0, 0.25, 3.0, 0.05));
-    public final DoubleSetting screenMargin = add(new DoubleSetting("Screen Margin", 4.0, 0.0, 20.0, 0.5));
+    public final DoubleSetting screenMargin = add(new DoubleSetting("Screen Margin", 3.0, 0.0, 20.0, 0.5));
     public final BooleanSetting autoAlign = add(new BooleanSetting("Auto Align", true));
 
     private final Map<Module, Float> anim = new IdentityHashMap<>();
 
-    private OnyxArraylistHUD() {
-        super("Onyx ArrayList", Category.HUD, 88, 5, 120, 80);
+    private ArraylistHUD() {
+        // 玩家要求：右上角只保留这一个列表，名字里不带 reference，样式按参考图（纯文字/白字/右对齐/无底色）。
+        super("ArrayList", Category.HUD, 88, 5, 120, 80);
         setEnabled(true);
     }
 

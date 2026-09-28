@@ -15,13 +15,13 @@ import java.util.Comparator;
 import java.util.List;
 
 /**
- * Onyx-style potion HUD, ported from OpenOnyx's PotionHUD.
+ * modern potion HUD, ported from the reference client's PotionHUD.
  * Default: left side at 45% height, icons on, amplifier as roman numeral,
  * potion color tint on each row.
  */
-public final class OnyxPotionHUD extends EpsilonHudModule {
+public final class EffectListHUD extends EpsilonHudModule {
 
-    public static final OnyxPotionHUD INSTANCE = new OnyxPotionHUD();
+    public static final EffectListHUD INSTANCE = new EffectListHUD();
 
     public enum Anchor { TOP_RIGHT, TOP_LEFT, BOTTOM_RIGHT, BOTTOM_LEFT }
 
@@ -41,8 +41,8 @@ public final class OnyxPotionHUD extends EpsilonHudModule {
     private static final float ROW_W = 80.0f;
     private static final float GAP = 2.0f;
 
-    private OnyxPotionHUD() {
-        super("Onyx Potion HUD", Category.HUD, 7, 45, ROW_W, ROW_H * 4);
+    private EffectListHUD() {
+        super("Potion List", Category.HUD, 7, 45, ROW_W, ROW_H * 4);
         setEnabled(true);
     }
 

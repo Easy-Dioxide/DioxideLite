@@ -6,10 +6,10 @@ import com.google.gson.JsonArray;
 import com.google.gson.JsonObject;
 import com.google.gson.JsonParser;
 import com.dioxidelite.DioxideLite;
+import com.dioxidelite.util.client.PlatformSupport;
 import net.minecraft.client.Minecraft;
 import net.minecraft.util.Util;
 
-import java.awt.Desktop;
 import java.io.IOException;
 import java.net.URI;
 import java.net.URLEncoder;
@@ -379,9 +379,8 @@ public final class MicrosoftAuthService {
             Util.getPlatform().openUri(uri);
         } catch (Exception primaryError) {
             try {
-                if (Desktop.isDesktopSupported()) {
-                    Desktop.getDesktop().browse(URI.create(uri));
-                }
+                // Cross-platform fallback: `open` on macOS, rundll32/xdg-open elsewhere.
+                PlatformSupport.openUri(uri);
             } catch (Exception ignored) {
                 DioxideLite.LOGGER.warn("Unable to open Microsoft login page: {}", uri, primaryError);
             }

@@ -2,6 +2,8 @@ package com.dioxidelite.mixin;
 
 import com.dioxidelite.DioxideLite;
 import com.dioxidelite.module.modules.render.CameraClip;
+import com.dioxidelite.module.modules.render.advanced.Freelook;
+import com.dioxidelite.module.modules.render.advanced.Zoom;
 import net.minecraft.client.Camera;
 import net.minecraft.client.CameraType;
 import net.minecraft.world.phys.Vec3;
@@ -20,6 +22,34 @@ public class CameraMixin {
         CameraClip cameraClip = CameraClip.INSTANCE;
         if (cameraClip.isEnabled()) {
             cir.setReturnValue(cameraClip.distance.get().floatValue());
+        }
+    }
+
+    /** Zoom：按缩放倍率改写基础 FOV。 */
+    @Inject(method = "calculateFov", at = @At("HEAD"), cancellable = true)
+    private void DioxideLite$zoomFov(float baseFov, CallbackInfoReturnable<Float> cir) {
+        Zoom zoom = Zoom.INSTANCE;
+        if (zoom.isEnabled() && zoom.isZooming()) {
+            cir.setReturnValue(zoom.applyFov(baseFov));
+        }
+    }
+
+    /** Freelook / 平滑相机：改写相机朝向（第三视角分离相机）。 */
+    @ModifyArgs(
+            method = "alignWithEntity",
+            at = @At(value = "INVOKE", target = "Lnet/minecraft/client/Camera;setRotation(FF)V"))
+    private void DioxideLite$cameraRotation(Args args) {
+        Freelook freelook = Freelook.INSTANCE;
+        if (freelook.isEnabled() && freelook.isActive()) {
+            args.set(0, freelook.cameraYaw());
+            args.set(1, freelook.cameraPitch());
+            return;
+        }
+        com.dioxidelite.module.modules.render.advanced.Camera camera =
+                com.dioxidelite.module.modules.render.advanced.Camera.INSTANCE;
+        if (camera.isEnabled() && camera.isRotationReady()) {
+            args.set(0, camera.cameraYaw());
+            args.set(1, camera.cameraPitch());
         }
     }
 

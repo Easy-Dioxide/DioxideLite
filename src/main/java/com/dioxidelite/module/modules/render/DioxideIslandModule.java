@@ -17,18 +17,18 @@ public final class DioxideIslandModule extends Module {
     public static final DioxideIslandModule INSTANCE = new DioxideIslandModule();
 
     public enum Style {
-        DIOXIDE_OPAI,
-        OPEN_ONYX
+        DIOXIDE,
+        CLASSIC
     }
 
     public final EnumSetting<Style> style =
-            add(new EnumSetting<>("Island", Style.DIOXIDE_OPAI));
+            add(new EnumSetting<>("Island", Style.DIOXIDE));
 
     public final BooleanSetting musicLyrics =
             add(new BooleanSetting("Music Lyrics", true));
 
-    public final BooleanSetting onyxNotifications =
-            add(new BooleanSetting("Onyx Notifications", true));
+    public final BooleanSetting notifications =
+            add(new BooleanSetting("Notifications", true));
 
     private DioxideIslandModule() {
         super("Dioxide Island", Category.RENDER);

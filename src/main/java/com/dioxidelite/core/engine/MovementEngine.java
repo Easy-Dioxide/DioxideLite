@@ -1,14 +1,14 @@
-package com.dioxidelite.onyx.engine;
+package com.dioxidelite.core.engine;
 
 import net.minecraft.client.Minecraft;
 import net.minecraft.core.BlockPos;
 import net.minecraft.world.level.block.state.BlockState;
 
-/** Current-version movement backend based on OpenOnyx's movement feature boundaries. */
-public final class OnyxMovementEngine {
+/** Current-version movement backend based on the reference client's movement feature boundaries. */
+public final class MovementEngine {
     private final Minecraft mc;
 
-    public OnyxMovementEngine(Minecraft mc) { this.mc = mc; }
+    public MovementEngine(Minecraft mc) { this.mc = mc; }
 
     public boolean shouldSprint(boolean onlyForward) {
         if (mc.player == null) return false;

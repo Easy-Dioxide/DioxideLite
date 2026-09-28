@@ -1,9 +1,9 @@
 package com.dioxidelite.command;
 
 // ---------------------------------------------------------------------------
-// 本文件改为 DioxideLite（上游开源版）com/dioxidelite/command/CommandManager.java 的完整实现。
+// 本文件改为 DioxideLite（来源开源版）com/dioxidelite/command/CommandManager.java 的完整实现。
 // 原因：你端的 CommandManager 缺少 addCommand(Command) 与 commands() 等 API，
-//       导致移植过来的 BuiltInCommands 无法编译。上游版是功能超集
+//       导致移植过来的 BuiltInCommands 无法编译。来源版是功能超集
 //       （含命令分词、Levenshtein 纠错提示、自动补全、历史记录）。
 // 回退：你端原实现已完整保留在交付目录。
 // ---------------------------------------------------------------------------

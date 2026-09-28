@@ -1,7 +1,7 @@
 package com.dioxidelite.script;
 
 // ---------------------------------------------------------------------------
-// 移植来源：DioxideLite（上游开源版）com/dioxidelite/script/LuaScriptManager.java
+// 移植来源：DioxideLite（来源开源版）com/dioxidelite/script/LuaScriptManager.java
 // 变更：包名/导入 com.dioxidelite.* -> com.dioxidelite.*，mixin 方法前缀
 //       dioxidelite$ -> dioxidelite$，字符串中的 dioxidelite -> dioxidelite。
 //       逻辑逐行保留，未做功能改动。
@@ -11,9 +11,9 @@ package com.dioxidelite.script;
 import com.dioxidelite.DioxideLite;
 import com.dioxidelite.config.ConfigManager;
 import com.dioxidelite.module.ModuleManager;
+import com.dioxidelite.util.client.PlatformSupport;
 import org.luaj.vm2.Globals;
 
-import java.awt.Desktop;
 import java.io.IOException;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
@@ -153,11 +153,7 @@ public final class LuaScriptManager {
     }
 
     public void openScriptsDirectory() throws IOException {
-        Path directory = scriptsDirectory();
-        if (!Desktop.isDesktopSupported()) {
-            throw new IOException("Desktop integration is unavailable");
-        }
-        Desktop.getDesktop().open(directory.toFile());
+        PlatformSupport.openDirectory(scriptsDirectory());
     }
 
     synchronized void recordCallbackError(Path file, String moduleId, String event, Throwable error) {

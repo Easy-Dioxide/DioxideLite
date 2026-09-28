@@ -30,6 +30,7 @@ import com.dioxidelite.util.KeyBindText;
 import io.github.humbleui.skija.Canvas;
 import io.github.humbleui.skija.Paint;
 import io.github.humbleui.skija.Shader;
+import io.github.humbleui.types.RRect;
 import io.github.humbleui.types.Rect;
 import net.minecraft.client.gui.GuiGraphicsExtractor;
 import net.minecraft.client.gui.screens.Screen;
@@ -60,18 +61,23 @@ public final class WindowClickGuiScreen extends Screen implements SkijaScreen {
     private static final float PANEL_WIDTH = 112.0F;
     private static final float MARGIN = 12.0F;
     private static final float HEADER_HEIGHT = 20.0F;
-    private static final float MODULE_HEIGHT = 17.0F;
-    private static final float SETTING_HEIGHT = 17.0F;
-    private static final float NUMBER_HEIGHT = 30.0F;
-    private static final float COLOR_CHANNEL_HEIGHT = 10.0F;
+    private static final float MODULE_HEIGHT = 22.0F;
+    private static final float SETTING_HEIGHT = 20.0F;
+    private static final float NUMBER_HEIGHT = 34.0F;
+    private static final float COLOR_CHANNEL_HEIGHT = 12.0F;
     private static final float MAX_BODY_HEIGHT = 310.0F;
     private static final float SCROLL_STEP = 22.0F;
     private static final float BODY_INSET = 3.0F;
+    /** Extra breathing room below the last expanded setting row. */
+    private static final float DETAILS_PADDING = 6.0F;
     private static final float SECTION_INSET = 4.0F;
     private static final float SLIDER_FADE_WIDTH = 5.0F;
     private static final float EXPAND_SPEED = 14.0F;
     private static final float MIN_SIX_COLUMN_WIDTH = MARGIN * 2.0F
             + PANEL_WIDTH * 6.0F + 8.0F * 5.0F;
+
+    /** Brand shown by the ClickGUI watermark / corner lines. */
+    private static final String WATERMARK_NAME = "Dioxide";
 
     private static final float FONT = 9.0F;
     private static final float FONT_SMALL = 7.5F;
@@ -86,10 +92,10 @@ public final class WindowClickGuiScreen extends Screen implements SkijaScreen {
     private static final int TRACK = argb(255, 67, 71, 82);
     private static final int CONFIG_GREEN = argb(255, 85, 255, 85);
     private static final int DELETE_BACKGROUND = argb(230, 145, 38, 38);
-    private static final int ONYX_BACKDROP = argb(76, 1, 4, 8);
-    private static final int ONYX_BODY = argb(236, 10, 13, 18);
-    private static final int ONYX_EDGE = argb(190, 142, 214, 255);
-    private static final int ONYX_SETTING = argb(210, 17, 22, 30);
+    private static final int GUI_BACKDROP = argb(76, 1, 4, 8);
+    private static final int GUI_BODY = argb(236, 10, 13, 18);
+    private static final int GUI_EDGE = argb(190, 142, 214, 255);
+    private static final int GUI_SETTING = argb(210, 17, 22, 30);
     private static final Paint GRADIENT_PAINT = new Paint().setAntiAlias(false);
     private static final Gson STATE_GSON = new GsonBuilder().setPrettyPrinting().create();
     private static final String STATE_FILE_NAME = "drop-clickgui-state.json";
@@ -225,7 +231,7 @@ public final class WindowClickGuiScreen extends Screen implements SkijaScreen {
             float y = MARGIN;
             for (int index = 0; index < categories.length; index++) {
                 Category category = categories[index];
-                panels.add(new ModulePanel(category, ModuleManager.INSTANCE.modulesIn(category),
+                panels.add(new ModulePanel(category, (ModuleManager.INSTANCE.modulesIn(category)),
                         MARGIN, y));
                 y += HEADER_HEIGHT + 4.0F;
             }
@@ -254,6 +260,7 @@ public final class WindowClickGuiScreen extends Screen implements SkijaScreen {
     @Override
     public void renderSkija(Canvas canvas) {
         long now = System.nanoTime();
+        GuiEffects.advance(animationDelta);
         animationDelta = Math.min(0.05F,
                 Math.max(0.0F, (now - lastFrame) / 1_000_000_000.0F));
         lastFrame = now;
@@ -264,8 +271,15 @@ public final class WindowClickGuiScreen extends Screen implements SkijaScreen {
         canvas.save();
         canvas.scale(activeScale, activeScale);
         SkijaUi.fill(canvas, 0.0F, 0.0F, logicalWidth + 1.0F, logicalHeight + 1.0F, backdropColor());
+        boolean legacyStyle = ClickGui.INSTANCE.mode.is(ClickGui.Mode.LegacyStyle);
+        if (legacyStyle) {
+            renderWatermark(canvas, logicalWidth, logicalHeight);
+        }
         for (Panel panel : panels) {
             panel.render(canvas, logicalHeight);
+        }
+        if (legacyStyle) {
+            renderCornerInfo(canvas, logicalHeight);
         }
         canvas.restore();
     }
@@ -430,10 +444,32 @@ public final class WindowClickGuiScreen extends Screen implements SkijaScreen {
             expandProgress = animateTowards(expandProgress, collapsed ? 0.0F : 1.0F,
                     EXPAND_SPEED, animationDelta);
             float bodyHeight = bodyHeight(screenHeight);
-            SkijaUi.fill(canvas, x - 1.0F, y - 1.0F, panelWidth + 2.0F,
-                    HEADER_HEIGHT + 2.0F, panelEdgeColor());
+            float shellRadius = shellRadius();
+            float shellHeight = HEADER_HEIGHT + Math.max(0.0F, bodyHeight);
+            if (shellRadius > 0.5F) {
+                SkijaUi.rounded(canvas, x - 1.0F, y - 1.0F, panelWidth + 2.0F,
+                        shellHeight + 2.0F, shellRadius + 1.0F, panelEdgeColor());
+                SkijaUi.rounded(canvas, x, y, panelWidth, shellHeight, shellRadius, bodyColor());
+            } else {
+                SkijaUi.fill(canvas, x - 1.0F, y - 1.0F, panelWidth + 2.0F,
+                        HEADER_HEIGHT + 2.0F, panelEdgeColor());
+            }
+            // One rounded clip around every element of the panel: nothing rectangular
+            // (header band, plates, scrollbar, cards) can poke past the rounded shell.
+            canvas.save();
+            if (shellRadius > 0.5F) {
+                canvas.clipRRect(RRect.makeLTRB(x - 1.0F, y - 1.0F, x + panelWidth + 1.0F,
+                        y + shellHeight + 1.0F, shellRadius + 1.0F), true);
+            }
+            int bandColor = ClickGui.INSTANCE.mode.is(ClickGui.Mode.LegacyStyle)
+                    ? GuiPalette.header() : headerColor;
+            canvas.save();
+            if (shellRadius <= 0.5F) {
+                canvas.clipRect(Rect.makeXYWH(x, y, panelWidth, HEADER_HEIGHT));
+            }
             drawGradientRect(canvas, x, y, panelWidth, HEADER_HEIGHT,
-                    mixColor(headerColor, 0xFF172229, 0.24F), headerColor);
+                    mixColor(bandColor, 0xFF172229, 0.24F), bandColor);
+            canvas.restore();
             SkijaUi.icon(canvas, icon, x + 5.0F, y, HEADER_HEIGHT,
                     TEXT, 11.5F, SkijaUi.IconSet.LUCIDE);
             drawBoldText(canvas, fit(title, panelWidth - 39.0F, true),
@@ -443,21 +479,24 @@ public final class WindowClickGuiScreen extends Screen implements SkijaScreen {
             drawText(canvas, marker, x + panelWidth - 7.0F - markerWidth,
                     y, HEADER_HEIGHT, TEXT, FONT);
 
-            if (bodyHeight <= 0.1F) {
-                return;
+            // Collapsed panels must NOT return early: the rounded clip opened above has to be
+            // closed again, otherwise every later draw call stays clipped to this panel.
+            if (bodyHeight > 0.1F) {
+                float bodyY = y + HEADER_HEIGHT;
+                float bodyX = bodyX();
+                float bodyWidth = bodyWidth();
+                if (shellRadius <= 0.5F) {
+                    SkijaUi.fill(canvas, bodyX - 1.0F, bodyY, bodyWidth + 2.0F,
+                            bodyHeight + 1.0F, panelEdgeColor());
+                    SkijaUi.fill(canvas, bodyX, bodyY, bodyWidth, bodyHeight, bodyColor());
+                }
+                canvas.save();
+                canvas.clipRect(Rect.makeXYWH(bodyX, bodyY, bodyWidth, bodyHeight));
+                renderContent(canvas, bodyY - scroll, bodyY, bodyHeight);
+                canvas.restore();
+                renderScrollbar(canvas, bodyY, bodyHeight);
             }
-
-            float bodyY = y + HEADER_HEIGHT;
-            float bodyX = bodyX();
-            float bodyWidth = bodyWidth();
-            SkijaUi.fill(canvas, bodyX - 1.0F, bodyY, bodyWidth + 2.0F,
-                    bodyHeight + 1.0F, panelEdgeColor());
-            SkijaUi.fill(canvas, bodyX, bodyY, bodyWidth, bodyHeight, bodyColor());
-            canvas.save();
-            canvas.clipRect(Rect.makeXYWH(bodyX, bodyY, bodyWidth, bodyHeight));
-            renderContent(canvas, bodyY - scroll, bodyY, bodyHeight);
             canvas.restore();
-            renderScrollbar(canvas, bodyY, bodyHeight);
         }
 
         private boolean mouseClicked(float mouseX, float mouseY, int button, float screenHeight) {
@@ -516,6 +555,10 @@ public final class WindowClickGuiScreen extends Screen implements SkijaScreen {
         protected void updateAnimations() {
         }
 
+        private float shellRadius() {
+            return ClickGui.INSTANCE.mode.is(ClickGui.Mode.LegacyStyle) ? GuiPalette.PANEL_RADIUS : 0.0F;
+        }
+
         private void renderScrollbar(Canvas canvas, float bodyY, float bodyHeight) {
             float contentHeight = contentHeight();
             if (contentHeight <= bodyHeight || bodyHeight <= 0.0F) {
@@ -524,16 +567,23 @@ public final class WindowClickGuiScreen extends Screen implements SkijaScreen {
             float thumbHeight = Math.max(10.0F, bodyHeight * bodyHeight / contentHeight);
             float travel = bodyHeight - thumbHeight;
             float maxScroll = contentHeight - bodyHeight;
-            float thumbY = bodyY + (maxScroll <= 0.0F ? 0.0F : scroll / maxScroll * travel);
-            float scrollbarX = bodyX() + bodyWidth() - 2.0F;
-            SkijaUi.fill(canvas, scrollbarX, bodyY, 2.0F, bodyHeight, argb(100, 0, 0, 0));
-            SkijaUi.fill(canvas, scrollbarX, thumbY, 2.0F, thumbHeight, headerColor);
+            float offset = maxScroll <= 0.0F ? 0.0F : scroll / maxScroll;
+            float scrollbarX = bodyX() + bodyWidth() - 3.0F;
+            boolean legacyStyle = ClickGui.INSTANCE.mode.is(ClickGui.Mode.LegacyStyle);
+            if (legacyStyle) {
+                GuiPalette.scrollbar(canvas, scrollbarX, bodyY, 2.5F, bodyHeight, offset,
+                        bodyHeight / contentHeight, GuiPalette.scroll());
+            } else {
+                float thumbY = bodyY + offset * travel;
+                SkijaUi.fill(canvas, scrollbarX, bodyY, 2.0F, bodyHeight, argb(100, 0, 0, 0));
+                SkijaUi.fill(canvas, scrollbarX, thumbY, 2.0F, thumbHeight, headerColor);
+            }
         }
 
         protected final void drawSettingSection(Canvas canvas, float rowY, float height) {
-            SkijaUi.fill(canvas, x + SECTION_INSET, rowY + 1.0F,
+            SkijaUi.rounded(canvas, x + SECTION_INSET, rowY + 1.0F,
                     panelWidth - SECTION_INSET * 2.0F,
-                    Math.max(1.0F, height - 2.0F), settingBackground());
+                    Math.max(1.0F, height - 2.0F), GuiPalette.CARD_RADIUS, settingBackground());
         }
 
         private float bodyX() {
@@ -616,10 +666,14 @@ public final class WindowClickGuiScreen extends Screen implements SkijaScreen {
                 rowY += MODULE_HEIGHT;
                 float visibleDetails = entryDetailsHeight(entry) * entry.expandProgress;
                 if (visibleDetails <= 0.1F) continue;
+                float reveal = easeOut(entry.expandProgress);
                 canvas.save();
                 canvas.clipRect(Rect.makeXYWH(x + BODY_INSET, rowY,
                         panelWidth - BODY_INSET * 2.0F, visibleDetails));
+                canvas.translate(0.0F, (1.0F - reveal) * 4.5F);
+                canvas.saveLayerAlpha(null, (int) Math.round(255.0F * Math.min(1.0F, reveal * 1.25F)));
                 renderEntryDetails(canvas, entry, rowY, bodyY, bodyHeight);
+                canvas.restore();
                 canvas.restore();
                 rowY += visibleDetails;
             }
@@ -671,7 +725,7 @@ public final class WindowClickGuiScreen extends Screen implements SkijaScreen {
             for (Setting<?> setting : entry.module.settings()) {
                 if (setting.visible()) height += settingHeight(setting);
             }
-            return height;
+            return height + DETAILS_PADDING;
         }
 
         private float componentSettingsHeight(EpsilonHudModule component) {
@@ -685,21 +739,46 @@ public final class WindowClickGuiScreen extends Screen implements SkijaScreen {
 
         private void renderModule(Canvas canvas, Entry entry, float rowY, float bodyY, float bodyHeight) {
             Module module = entry.module;
+            boolean legacyStyle = ClickGui.INSTANCE.mode.is(ClickGui.Mode.LegacyStyle);
+            boolean enabled = module.isEnabled();
+            float cardX = x + 2.0F;
+            float cardY = rowY + 1.0F;
+            float cardWidth = panelWidth - 4.0F;
+            float cardHeight = MODULE_HEIGHT - 2.0F;
+            boolean hovered = renderMouseX >= cardX && renderMouseX < cardX + cardWidth
+                    && renderMouseY >= cardY && renderMouseY < cardY + cardHeight;
+            int cardColor = legacyStyle
+                    ? (enabled ? GuiPalette.secondaryContainer() : GuiPalette.panelInner())
+                    : (enabled ? settingBackground() : withAlpha(SETTING_BACKGROUND, 140));
+            int borderColor = legacyStyle ? 0xFFFFFFFF : PANEL_EDGE;   // 一点点透明的纯白描边
+            float expand = easeOut(entry.expandProgress);
+            float energy = enabled ? 1.0F : (hovered || entry.expanded ? 0.6F : 0.3F);
+            energy = Math.max(energy, 0.3F + 0.45F * expand);
+            GuiEffects.moduleAura(canvas, cardX, cardY, cardWidth, cardHeight,
+                    GuiPalette.CARD_RADIUS, cardColor, borderColor, headerColor,
+                    module.name().hashCode(), energy, 1.0F);
             int nameColor = module.isEnabled() ? headerColor : 0xFFE4E7E9;
             String compactName = module.displayName();
-            drawText(canvas, fit(compactName, panelWidth - 22.0F, false),
+            drawText(canvas, fit(compactName, panelWidth - 27.0F, false),
                     x + 7.0F, rowY, MODULE_HEIGHT, nameColor, FONT);
 
-            String right;
             if (capturingModule == module) {
-                right = "...";
-            } else {
-                right = entry.expanded ? "^" : "v";
-            }
-            if (!right.isEmpty()) {
+                String right = "...";
                 float width = SkijaUi.textWidth(right, FONT);
                 drawText(canvas, right, x + panelWidth - 6.0F - width,
                         rowY, MODULE_HEIGHT, TEXT, FONT);
+            } else {
+                // Vector chevron with rounded caps: rotates smoothly and tints toward the accent
+                // while the module expands (replaces the old "v" text glyph, which looked rough).
+                boolean legacy = ClickGui.INSTANCE.mode.is(ClickGui.Mode.LegacyStyle);
+                float centreX = x + panelWidth - 11.5F;
+                float centreY = rowY + MODULE_HEIGHT * 0.5F;
+                int tint = legacy
+                        ? GuiPalette.mix(GuiPalette.textDim(), GuiPalette.primary(), expand)
+                        : TEXT;
+                GuiEffects.chevron(canvas, centreX, centreY, 3.3F, 1.9F, 180.0F * expand,
+                        1.5F, withAlpha(tint, (int) Math.round(255.0F * (0.62F + 0.38F * expand))),
+                        hovered ? 1.0F : 0.0F);
             }
         }
 
@@ -725,8 +804,9 @@ public final class WindowClickGuiScreen extends Screen implements SkijaScreen {
             String marker = expandedHudComponents.contains(component) ? "-" : "+";
             drawText(canvas, marker, x + panelWidth - 31.0F, rowY,
                     SETTING_HEIGHT, TEXT_DIM, FONT_SMALL);
-            SkijaUi.fill(canvas, x + panelWidth - 14.0F, rowY + 4.0F, 8.0F, 8.0F,
-                    toggle.get() ? headerColor : TRACK);
+            GuiPalette.toggle(canvas, x + panelWidth - 16.0F, rowY + 5.0F, 12.0F, 8.0F,
+                    toggle.get() ? 1.0F : 0.0F, ClickGui.INSTANCE.mode.is(ClickGui.Mode.LegacyStyle)
+                            ? GuiPalette.text() : TEXT);
         }
 
         private void renderSetting(Canvas canvas, Setting<?> setting, float rowY,
@@ -755,10 +835,14 @@ public final class WindowClickGuiScreen extends Screen implements SkijaScreen {
                     x + (nested ? 10.0F : 7.0F), rowY, SETTING_HEIGHT, TEXT_DIM, FONT_SMALL);
 
             if (setting instanceof BooleanSetting booleanSetting) {
-                float boxX = x + panelWidth - 14.0F;
-                float boxY = rowY + 4.0F;
-                SkijaUi.fill(canvas, boxX, boxY, 8.0F, 8.0F,
-                        booleanSetting.get() ? headerColor : TRACK);
+                float toggleWidth = 15.0F;
+                float toggleHeight = 8.0F;
+                float boxX = x + panelWidth - toggleWidth - 5.0F;
+                float boxY = rowY + (SETTING_HEIGHT - toggleHeight) * 0.5F;
+                GuiPalette.toggle(canvas, boxX, boxY, toggleWidth, toggleHeight,
+                        booleanSetting.get() ? 1.0F : 0.0F,
+                        ClickGui.INSTANCE.mode.is(ClickGui.Mode.LegacyStyle)
+                                ? GuiPalette.text() : TEXT);
             } else if (setting instanceof FontSetting fontSetting) {
                 drawRight(canvas, fit(fontSetting.displayValue(), 42.0F, false),
                         rowY, SETTING_HEIGHT, headerColor, FONT_SMALL);
@@ -816,13 +900,12 @@ public final class WindowClickGuiScreen extends Screen implements SkijaScreen {
             float fieldHeight = 12.0F;
             boolean focused = textTarget == TextTarget.COLOR && editingColor == setting;
             String value = focused ? textWithCursor() : setting.hex();
-            SkijaUi.fill(canvas, fieldX, fieldY, fieldWidth, fieldHeight,
-                    focused ? headerColor : TRACK);
-            SkijaUi.fill(canvas, fieldX + 1.0F, fieldY + 1.0F,
-                    fieldWidth - 2.0F, fieldHeight - 2.0F, BODY);
+            GuiPalette.chip(canvas, fieldX, fieldY, fieldWidth, fieldHeight, focused,
+                    GuiPalette.CHIP_RADIUS, bodyColor());
             drawText(canvas, fit(value, fieldWidth - 6.0F, false), fieldX + 3.0F,
                     fieldY, fieldHeight, focused ? TEXT : TEXT_DIM, FONT_SMALL);
-            SkijaUi.fill(canvas, x + panelWidth - 16.0F, rowY + 4.0F, 10.0F, 8.0F, setting.argb());
+            SkijaUi.rounded(canvas, x + panelWidth - 16.0F, rowY + 4.0F, 10.0F, 8.0F, 3.0F,
+                    setting.argb());
             int[] values = {color.getRed(), color.getGreen(), color.getBlue(), color.getAlpha()};
             int[] colors = {
                     argb(255, 232, 84, 84),
@@ -864,8 +947,8 @@ public final class WindowClickGuiScreen extends Screen implements SkijaScreen {
                     trackY, 2.0F, TRACK);
             drawSliderLayer(canvas, trackX, handleX, gapStart, gapEnd,
                     trackY, 2.0F, color);
-            SkijaUi.fill(canvas, handleX - 1.5F, trackY - 3.0F,
-                    3.0F, 8.0F, color);
+            SkijaUi.rounded(canvas, handleX - 2.5F, trackY - 2.5F,
+                    5.0F, 5.0F, 2.5F, color);
             drawText(canvas, value, valueX, trackY - 7.0F,
                     textHeight, TEXT, FONT_SMALL);
         }
@@ -1459,6 +1542,42 @@ public final class WindowClickGuiScreen extends Screen implements SkijaScreen {
         return coordinate / activeScale;
     }
 
+    /**
+     * Big, very faint watermark in the middle of the screen: the client name plus the current
+     * version (RavenB4-style backdrop branding for the legacy ClickGUI).
+     */
+    private void renderWatermark(Canvas canvas, float width, float height) {
+        String text = WATERMARK_NAME + " " + DioxideLite.VERSION;
+        float size = Math.max(16.0F, Math.min(44.0F, width * 0.072F));
+        float textWidth = SkijaUi.boldTextWidth(text, size);
+        float x = (width - textWidth) * 0.5F;
+        float top = height * 0.5F - size * 0.55F;
+        SkijaUi.boldText(canvas, text, x, top, size * 1.2F, withAlpha(0xFFFFFFFF, 26), size);
+        SkijaUi.boldText(canvas, text, x, top + size * 0.06F, size * 1.2F,
+                withAlpha(0xFFFFFFFF, 12), size);
+    }
+
+    /**
+     * RavenB4-style three lines in the bottom-left corner of the legacy ClickGUI.
+     */
+    private void renderCornerInfo(Canvas canvas, float screenHeight) {
+        String player = minecraft != null && minecraft.getUser() != null
+                ? minecraft.getUser().getName() : "player";
+        String[] lines = {
+                "welcome, " + player,
+                WATERMARK_NAME.toLowerCase(Locale.ROOT) + " " + DioxideLite.VERSION,
+                "reimplemented on macOS"
+        };
+        float size = 8.0F;
+        float lineHeight = size + 3.5F;
+        float x = 8.0F;
+        float y = screenHeight - 7.0F - lines.length * lineHeight;
+        for (int index = 0; index < lines.length; index++) {
+            SkijaUi.textShadow(canvas, lines[index], x, y + index * lineHeight, lineHeight,
+                    withAlpha(0xFFFFFFFF, index == 0 ? 205 : 165), size);
+        }
+    }
+
     private float logicalWidth() {
         return Math.max(1.0F, width / activeScale);
     }
@@ -1498,6 +1617,10 @@ public final class WindowClickGuiScreen extends Screen implements SkijaScreen {
     }
 
     private static int categoryColor(Category category) {
+        if (ClickGui.INSTANCE.mode.is(ClickGui.Mode.LegacyStyle)) {
+            // reference is monochrome: highlights use the theme's MD3 primary colour.
+            return GuiPalette.primary();
+        }
         return switch (category) {
             case COMBAT -> 0xFF45B8EA;
             case MISC -> 0xFF7085F3;
@@ -1521,26 +1644,40 @@ public final class WindowClickGuiScreen extends Screen implements SkijaScreen {
 
     private static int accent() {
         Color configured = ClickGui.INSTANCE.accent.get();
-        if (ClickGui.INSTANCE.mode.is(ClickGui.Mode.OpenOnyx)) {
-            configured = new Color(155, 215, 255);
-        }
-        return argb(255, configured.getRed(), configured.getGreen(), configured.getBlue());
+        int seed = argb(255, configured.getRed(), configured.getGreen(), configured.getBlue());
+        // The reference theme is seeded by one accent colour; keep GuiPalette in sync with the setting.
+        GuiPalette.seed(seed);
+        return seed;
     }
 
     private static int backdropColor() {
-        return ClickGui.INSTANCE.mode.is(ClickGui.Mode.OpenOnyx) ? ONYX_BACKDROP : BACKDROP;
+        return ClickGui.INSTANCE.mode.is(ClickGui.Mode.LegacyStyle)
+                ? GuiPalette.backdrop(1.0F) : BACKDROP;
     }
 
     private static int bodyColor() {
-        return ClickGui.INSTANCE.mode.is(ClickGui.Mode.OpenOnyx) ? ONYX_BODY : BODY;
+        return ClickGui.INSTANCE.mode.is(ClickGui.Mode.LegacyStyle) ? GuiPalette.panel() : BODY;
     }
 
     private static int panelEdgeColor() {
-        return ClickGui.INSTANCE.mode.is(ClickGui.Mode.OpenOnyx) ? ONYX_EDGE : PANEL_EDGE;
+        return ClickGui.INSTANCE.mode.is(ClickGui.Mode.LegacyStyle) ? GuiPalette.edge() : PANEL_EDGE;
     }
 
     private static int settingBackground() {
-        return ClickGui.INSTANCE.mode.is(ClickGui.Mode.OpenOnyx) ? ONYX_SETTING : SETTING_BACKGROUND;
+        return ClickGui.INSTANCE.mode.is(ClickGui.Mode.LegacyStyle)
+                ? GuiPalette.panelInner() : SETTING_BACKGROUND;
+    }
+
+    private static int primaryText() {
+        return ClickGui.INSTANCE.mode.is(ClickGui.Mode.LegacyStyle) ? GuiPalette.text() : TEXT;
+    }
+
+    private static int secondaryText() {
+        return ClickGui.INSTANCE.mode.is(ClickGui.Mode.LegacyStyle) ? GuiPalette.textDim() : TEXT_DIM;
+    }
+
+    private static int trackColor() {
+        return ClickGui.INSTANCE.mode.is(ClickGui.Mode.LegacyStyle) ? GuiPalette.track() : TRACK;
     }
 
     private static String fit(String text, float maxWidth, boolean bold) {
@@ -1658,6 +1795,10 @@ public final class WindowClickGuiScreen extends Screen implements SkijaScreen {
 
     private static int argb(int alpha, int red, int green, int blue) {
         return (alpha << 24) | (red << 16) | (green << 8) | blue;
+    }
+
+    private static float easeOut(float progress) {
+        return GuiEffects.easeOut(progress);
     }
 
     private static int withAlpha(int color, int alpha) {

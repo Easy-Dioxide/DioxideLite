@@ -1,20 +1,20 @@
-package com.dioxidelite.onyx.engine;
+package com.dioxidelite.core.engine;
 
 import net.minecraft.client.Minecraft;
 import net.minecraft.world.entity.LivingEntity;
 
 /**
- * Current-version state controller corresponding to OpenOnyx's CombatController.
+ * Current-version state controller corresponding to the reference client's CombatController.
  * It deliberately owns state only; packet transport and rendering remain in
  * DioxideLite's existing event/rotation/visual layers.
  */
-public final class OnyxCombatController {
+public final class CombatController {
     private final Minecraft mc;
     private LivingEntity target;
     private long lastActionNanos;
     private boolean active;
 
-    public OnyxCombatController(Minecraft mc) {
+    public CombatController(Minecraft mc) {
         this.mc = mc;
     }
 

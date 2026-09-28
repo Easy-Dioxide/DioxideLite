@@ -22,11 +22,12 @@ public final class ClickGui extends Module {
 
     public static final ClickGui INSTANCE = new ClickGui();
 
-    public enum Mode { Setsuna, Drop, OpenOnyx }
+    public enum Mode { Setsuna, LegacyStyle }
 
-    public final EnumSetting<Mode> mode = add(new EnumSetting<>("Mode", Mode.Setsuna));
+    // Default to the modern presentation (see GuiPalette); Setsuna (radial) stays selectable.
+    public final EnumSetting<Mode> mode = add(new EnumSetting<>("Mode", Mode.LegacyStyle));
     public final BooleanSetting daylightMode = add(new BooleanSetting("Daylight Mode", false)
-            .visibleWhen(() -> mode.is(Mode.Setsuna) || mode.is(Mode.OpenOnyx)));
+            .visibleWhen(() -> mode.is(Mode.Setsuna) || mode.is(Mode.LegacyStyle)));
     public final IntSetting popBackgroundBlur = add(new IntSetting("Background Blur", 5, 0, 10, 1)
             .visibleWhen(() -> mode.is(Mode.Setsuna)));
     public final ColorSetting accent = add(new ColorSetting("Accent", new Color(166, 86, 238), false));
@@ -46,7 +47,7 @@ public final class ClickGui extends Module {
 
     public Screen createScreen(Screen parent) {
         return switch (mode.get()) {
-            case Drop, OpenOnyx -> new WindowClickGuiScreen(parent);
+            case LegacyStyle -> new WindowClickGuiScreen(parent);
             case Setsuna -> new PopClickGuiScreen(parent);
         };
     }

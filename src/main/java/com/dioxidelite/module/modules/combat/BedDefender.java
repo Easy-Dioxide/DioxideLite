@@ -5,7 +5,7 @@ import com.dioxidelite.module.Module;
 import com.dioxidelite.setting.settings.BooleanSetting;
 import com.dioxidelite.setting.settings.IntSetting;
 
-/** OpenOnyx BedDefender registration with safe, explicit configuration. */
+/** the reference client BedDefender registration with safe, explicit configuration. */
 public final class BedDefender extends Module {
     public static final BedDefender INSTANCE = new BedDefender();
     public final IntSetting targetsPerTick = add(new IntSetting("Targets Per Tick", 4, 1, 16, 1));

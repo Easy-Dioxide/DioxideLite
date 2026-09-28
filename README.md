@@ -2,7 +2,7 @@
 
 **DioxideLite** 是一个基于 Skija 渲染的 Minecraft 视觉客户端（Fabric），为 Minecraft **26.1.2** 打造，专注流畅的 HUD 视觉、ClickGUI 与聊天联动。
 
-> 当前版本：**v2.2.1** · 平台：Fabric · 游戏版本：Minecraft 26.1.2 · JDK 25
+> 当前版本：**v2.2.2** · 平台：Fabric · 游戏版本：Minecraft 26.1.2 · JDK 25 · 支持 Windows x64 / Linux x64 / macOS（arm64 / x64）
 
 ---
 
@@ -10,17 +10,17 @@
 
 - **Skija GPU 渲染**：全部自绘 UI（ClickGUI / HUD / 灵动岛 / Watermark）走 Skija 渲染，文字锐利、动画流畅。
 - **灵动岛（Dynamic Island）**：顶部胶囊信息面板，实时显示客户端版本 / FPS / 延迟。
-- **Watermark**：客户端身份水印（默认 `DioxideLite 2.1.2`），支持自定义文字与品牌 Logo。
-- **ClickGUI（Pop / Drop）**：右 `Shift` 打开，六分类环形菜单，主题可热切换（无需重启游戏）。
+- **Watermark**：客户端身份水印（默认 `DioxideLite 2.2.2`），支持自定义文字与品牌 Logo。
+- **ClickGUI（LegacyStyle / Setsuna 双模式）**：右 `Shift` 打开，默认圆角面板风格（粒子光晕、展开动画），可切换环形模式，主题可热切换（无需重启游戏）。
 - **HUD Editor**：聊天界面打开时可通过按键唤起，直接拖拽调整 HUD 位置（RESET / DONE）。
 - **命令系统（Command）**：客户端命令注册表骨架（v2 明确不暴露任何 gameplay / cheat 命令，`handle` 默认放行至原版）。
 - **IRC 聊天联动**（Player → IRC，默认开启）：基于 OpticsValleyIRC 原版协议，IRC 在线用户 Nametag 显示 DioxideLite 品牌 Logo。
-- **视觉模块（全量移植）**：世界渲染（HoleESP / Tracers / OreTracers / SpawnerFinder / UHCDetector / Xray）、战斗（KillAura / KillAuraPlus / AntiBot / AutoTotem / Surround / Criticals 等）、移动（Scaffold / Velocity / NoSlow / Speed 等）、玩家（ChestStealer / InvManager / AutoTool / BedAura 等）、TargetHud / ScaffoldBlockHUD、ESP、Chams、Global Blur、Full Bright、Radar 等。
+- **视觉模块（Render 重组）**：27 个内置 render 模块运行时退役，替换为 35 个移植模块（ESP / Chams / NoRender / Fullbright / Camera / Wings / Trails / TargetESP / BedESP / BlockOverlay / ItemPhysics / Particles / Trajectories / Zoom / Freelook 等）；战斗（KillAura / KillAuraPlus / AntiBot / AutoTotem / Surround / Criticals 等）、移动（Scaffold / Velocity / NoSlow / Speed 等）、玩家（ChestStealer / InvManager / AutoTool / BedAura 等）模块保留。
 - **内置优化模组**：Sodium / Lithium / FerriteCore 一并内嵌，开箱即用。
 
 ## 截图
 
-| v2.2.1 主菜单 | v2.2.1 游戏内 |
+| 主菜单 | 游戏内 |
 | --- | --- |
 | ![主菜单](docs/screenshots/v221-main-menu.png) | ![游戏内](docs/screenshots/v221-ingame.png) |
 
@@ -98,7 +98,7 @@ local holdRight = dioxidelite:isKeyHeld("mouse_right")
 
 1. 安装 **Fabric Loader ≥ 0.19.2**，游戏版本 **26.1.2**。
 2. 安装 **Fabric API**（26.1.2 对应版本）。
-3. 将 `DioxideLite-2.2.1.jar` 放入 `.minecraft/mods`。
+3. 将 `DioxideLite-2.2.2.jar` 放入 `.minecraft/mods`。
 4. 启动游戏。`右 Shift` 打开 ClickGUI，灵动岛默认开启。
 
 ## IRC 使用
@@ -116,7 +116,13 @@ local holdRight = dioxidelite:isKeyHeld("mouse_right")
 .\gradlew.bat clean build
 ```
 
-产物位于 `build/libs/DioxideLite-2.2.1.jar`（含 sources.jar）。
+默认按构建机自动探测单平台；传 `-Pskija_platforms` / `-Pwebrtc_platforms` 可打包四平台通用 jar：
+
+```powershell
+.\gradlew.bat clean build -Pskija_platforms=skija-windows-x64,skija-linux-x64,skija-macos-arm64,skija-macos-x64 -Pwebrtc_platforms=windows-x86_64,linux-x86_64,macos-aarch64,macos-x86_64
+```
+
+产物位于 `build/libs/DioxideLite-2.2.2.jar`（含 sources.jar）。
 
 > 注意：构建依赖 `libs/nested/` 下的内嵌库与 `src/main/java/tritium`、`src/main/java/repackage`（音频 / JSyn 库），均已随仓库提供。
 
@@ -126,6 +132,7 @@ local holdRight = dioxidelite:isKeyHeld("mouse_right")
 
 | 版本 | 摘要 |
 | --- | --- |
+| v2.2.2 | 多平台移植（Windows / Linux / macOS）+ 35 个 Render 模块重组 + ClickGUI 双模式 + 品牌清理 |
 | v2.2.1 | Halo 模块 + Onyx HUD 移植 + IRC 心跳保活 + ChatScreenMixin 修复 |
 | v2.2.0 | Render 优化 + ClickGUI 优化 + 编译修复 |
 | v2.1.5 | RenderStable OnyxPort — Render 稳定性修复 + Onyx 模块全量移植 |

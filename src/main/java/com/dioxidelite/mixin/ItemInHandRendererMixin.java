@@ -1,6 +1,7 @@
 package com.dioxidelite.mixin;
 
 import com.dioxidelite.module.modules.render.CombatVisuals;
+import com.dioxidelite.module.modules.render.advanced.Hand;
 import com.llamalad7.mixinextras.injector.ModifyExpressionValue;
 import com.llamalad7.mixinextras.sugar.Local;
 import com.mojang.blaze3d.vertex.PoseStack;
@@ -30,6 +31,18 @@ public class ItemInHandRendererMixin {
             return ItemUseAnimation.BLOCK;
         }
         return original;
+    }
+
+    /** 第一人称手臂定制：在主手基准变换之后套用模块的位置/旋转/缩放。 */
+    @Inject(method = "renderArmWithItem", at = @At(value = "INVOKE", target = "Lnet/minecraft/client/renderer/ItemInHandRenderer;applyItemArmTransform(Lcom/mojang/blaze3d/vertex/PoseStack;Lnet/minecraft/world/entity/HumanoidArm;F)V", ordinal = 0, shift = org.spongepowered.asm.mixin.injection.At.Shift.AFTER))
+    private void dioxide$handTransform(AbstractClientPlayer player, float frameInterp, float xRot, InteractionHand hand,
+                                       float attack, ItemStack itemStack, float inverseArmHeight, PoseStack poseStack,
+                                       SubmitNodeCollector collector, int lightCoords, CallbackInfo ci) {
+        Hand handModule = Hand.INSTANCE;
+        if (handModule.isEnabled() && player == Minecraft.getInstance().player
+                && hand == InteractionHand.MAIN_HAND) {
+            handModule.applyMainHandTransform(poseStack);
+        }
     }
 
     @Inject(method = "renderArmWithItem", at = @At(value = "INVOKE", target = "Lnet/minecraft/client/renderer/ItemInHandRenderer;applyItemArmTransform(Lcom/mojang/blaze3d/vertex/PoseStack;Lnet/minecraft/world/entity/HumanoidArm;F)V", ordinal = 0, shift = org.spongepowered.asm.mixin.injection.At.Shift.AFTER))

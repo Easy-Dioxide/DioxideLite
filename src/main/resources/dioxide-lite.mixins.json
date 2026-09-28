@@ -57,7 +57,8 @@
     "ModelBlockRendererMixin",
     "SectionCompilerMixin",
     "EquipmentLayerRendererMixin",
-    "AbstractRecipeBookScreenMixin"
+    "AbstractRecipeBookScreenMixin",
+    "AbstractClientPlayerMixin"
   ],
   "injectors": {
     "defaultRequire": 1

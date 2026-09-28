@@ -1,4 +1,4 @@
-package com.dioxidelite.onyx.engine;
+package com.dioxidelite.core.engine;
 
 import com.dioxidelite.manager.FriendManager;
 import net.minecraft.client.Minecraft;
@@ -12,19 +12,19 @@ import java.util.List;
 import java.util.Set;
 
 /**
- * Modern 26.1.2 adaptation of OpenOnyx's TargetScanner.
+ * Modern 26.1.2 adaptation of the reference client's TargetScanner.
  *
  * The old scanner was tied to the 1.8 entity API.  This version keeps the
  * same conceptual boundary (relation checks + entity classes + range) while
  * delegating the actual world query to the current DioxideLite engine.
  */
-public final class OnyxTargetScanner {
+public final class TargetScanner {
     public enum Type { PLAYERS, TEAMMATES, MOBS, ANIMALS }
 
     private static final Minecraft MC = Minecraft.getInstance();
-    private static final OnyxCombatEngine COMBAT = new OnyxCombatEngine();
+    private static final CombatEngine COMBAT = new CombatEngine();
 
-    private OnyxTargetScanner() {}
+    private TargetScanner() {}
 
     public static Set<Type> defaults() {
         return EnumSet.of(Type.PLAYERS, Type.MOBS, Type.ANIMALS);

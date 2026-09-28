@@ -14,6 +14,7 @@ import io.github.humbleui.types.Rect;
 import io.github.humbleui.skija.Canvas;
 import net.minecraft.client.Minecraft;
 import net.minecraft.resources.Identifier;
+import net.minecraft.util.Mth;
 import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.phys.Vec3;
 import org.joml.Vector3f;
@@ -39,7 +40,7 @@ public final class NameTagLogoRenderer {
     /** Beyond this squared distance the logo is not painted (matches vanilla's ~16 block name tag range). */
     private static final double PROJECTION_FAR_SQ = 16.0 * 16.0;
 
-    private SkijaRenderer.BorrowedImage cachedLogo;
+    private static SkijaRenderer.BorrowedImage cachedLogo;
     private static final Paint LOGO_PAINT = new Paint().setAntiAlias(true);
 
     private NameTagLogoRenderer() {
@@ -53,6 +54,8 @@ public final class NameTagLogoRenderer {
                 && !LegendWatch.INSTANCE.ircLogoEnabled()) return;
 
         Vec3 camPos = mc.gameRenderer.getMainCamera().position();
+        // 和名牌文字/实体模型用同一套插值位置，否则图标会在移动时相对名牌来回漂。
+        float partial = mc.getDeltaTracker().getGameTimeDeltaPartialTick(true);
         for (Player player : mc.level.players()) {
             if (player == null || player.isRemoved()) continue;
             String clean = LegendSuffixUtil.cleanUsername(player.getName().getString());
@@ -62,7 +65,10 @@ public final class NameTagLogoRenderer {
                     : LegendWatch.INSTANCE.ircLogoEnabled() && IrcModule.isIrcUser(clean);
             if (!show) continue;
 
-            Vec3 pos = player.position();
+            Vec3 pos = new Vec3(
+                    Mth.lerp(partial, player.xOld, player.getX()),
+                    Mth.lerp(partial, player.yOld, player.getY()),
+                    Mth.lerp(partial, player.zOld, player.getZ()));
             double anchorY = pos.y + player.getDimensions(player.getPose()).height() + 0.55;
             if (pos.distanceToSqr(camPos) > PROJECTION_FAR_SQ) continue;
 
@@ -83,6 +89,17 @@ public final class NameTagLogoRenderer {
     }
 
     private void drawLogo(Canvas canvas, float x, float y, float size) {
+        drawIcon(canvas, x, y, size, 255);
+    }
+
+    /**
+     * 把客户端 logo（图标）画到任意 Skija 画布上，供其它 HUD 复用
+     * —— 目前用于移植版 ESP 名牌里的 "Icon"（name icon）。
+     */
+    public static void drawIcon(Canvas canvas, float x, float y, float size, int alpha) {
+        if (canvas == null || size <= 0.0F) {
+            return;
+        }
         try {
             if (cachedLogo == null) {
                 cachedLogo = SkijaRenderer.borrowTexture(LOGO);
@@ -93,7 +110,7 @@ public final class NameTagLogoRenderer {
             Image image = cachedLogo.image();
             Rect src = Rect.makeXYWH(0, 0, image.getWidth(), image.getHeight());
             Rect dst = Rect.makeXYWH(x, y, size, size);
-            LOGO_PAINT.setImageFilter(null).setAlpha(255);
+            LOGO_PAINT.setImageFilter(null).setAlpha(Math.max(0, Math.min(255, alpha)));
             canvas.drawImageRect(image, src, dst, SamplingMode.MITCHELL, LOGO_PAINT, true);
         } catch (Throwable ignored) {
             if (cachedLogo != null) {

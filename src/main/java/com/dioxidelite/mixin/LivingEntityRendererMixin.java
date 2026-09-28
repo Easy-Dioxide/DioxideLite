@@ -36,6 +36,18 @@ public abstract class LivingEntityRendererMixin<T extends LivingEntity, S extend
         return original;
     }
 
+    /**
+     * 移植版 ESP 打开 Names 时，自动屏蔽原版自带的头顶名字（只影响原版精灵文字名牌，
+     * 客户端自己的 2D 名牌/名牌图标不受影响）。
+     */
+    @Inject(method = "shouldShowName(Lnet/minecraft/world/entity/LivingEntity;D)Z", at = @At("HEAD"), cancellable = true)
+    private void dioxide$hideVanillaNameTag(LivingEntity entity, double distanceToCamera,
+                                            CallbackInfoReturnable<Boolean> cir) {
+        if (com.dioxidelite.module.modules.render.advanced.ESP.INSTANCE.hidesVanillaNameTag(entity)) {
+            cir.setReturnValue(false);
+        }
+    }
+
     @Inject(method = "extractRenderState(Lnet/minecraft/world/entity/LivingEntity;Lnet/minecraft/client/renderer/entity/state/LivingEntityRenderState;F)V", at = @At("RETURN"))
     private void dioxide$extract(T entity, S state, float partialTicks, CallbackInfo ci) {
         Chams chams = Chams.INSTANCE;
