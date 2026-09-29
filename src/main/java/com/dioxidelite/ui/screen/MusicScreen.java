@@ -1494,6 +1494,15 @@ public final class MusicScreen extends AbstractSkijaScreen {
         qrLoginThread = null;
         accountBusy = false;
         if (error != null || !hasAccount()) {
+            if (qrLoginState == CloudMusic.QrLoginState.AUTHORIZED && !hasAccount()) {
+                // 扫码已在手机端确认（qrLoginState==AUTHORIZED），但 loadNCM 没能拉到 profile
+                // （cookie 无效 / 网络异常 / 凭证不全）。如果不重置，qrLoginStatus() 会一直显示
+                // "Login confirmed, loading your library..."，界面卡死、按钮也不可点。
+                // 重置为 FAILED 让状态文本变成可重试提示，并清理二维码图片，用户可重新扫码。
+                qrLoginState = CloudMusic.QrLoginState.FAILED;
+                closeQrImage();
+                QRCodeGenerator.clear();
+            }
             statusError = qrLoginState == CloudMusic.QrLoginState.FAILED;
             setStatus(error == null ? qrLoginStatus() : "QR login failed: " + errorMessage(error), statusError);
             return;

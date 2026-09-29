@@ -597,15 +597,15 @@ public class CloudMusic {
     }
 
     private static String normalizeLoginCookie(String cookie) {
-        StringBuilder sb = new StringBuilder();
-        for (String item : cookie.split(";")) {
-            String part = item.trim();
-            if (part.startsWith("MUSIC_U=") || part.startsWith("__csrf=")) {
-                if (!sb.isEmpty()) sb.append("; ");
-                sb.append(part);
-            }
-        }
-        return sb.isEmpty() ? cookie : sb.toString();
+        if (cookie == null) return "";
+        String trimmed = cookie.trim();
+        if (trimmed.isEmpty()) return "";
+        // 网易云 803 响应的 cookie 字段已是 "name=value; name=value; ..." 的形式。
+        // 保留全部条目，避免丢弃 MUSIC_U/__csrf 之外的关键凭证（__remember_me / NMTID 等），
+        // 否则后续 loginStatus() / loadUserPlaylists() 会因凭证不全而失败、profile 变成 null。
+        // 参考 opai-client/tritium-music：轮询过程中由 RequestUtil 累积 Set-Cookie 后
+        // 直接用 OptionsUtil.getCookie()，不做白名单过滤。
+        return trimmed;
     }
 
     public static User getUserProfile() {
