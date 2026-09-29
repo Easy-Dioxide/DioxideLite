@@ -15,6 +15,7 @@ import com.dioxidelite.util.client.PlatformSupport;
 import org.luaj.vm2.Globals;
 
 import java.io.IOException;
+import java.io.InputStream;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
@@ -32,6 +33,11 @@ public final class LuaScriptManager {
 
     private static final long MAX_SCRIPT_BYTES = 1024L * 1024L;
     private static final int MAX_ERRORS = 100;
+    /** Scripts shipped inside the jar under {@code /dioxide-lite/scripts/}. They are
+     *  materialised into the user's config {@code scripts/} directory on first run
+     *  (existing files are never overwritten, so users can edit or disable them). */
+    private static final String[] BUILTIN_SCRIPTS = {"SpeedTelly.lua"};
+    private static final String BUILTIN_RESOURCE_PREFIX = "/dioxide-lite/scripts/";
     private static final String EXAMPLE = """
             local module = dioxidelite.module({
                 id = "lua_visual_example",
@@ -93,6 +99,7 @@ public final class LuaScriptManager {
         try {
             directory = scriptsDirectory();
             createExample(directory);
+            bundleBuiltinScripts(directory);
         } catch (IOException error) {
             recordError(null, "discovery", error);
             return 0;
@@ -212,6 +219,26 @@ public final class LuaScriptManager {
 
     private static boolean isLuaFile(Path path) {
         return path.getFileName().toString().toLowerCase(Locale.ROOT).endsWith(".lua");
+    }
+
+    /** Copies each built-in script from the jar into the config {@code scripts/}
+     *  directory unless a file with the same name already exists. This lets the
+     *  bundled example modules (SpeedTelly etc.) show up in the ClickGUI on first
+     *  run, while still letting users edit, rename or disable their local copy. */
+    private static void bundleBuiltinScripts(Path directory) throws IOException {
+        for (String name : BUILTIN_SCRIPTS) {
+            Path target = directory.resolve(name);
+            if (Files.exists(target)) {
+                continue;
+            }
+            String resource = BUILTIN_RESOURCE_PREFIX + name;
+            try (InputStream in = LuaScriptManager.class.getResourceAsStream(resource)) {
+                if (in == null) {
+                    continue;
+                }
+                Files.copy(in, target);
+            }
+        }
     }
 
     private static void createExample(Path directory) throws IOException {
