@@ -171,6 +171,8 @@ public final class ModuleManager {
         register(SpearKill.INSTANCE);
         register(Surround.INSTANCE);
         register(ZealotCrystalPlus.INSTANCE);
+        // [Vape 移植] 静默自动攻击模块，移植自 Vape-v4 SilentAura。
+        register(com.dioxidelite.module.modules.combat.SilentAura.INSTANCE);
         // --- MISC ---
         register(MiddleClickFriend.INSTANCE);
         // --- MOVEMENT ---
@@ -180,6 +182,8 @@ public final class ModuleManager {
         register(InvMove.INSTANCE);
         register(KeepSprint.INSTANCE);
         register(MovementFix.INSTANCE);
+        // [Vape 移植] 掉落自动放方块模块，移植自 Vape-v4 Clutch（1.7.10→26.1.2 重写）。
+        register(com.dioxidelite.module.modules.movement.Clutch.INSTANCE);
         register(NoFall.INSTANCE);
         register(NoJumpDelay.INSTANCE);
         register(NoSlow.INSTANCE);
