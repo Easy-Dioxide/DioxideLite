@@ -4,6 +4,30 @@
 
 ---
 
+## v2.2.3（2026-10-01）
+
+### Vape 移植
+- **SilentAura（静默自动攻击）**：移植自 Vape-v4，重写适配 26.1.2，保留目标选择（Distance/Yaw/Armor/Threat/Health 排序）、PID 旋转微调、Perfect Swing、瞄准抖动、自适应最近可见点。
+- **Clutch（掉落自动放方块）**：移植自 Vape-v4，1.7.10 → 26.1.2 语义重写，保留掉落检测、自动放方块接住、旋转到放置点（可选 Silent）、自动切换物品栏。
+
+### MovementFix
+- 新增 Vape movementCorrection 三种模式：**VapeNone**（完全不修正）/ **VapeSlow**（yaw+180° 反向 + 输入减半）/ **VapeProper**（静默 yaw + 重映射到 45° 桶，等价 Silent）。
+- 新增 `quantizeToAngle()` 复用核心算法。
+
+### Lua 内置脚本
+- LuaScriptManager 打包内置脚本（`/dioxide-lite/scripts/`），首次运行自动释放到配置 `scripts/` 目录，同名不覆盖。
+- SpeedTelly.lua 适配新版沙箱（render→render2d、本地 sign、mouse_down、world:block、draw:line 参数顺序）。
+
+### 网易云扫码登录修复
+- MusicScreen：扫码已确认但拉不到 profile 时重置为 FAILED，避免界面卡死，可重新扫码。
+- CloudMusic：cookie 保留全部条目（不再白名单过滤），避免凭证不全导致 profile 为 null。
+
+### 验证
+- 构建成功（JDK 25 + Gradle 9.2.1 + Fabric Loom 1.15.5），产物 `DioxideLite-2.2.3.jar`。
+- 游戏启动正常（Minecraft 26.1.2 Fabric），窗口标题 `DioxideLite 2.2.3`。
+
+---
+
 ## v2.2.2（2026-09-28）
 
 ### 多平台移植

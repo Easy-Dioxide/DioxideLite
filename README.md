@@ -2,7 +2,7 @@
 
 **DioxideLite** 是一个基于 Skija 渲染的 Minecraft 视觉客户端（Fabric），为 Minecraft **26.1.2** 打造，专注流畅的 HUD 视觉、ClickGUI 与聊天联动。
 
-> 当前版本：**v2.2.2** · 平台：Fabric · 游戏版本：Minecraft 26.1.2 · JDK 25 · 支持 Windows / Linux / macOS
+> 当前版本：**v2.2.3** · 平台：Fabric · 游戏版本：Minecraft 26.1.2 · JDK 25 · 支持 Windows / Linux / macOS
 
 ---
 
@@ -17,7 +17,8 @@
 - **Halo 模块**：碧蓝档案头顶光环渲染（砂狼白子 / 黑见芹香 / 小鸟游星野 / Opai Logo），默认启用。
 - **Onyx HUD**：ArrayList 右对齐自适应 + Notifications + PotionHUD。
 - **IRC 聊天联动**（Player → IRC，默认开启）：基于 OpticsValleyIRC 原版协议，5 分钟心跳保活 + 断线自动重连，IRC 在线用户 Nametag 显示 DioxideLite 品牌 Logo。
-- **视觉模块（全量移植）**：世界渲染（HoleESP / Tracers / OreTracers / SpawnerFinder / UHCDetector / Xray）、战斗（KillAura / KillAuraPlus / AntiBot / AutoTotem / Surround / Criticals 等）、移动（Scaffold / Velocity / NoSlow / Speed 等）、玩家（ChestStealer / InvManager / AutoTool / BedAura 等）。
+- **视觉模块（全量移植）**：世界渲染（HoleESP / Tracers / OreTracers / SpawnerFinder / UHCDetector / Xray）、战斗（KillAura / KillAuraPlus / SilentAura / AntiBot / AutoTotem / Surround / Criticals 等）、移动（Scaffold / Clutch / Velocity / NoSlow / Speed 等）、玩家（ChestStealer / InvManager / AutoTool / BedAura 等）。
+- **Vape 移植模块**：SilentAura（静默自动攻击）+ Clutch（掉落自动放方块），MovementFix 支持 Vape 三种 movementCorrection 模式。
 - **内置优化模组**：Sodium / Lithium / FerriteCore 一并内嵌，开箱即用。
 
 ## 截图
@@ -79,11 +80,11 @@ local holdRight = dioxidelite:isKeyHeld("mouse_right")
 
 | 脚本 | 说明 |
 | --- | --- |
-| [`scripts/SpeedTelly.lua`](scripts/SpeedTelly.lua) | 仿绿玩 SpeedTelly 搭路：右键按住 + W/A/D，AIM 瞄准落点 → 放置 → FORWARD_RESET 视角前摆正疾跑 → 循环；平滑转头、角度限幅、落点有效性校验防虚空。 |
+| `SpeedTelly` | 内置脚本，首次启动自动释放到配置 `scripts/` 目录（同名不覆盖）。仿绿玩 SpeedTelly 搭路：右键按住 + W/A/D，AIM 瞄准落点 → 放置 → FORWARD_RESET 视角前摆正疾跑 → 循环；平滑转头、角度限幅、落点有效性校验防虚空。 |
 
 #### SpeedTelly 操作方式
 
-1. 将 `SpeedTelly.lua` 放入 scripts 文件夹，加载后 `Run` 启动。
+1. 客户端启动后，`SpeedTelly.lua` 会自动出现在 `scripts/` 目录（已有则保留），ClickGUI → LuaScript 选中后 `Run` 启动。
 2. 按住鼠标右键，预先瞄准搭路目标区域，脚本自动执行 speedtelly 搭路。
    - 方块放置完成后自动回正视角，维持疾跑提速。
    - 当前版本为硬锁视角，保证瞄准精度。
@@ -100,7 +101,7 @@ local holdRight = dioxidelite:isKeyHeld("mouse_right")
 
 1. 安装 **Fabric Loader ≥ 0.19.2**，游戏版本 **26.1.2**。
 2. 安装 **Fabric API**（26.1.2 对应版本）。
-3. 将 `DioxideLite-2.2.2.jar` 放入 `.minecraft/mods`。
+3. 将 `DioxideLite-2.2.3.jar` 放入 `.minecraft/mods`。
 4. 启动游戏。`右 Shift` 打开 ClickGUI，灵动岛默认开启。
 
 ## IRC 使用
@@ -125,7 +126,7 @@ local holdRight = dioxidelite:isKeyHeld("mouse_right")
 ./gradlew clean build -Pskija_platforms=skija-windows-x64 -Pwebrtc_platforms=windows-x86_64
 ```
 
-产物位于 `build/libs/DioxideLite-2.2.2.jar`。
+产物位于 `build/libs/DioxideLite-2.2.3.jar`。
 
 > 注意：构建依赖 `libs/nested/` 下的内嵌库与 `src/main/java/tritium`、`src/main/java/repackage`（音频 / JSyn 库），均已随仓库提供。
 
@@ -133,6 +134,7 @@ local holdRight = dioxidelite:isKeyHeld("mouse_right")
 
 | 版本 | Devlog |
 | --- | --- |
+| v2.2.3 | [devlog-2.2.3.md](devlog-2.2.3.md) — Vape 移植（SilentAura + Clutch）+ MovementFix 三种模式 + Lua 内置脚本 + 网易云扫码登录修复 |
 | v2.2.2 | [devlog-2.2.2.md](devlog-2.2.2.md) — 多平台移植 + ClickGUI 双模式 + Render 模块重组 + 品牌清理 |
 | v2.2.1 | [devlog-2.2.1.md](devlog-2.2.1.md) — HUD resize + chat editor + ChatScreenMixin 修复 + Halo 模块 |
 | v2.2.0 | [devlog-2.2.0.md](devlog-2.2.0.md) — Render 优化 + ClickGUI 优化 + 编译修复 |
