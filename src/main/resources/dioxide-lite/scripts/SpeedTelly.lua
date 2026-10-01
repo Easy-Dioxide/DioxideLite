@@ -9,6 +9,14 @@ Mode: GreenPlayer-like SpeedTelly Bridging
 3. 禁止一帧大角度转头：每 tick 严格限制 Yaw/Pitch 最大步长
 4. 落点有效性校验：目标必须在地面/可放置区域，防止自走虚空
 5. 保留右键启动、WASD 原生物理、移动修复、射线放置、角度保护
+
+适配说明（对齐当前 DioxideLite Lua sandbox，行为保持一致）：
+- 事件名 render -> render2d，2D 绘制 API 通过回调参数 draw 调用
+- luaj 标准库无 math.sign，本地实现 sign()
+- 鼠标右键检测改用 input:mouse_down(1)  (GLFW_MOUSE_BUTTON_RIGHT = 1)
+- world:world_to_screen 移入 render2d 回调（需要渲染上下文）
+- world:raycast + player:eye_pos 改用 world:block + player:x/y/z（眼高 1.62）
+- draw:line 参数顺序为 (x1,y1,x2,y2,color,thickness)
 ]]
 
 local module = dioxidelite.module({
@@ -34,9 +42,13 @@ local resetYawMaxStep     = module:number("Reset Turn Step(°)", 9, 2, 20, 0.5)
 local validRangeCheck     = module:boolean("Valid Place Check", true)
 
 local RAD = math.pi / 180
+local EYE_HEIGHT = 1.62
 local cachedDirX = 0.0
 local cachedDirZ = 0.0
 local placeTickTimer = 0
+local targetWorldX = 0.0
+local targetWorldY = 0.0
+local targetWorldZ = 0.0
 local targetScreenX = 0
 local targetScreenY = 0
 
@@ -47,6 +59,13 @@ local resetStartYaw = 0.0
 local resetTargetYaw = 0.0
 local resetStartPitch = 0.0
 local resetTargetPitch = 0.0
+
+-- luaj 标准库无 math.sign，本地实现
+local function sign(x)
+    if x > 0 then return 1 end
+    if x < 0 then return -1 end
+    return 0
+end
 
 local function wrapAngle180(angle)
     angle = angle % 360
@@ -62,7 +81,7 @@ local function angleStep(current, target, maxStep)
     if absDelta <= maxStep then
         return target, absDelta
     end
-    return current + math.sign(delta) * maxStep, maxStep
+    return current + sign(delta) * maxStep, maxStep
 end
 
 -- AIM 阶段：稳定锁方块，但带平滑收敛和微抖
@@ -85,7 +104,7 @@ local function smoothAngle(current, target, maxStep, response)
     local step = maxStep * (0.25 + curve * 0.75)
     step = math.min(step, distance)
 
-    return current + math.sign(delta) * step * response
+    return current + sign(delta) * step * response
 end
 
 -- FORWARD_RESET 阶段：带加速度曲线的人类鼠标回正
@@ -107,12 +126,14 @@ module:on("tick", function()
     end
 
     local plyEnt = player:entity()
+    if plyEnt == nil then return end
 
     if placeTickTimer > 0 then
         placeTickTimer = placeTickTimer - 1
     end
 
-    local holdRightClick = input:is_down("mouse.right")
+    -- GLFW_MOUSE_BUTTON_RIGHT = 1
+    local holdRightClick = input:mouse_down(1)
     if not holdRightClick then
         cachedDirX = 0
         cachedDirZ = 0
@@ -170,9 +191,9 @@ module:on("tick", function()
     cachedDirZ = cachedDirZ * smoothK + rawDirZ * (1 - smoothK)
 
     -- 目标落点
-    local targetWorldX = plyEnt.x + cachedDirX * placeBlockRange:get()
-    local targetWorldZ = plyEnt.z + cachedDirZ * placeBlockRange:get()
-    local targetWorldY = plyEnt.y - 1.0
+    targetWorldX = plyEnt.x + cachedDirX * placeBlockRange:get()
+    targetWorldZ = plyEnt.z + cachedDirZ * placeBlockRange:get()
+    targetWorldY = plyEnt.y - 1.0
 
     local deltaX = targetWorldX - plyEnt.x
     local deltaY = targetWorldY - plyEnt.y
@@ -225,18 +246,14 @@ module:on("tick", function()
         end
     end
 
-    -- HUD 瞄准标记
-    if renderAimMarker:get() then
-        local screenPos = world:world_to_screen(targetWorldX, targetWorldY, targetWorldZ)
-        targetScreenX = screenPos.x
-        targetScreenY = screenPos.y
-    end
-
-    -- 放置逻辑
+    -- 放置逻辑：用 world:block 校验目标格子可放置，替代原 raycast + eye_pos
     if placeTickTimer <= 0 and state == "AIM" and placeValid then
         if totalAngleError < maxAngleError:get() then
-            local traceResult = world:raycast(player:eye_pos(), targetWorldX, targetWorldY, targetWorldZ, placeBlockRange:get())
-            if traceResult.hit then
+            local bx = math.floor(targetWorldX + 0.5)
+            local by = math.floor(targetWorldY + 0.5)
+            local bz = math.floor(targetWorldZ + 0.5)
+            local block = world:block(bx, by, bz)
+            if block and (block.air or block.replaceable) then
                 action:use()
                 placeTickTimer = placeCooldown:get()
 
@@ -253,12 +270,19 @@ module:on("tick", function()
     end
 end)
 
--- HUD 渲染
-module:on("render", function()
+-- HUD 渲染（必须在 render2d 回调里，用 draw 参数绘制）
+module:on("render2d", function(self, draw)
     if not renderAimMarker:get() or not player:is_available() then return end
-    render:circle(targetScreenX, targetScreenY, 8, 0xFF39FF14)
-    render:line(targetScreenX - 12, targetScreenY, targetScreenX + 12, targetScreenY, 2, 0xFF39FF14)
-    render:line(targetScreenX, targetScreenY - 12, targetScreenX, targetScreenY + 12, 2, 0xFF39FF14)
+
+    local screenPos = draw:world_to_screen(targetWorldX, targetWorldY, targetWorldZ)
+    if not screenPos then return end
+    targetScreenX = screenPos.x or 0
+    targetScreenY = screenPos.y or 0
+
+    -- draw:line 参数顺序：(x1, y1, x2, y2, color, thickness)
+    draw:circle(targetScreenX, targetScreenY, 8, 0xFF39FF14)
+    draw:line(targetScreenX - 12, targetScreenY, targetScreenX + 12, targetScreenY, 0xFF39FF14, 2)
+    draw:line(targetScreenX, targetScreenY - 12, targetScreenX, targetScreenY + 12, 0xFF39FF14, 2)
 end)
 
 module:on("disable", function()
