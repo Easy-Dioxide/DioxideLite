@@ -4,6 +4,46 @@
 
 ---
 
+## v2.2.4（2026-10-02）
+
+### 静默旋转引擎重构（Vape PID）
+- **RotationManager 改用 Vape 风格 PID 加速步进**（移植自 `gg.vape.rotation.FixedRotationController`），替换原简单 lerp：按鼠标灵敏度单位步进 + angle-based 加速度 + 容差直瞄 + 微抖动，绕过 Grim / Matrix / NCP 的旋转检测。
+- 新增 **AdaptiveRotationController**（移植自 Vape-v4 PID 旋转控制器，支持 angle-based/linear/cubic 加速度、轴比例缩放、aim jitter）。
+
+### SilentAura 重构
+- 改用 TargetManager / TargetRequest / FriendManager 统一目标管理；新增 **Show Target + Target Color**；设置项整理（Attack Cps→Attack Speed CPS、Players/Mobs/Animals、新增 Randomize CPS / Invisibles）。
+
+### 新模块
+- **LegitScaffold（移动）**：合法搭桥（Place Check、Require Sneak + Sneak Delay、Auto Sprint）。
+- **AttackEffects（渲染）**：攻击粒子 / 音效自定义，配 LevelMixin 取消被禁用的攻击音效。
+- **BreakProgress（渲染）**：方块破坏进度可视化。
+- **NoFOV（渲染）**：锁定 FOV。
+- **NoHurtCamera（渲染）**：取消受伤镜头摇晃 / 模型红光。
+- **PostProcessing（渲染）**：后处理模糊 / Bloom。
+- **StreamerMode（渲染）**：隐藏服务器 ID / 用户名，自定义显示名，过滤聊天。
+- **TitleChanger（渲染）**：修改窗口标题。
+- 新增 **utility 目录**：Clutch 由 movement 移入（分类仍为 PLAYER）。
+
+### 移除装饰模块
+- 移除 ChinaHat、Wings、JumpCircles、Trails（纯装饰，不符合 Opal 简洁风格）及 Halo。
+
+### ESP 增强
+- 新增 Box / Box Stroke / Box Color / Health Bar / Health Bar Stroke / Health Bar Color 等选项。
+
+### 视角与聊天适配
+- LivingEntityMixin：头部 / 身体跟随静默旋转（Vape 风格「打滑」）。
+- ChatScreenMixin：聊天打开时 HUD 覆盖层同步开关；ChatComponentMixin 支持 StreamerMode 过滤。
+
+### 修复
+- **LevelMixin**：`playSound` 注入首参 `Player` → `Entity`（MC 26.1.2 实际签名），修复混入注入崩溃。
+- **NoFOV**：FOV 锁定从 `GameRenderer.getFov` 移入 `Camera.getFov`（26.1.2 实际位置）。
+
+### 验证
+- 构建成功（JDK 25 + Gradle 9.2.1 + Fabric Loom 1.15.5），产物 `DioxideLite-2.2.4.jar`（约 51 MB）。
+- 游戏启动正常（Minecraft 26.1.2 Fabric），窗口标题 `DioxideLite 2.2.4`，主菜单 / 欢迎界面正常渲染。
+
+---
+
 ## v2.2.3（2026-10-01）
 
 ### Vape 移植

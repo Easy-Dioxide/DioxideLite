@@ -28,18 +28,14 @@ public final class MovementFix extends Module {
         Strict,
         Silent,
         ChangeLook,
-        // [Vape 移植] 三个 Vape movementCorrection 选项。
-        // VapeNone  = ClientSettings.NO_MOVEMENT_CORRECTION（完全不修正）。
-        // VapeSlow  = ClientSettings.SLOW_MOVEMENT_CORRECTION（yaw+180° 反向 + 重映射按键，减速防不规则速度）。
-        // VapeProper= ClientSettings.PROPER_MOVEMENT_CORRECTION（yaw=静默yaw + 重映射 W/A/S/D 到 45° 桶，等价于 Silent）。
-        VapeNone,
-        VapeSlow,
-        VapeProper
+        Vape
     }
 
     private final EnumSetting<Mode> mode = add(new EnumSetting<>("Mode", Mode.Silent));
     private final BooleanSetting packetOnly = add(new BooleanSetting("Packet Only", false)
             .visibleWhen(() -> mode.is(Mode.Packet) || isSprintOnlyMode()));
+    private final BooleanSetting vapeStrafe = add(new BooleanSetting("Vape Strafe", true)
+            .visibleWhen(() -> mode.is(Mode.Vape)));
 
     private MovementFix() {
         super("Movement Fix", Category.MOVEMENT);
@@ -47,10 +43,7 @@ public final class MovementFix extends Module {
     }
 
     public boolean shouldFixInput() {
-        return mode.is(Mode.Setting)
-                || mode.is(Mode.Silent)
-                || mode.is(Mode.VapeProper)
-                || mode.is(Mode.VapeSlow)
+        return mode.is(Mode.Setting) || mode.is(Mode.Silent) || mode.is(Mode.Vape)
                 || (mode.is(Mode.Packet) && !packetOnly.get());
     }
 
@@ -61,8 +54,7 @@ public final class MovementFix extends Module {
                 || mode.is(Mode.Strict)
                 || mode.is(Mode.Silent)
                 || mode.is(Mode.ChangeLook)
-                || mode.is(Mode.VapeProper)
-                || mode.is(Mode.VapeSlow);
+                || mode.is(Mode.Vape);
     }
 
     public boolean shouldChangeLook() {
@@ -83,7 +75,7 @@ public final class MovementFix extends Module {
     }
 
     public boolean hasLargeRotationDelta() {
-        if (!isEnabled() || mode.is(Mode.Off) || mode.is(Mode.VapeNone) || noPlayer() || !RotationManager.INSTANCE.isActive()) {
+        if (!isEnabled() || mode.is(Mode.Off) || noPlayer() || !RotationManager.INSTANCE.isActive()) {
             return false;
         }
         float currentMoveYaw = getMoveYaw(mc.player.getYRot(), currentForward(), currentStrafe());
@@ -152,28 +144,6 @@ public final class MovementFix extends Module {
     public void fixMovement(KeyboardInputEvent event, float yaw) {
         if (!shouldFixInput()) return;
 
-        // [Vape 移植] SLOW_MOVEMENT_CORRECTION：把目标 yaw 反向 180°，
-        // 再把量化后的输入幅度减半，模拟 Vape "减速防止不规则速度" 的语义。
-        if (mode.is(Mode.VapeSlow)) {
-            quantizeToAngle(event, yaw + 180.0F);
-            event.setForward(event.getForward() * 0.5F);
-            event.setStrafe(event.getStrafe() * 0.5F);
-            return;
-        }
-        // [Vape 移植] PROPER_MOVEMENT_CORRECTION：目标=静默 yaw，幅度不变（与现有 Silent 等价）。
-        if (mode.is(Mode.VapeProper)) {
-            quantizeToAngle(event, yaw);
-            return;
-        }
-
-        quantizeToAngle(event, yaw);
-    }
-
-    /**
-     * 把 forward/strafe 重新量化到最近的 45° 桶，使移动方向对齐 {@code yaw}。
-     * 来自原 fixMovement 的核心算法，Vape Proper/Slow 与原 Silent/Setting 共用。
-     */
-    private void quantizeToAngle(KeyboardInputEvent event, float yaw) {
         float forward = event.getForward();
         float strafe = event.getStrafe();
 

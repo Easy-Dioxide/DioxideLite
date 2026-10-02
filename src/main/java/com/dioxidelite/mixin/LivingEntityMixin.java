@@ -76,8 +76,12 @@ public class LivingEntityMixin {
         RotationManager rotations = RotationManager.INSTANCE;
         if (self == minecraft.player && rotations.isActive() && rotations.isRenderAnimationEnabled()) {
             float yaw = rotations.getYaw();
+            // 头部跟随静默旋转
             self.yHeadRotO = self.yHeadRot;
             self.yHeadRot = yaw;
+            // 身体也跟随静默旋转（vape 风格「打滑」）：第三人称下玩家模型身体对准目标方向
+            self.yBodyRotO = self.yBodyRot;
+            self.yBodyRot = yaw;
         }
     }
 

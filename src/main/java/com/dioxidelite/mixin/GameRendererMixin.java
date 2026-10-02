@@ -1,6 +1,7 @@
 package com.dioxidelite.mixin;
 
 import com.mojang.blaze3d.vertex.PoseStack;
+import com.dioxidelite.module.modules.render.advanced.NoHurtCamera;
 import com.dioxidelite.module.modules.render.advanced.NoRender;
 import com.dioxidelite.render.SkijaRenderer;
 import com.dioxidelite.ui.screen.VanillaScreenTheme;
@@ -35,7 +36,7 @@ public class GameRendererMixin {
     @Inject(method = "bobHurt", at = @At("HEAD"), cancellable = true)
     private void DioxideLite$disableHurtCamera(CameraRenderState cameraState, PoseStack poseStack, CallbackInfo ci) {
         NoRender noRender = NoRender.INSTANCE;
-        if (noRender.isEnabled() && noRender.hurtCamera.get()) {
+        if ((noRender.isEnabled() && noRender.hurtCamera.get()) || NoHurtCamera.INSTANCE.isEnabled()) {
             ci.cancel();
         }
     }

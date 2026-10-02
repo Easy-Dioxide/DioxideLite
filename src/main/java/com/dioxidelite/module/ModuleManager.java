@@ -27,6 +27,7 @@ import com.dioxidelite.module.modules.player.AntiResourcePack;
 import com.dioxidelite.module.modules.player.AntiWeb;
 import com.dioxidelite.module.modules.combat.AutoHitCrystal;
 import com.dioxidelite.module.modules.player.AutoMLG;
+import com.dioxidelite.module.modules.utility.Clutch;
 import com.dioxidelite.module.modules.player.AutoTool;
 import com.dioxidelite.module.modules.combat.AutoTotem;
 import com.dioxidelite.module.modules.combat.Backtrack;
@@ -45,6 +46,7 @@ import com.dioxidelite.module.modules.player.InvManager;
 import com.dioxidelite.module.modules.movement.InvMove;
 import com.dioxidelite.module.modules.movement.KeepSprint;
 import com.dioxidelite.module.modules.combat.KillAura;
+import com.dioxidelite.module.modules.combat.SilentAura;
 import com.dioxidelite.module.modules.combat.KillAuraPlus;
 import com.dioxidelite.module.modules.combat.MaceAura;
 import com.dioxidelite.module.modules.misc.MiddleClickFriend;
@@ -55,6 +57,7 @@ import com.dioxidelite.module.modules.movement.NoSlow;
 import com.dioxidelite.module.modules.render.OreTracers;
 import com.dioxidelite.module.modules.player.PacketEat;
 import com.dioxidelite.module.modules.movement.Scaffold;
+import com.dioxidelite.module.modules.movement.LegitScaffold;
 import com.dioxidelite.module.modules.render.SpawnerFinder;
 import com.dioxidelite.module.modules.combat.SpearKill;
 import com.dioxidelite.module.modules.movement.Speed;
@@ -67,7 +70,6 @@ import com.dioxidelite.module.modules.combat.ZealotCrystalPlus;
 import com.dioxidelite.module.modules.render.BlockHighlight;
 import com.dioxidelite.module.modules.render.CameraClip;
 import com.dioxidelite.module.modules.render.Compass;
-import com.dioxidelite.module.modules.render.Halo;
 import com.dioxidelite.module.modules.render.ItemTag;
 import com.dioxidelite.module.modules.render.DioxideIslandModule;
 import com.dioxidelite.module.modules.render.GlobalBlurModule;
@@ -167,12 +169,11 @@ public final class ModuleManager {
         register(FakeLag.INSTANCE);
         register(KillAura.INSTANCE);
         register(KillAuraPlus.INSTANCE);
+        register(SilentAura.INSTANCE);
         register(MaceAura.INSTANCE);
         register(SpearKill.INSTANCE);
         register(Surround.INSTANCE);
         register(ZealotCrystalPlus.INSTANCE);
-        // [Vape 移植] 静默自动攻击模块，移植自 Vape-v4 SilentAura。
-        register(com.dioxidelite.module.modules.combat.SilentAura.INSTANCE);
         // --- MISC ---
         register(MiddleClickFriend.INSTANCE);
         // --- MOVEMENT ---
@@ -182,12 +183,11 @@ public final class ModuleManager {
         register(InvMove.INSTANCE);
         register(KeepSprint.INSTANCE);
         register(MovementFix.INSTANCE);
-        // [Vape 移植] 掉落自动放方块模块，移植自 Vape-v4 Clutch（1.7.10→26.1.2 重写）。
-        register(com.dioxidelite.module.modules.movement.Clutch.INSTANCE);
         register(NoFall.INSTANCE);
         register(NoJumpDelay.INSTANCE);
         register(NoSlow.INSTANCE);
         register(Scaffold.INSTANCE);
+        register(LegitScaffold.INSTANCE);
         register(Speed.INSTANCE);
         register(Velocity.INSTANCE);
         // --- PLAYER ---
@@ -198,6 +198,7 @@ public final class ModuleManager {
         register(NameChanger.INSTANCE);
         register(AntiWeb.INSTANCE);
         register(AutoMLG.INSTANCE);
+        register(Clutch.INSTANCE);
         register(AutoTool.INSTANCE);
         register(BedAura.INSTANCE);
         register(ChestStealer.INSTANCE);
@@ -222,7 +223,6 @@ public final class ModuleManager {
         register(BlockHighlight.INSTANCE);
         register(CameraClip.INSTANCE);
         register(Compass.INSTANCE);
-        register(Halo.INSTANCE);
         register(DeltaForceStyle.INSTANCE);
         register(ItemTag.INSTANCE);
         register(KillEffect.INSTANCE);
