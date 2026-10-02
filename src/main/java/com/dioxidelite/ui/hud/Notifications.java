@@ -8,6 +8,8 @@ import com.dioxidelite.setting.settings.BooleanSetting;
 import com.dioxidelite.setting.settings.EnumSetting;
 import com.dioxidelite.setting.settings.IntSetting;
 import com.dioxidelite.ui.UiTheme;
+import com.dioxidelite.ui.theme.Slot;
+import com.dioxidelite.ui.theme.Themes;
 
 import java.util.List;
 
@@ -164,14 +166,14 @@ public final class Notifications extends EpsilonHudModule {
 
     @Override
     public int editorColor() {
-        return UiTheme.INFO;
+        return UiTheme.info();
     }
 
 
     private int styleAccent(NotificationManager.Entry entry) {
         return switch (style.get()) {
             case STACK -> entry.type().color();
-            case GLASS -> 0xFF9BD7FF;
+            case GLASS -> Themes.resolve(Slot.NOTIFY_ACCENT, 0xFF9BD7FF);
             case DIOXIDE -> entry.type().color();
         };
     }
@@ -186,17 +188,17 @@ public final class Notifications extends EpsilonHudModule {
 
     private int styleText() {
         return switch (style.get()) {
-            case STACK -> 0xFFF1F4F8;
-            case GLASS -> 0xFFF7FAFF;
-            case DIOXIDE -> UiTheme.TEXT;
+            case STACK -> Themes.resolve(Slot.TEXT_PRIMARY, 0xFFF1F4F8);
+            case GLASS -> Themes.resolve(Slot.TEXT_PRIMARY, 0xFFF7FAFF);
+            case DIOXIDE -> UiTheme.text();
         };
     }
 
     private int styleMuted() {
         return switch (style.get()) {
-            case STACK -> 0xFFADB6C2;
-            case GLASS -> 0xFFB9C7D8;
-            case DIOXIDE -> UiTheme.TEXT_MUTED;
+            case STACK -> Themes.resolve(Slot.TEXT_MUTED, 0xFFADB6C2);
+            case GLASS -> Themes.resolve(Slot.TEXT_MUTED, 0xFFB9C7D8);
+            case DIOXIDE -> UiTheme.textMuted();
         };
     }
 }

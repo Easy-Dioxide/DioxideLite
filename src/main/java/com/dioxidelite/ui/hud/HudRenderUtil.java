@@ -41,7 +41,7 @@ final class HudRenderUtil {
 
     static void panel(Canvas canvas, float x, float y, float width, float height, int opacity) {
         int alpha = clamp(opacity, 0, 255);
-        coloredPanel(canvas, x, y, width, height, UiTheme.withAlpha(UiTheme.SURFACE, alpha));
+        coloredPanel(canvas, x, y, width, height, UiTheme.withAlpha(UiTheme.surface(), alpha));
     }
 
     static void coloredPanel(Canvas canvas, float x, float y, float width, float height, int color) {
@@ -49,7 +49,7 @@ final class HudRenderUtil {
         int alpha = (color >>> 24) & 0xFF;
         float radius = Math.min(UiTheme.RADIUS_SMALL, Math.min(width, height) * 0.5F);
         SkijaUi.rounded(canvas, x, y, width, height, radius,
-                UiTheme.withAlpha(UiTheme.BORDER, Math.min(224, Math.max(104, alpha + 16))));
+                UiTheme.withAlpha(UiTheme.border(), Math.min(224, Math.max(104, alpha + 16))));
         SkijaUi.rounded(canvas, x + 1.0F, y + 1.0F, width - 2.0F, height - 2.0F,
                 Math.max(1.0F, radius - 1.0F), color);
     }
@@ -61,7 +61,7 @@ final class HudRenderUtil {
     static void surface(Canvas canvas, float x, float y, float width, float height, int opacity,
                         HudFusionManager.Edges edges) {
         coloredSurface(canvas, x, y, width, height,
-                UiTheme.withAlpha(UiTheme.SURFACE, clamp(opacity, 0, 255)), edges);
+                UiTheme.withAlpha(UiTheme.surface(), clamp(opacity, 0, 255)), edges);
     }
 
     static void coloredSurface(Canvas canvas, float x, float y, float width, float height, int color) {
@@ -238,9 +238,9 @@ final class HudRenderUtil {
         if (width <= 1.0F || height <= 1.0F) return;
         int alpha = clamp(opacity, 0, 255);
         SkijaUi.rounded(canvas, x, y, width, height, 3.0F,
-                UiTheme.withAlpha(UiTheme.BORDER, Math.min(190, Math.max(88, alpha))));
+                UiTheme.withAlpha(UiTheme.border(), Math.min(190, Math.max(88, alpha))));
         SkijaUi.rounded(canvas, x + 0.75F, y + 0.75F, width - 1.5F, height - 1.5F, 2.25F,
-                UiTheme.withAlpha(UiTheme.SURFACE, Math.min(232, alpha)));
+                UiTheme.withAlpha(UiTheme.surface(), Math.min(232, alpha)));
     }
 
     static void hairline(Canvas canvas, float x, float y, float width, float height, int color) {
@@ -253,7 +253,7 @@ final class HudRenderUtil {
         if (width <= 0.0F || height <= 0.0F) return;
         float radius = Math.min(2.0F, height * 0.5F);
         SkijaUi.rounded(canvas, x, y, width, height, radius,
-                UiTheme.withAlpha(UiTheme.BORDER, 180));
+                UiTheme.withAlpha(UiTheme.border(), 180));
         float filled = width * clamp(progress, 0.0F, 1.0F);
         if (filled > 0.0F) {
             SkijaUi.rounded(canvas, x, y, filled, height, Math.min(radius, filled * 0.5F), color);

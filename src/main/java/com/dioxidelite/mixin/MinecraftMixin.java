@@ -50,6 +50,7 @@ public class MinecraftMixin implements MinecraftSessionAccessor {
 
     @Inject(method = "tick", at = @At("HEAD"))
     private void DioxideLite$preTick(CallbackInfo ci) {
+        com.dioxidelite.audio.AudioManager.syncGameVolume();
         EventBus.INSTANCE.post(new TickEvent.Pre());
     }
 

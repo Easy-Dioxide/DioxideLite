@@ -7,6 +7,8 @@ import com.dioxidelite.event.Priority;
 import com.dioxidelite.event.events.CharInputEvent;
 import com.dioxidelite.event.events.KeyInputEvent;
 import com.dioxidelite.module.modules.render.DioxideIslandModule;
+import com.dioxidelite.ui.theme.Slot;
+import com.dioxidelite.ui.theme.Themes;
 import tritium.ncm.music.CloudMusic;
 import tritium.ncm.music.NcmLyrics;
 import com.dioxidelite.DioxideLite;
@@ -608,44 +610,50 @@ public final class DioxideDynamicIsland {
     }
 
     private static int primaryColor(DioxideIslandModule.Style style) {
-        return switch (style) {
+        int fallback = switch (style) {
             case CLASSIC -> 0xFFFFFFFF;
             case DIOXIDE -> 0xFFF5F8FF;
         };
+        return Themes.resolve(Slot.TEXT_PRIMARY, fallback);
     }
 
     private static int mutedColor(DioxideIslandModule.Style style) {
-        return switch (style) {
+        int fallback = switch (style) {
             case CLASSIC -> 0xFFB7BCC5;
             case DIOXIDE -> 0xFF91A0B4;
         };
+        return Themes.resolve(Slot.TEXT_MUTED, fallback);
     }
 
     private static int accentColor(DioxideIslandModule.Style style) {
-        return switch (style) {
+        int fallback = switch (style) {
             case CLASSIC -> 0xFF9BD7FF;
             case DIOXIDE -> 0xFF8BD7FF;
         };
+        return Themes.resolve(Slot.ACCENT, fallback);
     }
 
     private static int islandBodyColor(DioxideIslandModule.Style style) {
-        return switch (style) {
+        int fallback = switch (style) {
             case CLASSIC -> 0xF20A0C10;
             case DIOXIDE -> 0xEE05070A;
         };
+        return Themes.resolve(Slot.ISLAND_BODY, fallback);
     }
 
     private static int islandEdgeColor(DioxideIslandModule.Style style) {
-        return switch (style) {
+        int fallback = switch (style) {
             case CLASSIC -> 0xA8FFFFFF;
             case DIOXIDE -> 0x99FFFFFF;
         };
+        return Themes.resolve(Slot.ISLAND_EDGE, fallback);
     }
 
     private static int islandGlowColor(DioxideIslandModule.Style style) {
-        return switch (style) {
+        int fallback = switch (style) {
             case CLASSIC -> 0x329BD7FF;
             case DIOXIDE -> 0x28000000;
         };
+        return Themes.resolve(Slot.ISLAND_GLOW, fallback);
     }
 }

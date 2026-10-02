@@ -263,7 +263,16 @@ public final class SkijaRenderer
         Window window = Minecraft.getInstance().getWindow();
         float scaledWidth = window.getGuiScaledWidth();
         float scaledHeight = window.getGuiScaledHeight();
-        paint(canvas -> LoadingScreenDrawer.draw(canvas, scaledWidth, scaledHeight, progress));
+        paint(canvas -> {
+            // 启动动画附加项开启且演出进行中时接管加载画面（预热阶段是黑场）
+            if (com.dioxidelite.ui.theme.ThemeRuntime.introActive()) {
+                if (!com.dioxidelite.ui.dr.DrIntroPlayer.render(canvas, scaledWidth, scaledHeight)) {
+                    canvas.drawColor(0xFF000000);
+                }
+                return;
+            }
+            LoadingScreenDrawer.draw(canvas, scaledWidth, scaledHeight, progress);
+        });
     }
 
     /** Draws the shared Skija screen backdrop behind a themed vanilla screen. */
@@ -694,6 +703,7 @@ public final class SkijaRenderer
         }
         DioxideDynamicIsland.getInstance().close();
         SkijaUi.close();
+        com.dioxidelite.ui.dr.DrText.close();
         context.close();
         context = null;
         lastGuiWidth = -1;

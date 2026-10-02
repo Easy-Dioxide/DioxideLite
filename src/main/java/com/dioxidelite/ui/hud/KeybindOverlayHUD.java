@@ -34,7 +34,7 @@ public final class KeybindOverlayHUD extends EpsilonHudModule {
     public final DoubleSetting scale = add(new DoubleSetting("Scale", 1.0, 0.65, 1.8, 0.05));
     public final BooleanSetting background = add(new BooleanSetting("Background", true));
     public final ColorSetting backgroundColor = add(new ColorSetting("Background Color",
-            new Color(UiTheme.withAlpha(UiTheme.SURFACE, 224), true), true)
+            new Color(UiTheme.withAlpha(UiTheme.surface(), 224), true), true)
             .visibleWhen(background::get));
     public final BooleanSetting blur = add(new BooleanSetting("Blur", false));
     public final IntSetting blurStrength = add(new IntSetting("Blur Strength", 6, 1, 16, 1)
@@ -120,7 +120,7 @@ public final class KeybindOverlayHUD extends EpsilonHudModule {
 
         float contentY = y + verticalPadding;
         SkijaUi.boldText(event.canvas(), "KEYBINDS", x + PADDING * s, contentY,
-                headerHeight, UiTheme.TEXT, 7.4F * s);
+                headerHeight, UiTheme.text(), 7.4F * s);
         SkijaUi.fill(event.canvas(), x + PADDING * s,
                 contentY + headerHeight - 1.0F * s,
                 width - PADDING * 2.0F * s, 1.0F * s, UiTheme.withAlpha(UiTheme.accent(), 150));
@@ -128,7 +128,7 @@ public final class KeybindOverlayHUD extends EpsilonHudModule {
         if (modules.isEmpty()) {
             SkijaUi.text(event.canvas(), "No keybinds", x + PADDING * s,
                     contentY + headerHeight,
-                    rowHeight, UiTheme.TEXT_FAINT, bindSize);
+                    rowHeight, UiTheme.textFaint(), bindSize);
             return;
         }
 
@@ -140,8 +140,8 @@ public final class KeybindOverlayHUD extends EpsilonHudModule {
             float bindWidth = SkijaUi.textWidth(module.bind(), bindSize);
             String name = HudRenderUtil.fit(module.name(),
                     Math.max(8.0F, available - bindWidth - 8.0F * s), nameSize, false);
-            int nameColor = mix(UiTheme.TEXT_MUTED, UiTheme.TEXT, enabledProgress);
-            int bindColor = mix(UiTheme.TEXT_FAINT, UiTheme.accent(), enabledProgress);
+            int nameColor = mix(UiTheme.textMuted(), UiTheme.text(), enabledProgress);
+            int bindColor = mix(UiTheme.textFaint(), UiTheme.accent(), enabledProgress);
             float nameX = x + PADDING * s + (1.0F - enabledProgress) * 1.5F * s;
             SkijaUi.text(event.canvas(), name, nameX, rowY,
                     rowHeight, nameColor, nameSize);

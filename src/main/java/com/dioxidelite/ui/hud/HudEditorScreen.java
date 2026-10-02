@@ -181,7 +181,7 @@ public final class HudEditorScreen extends Screen implements SkijaScreen {
         if (SkijaRenderer.hasFailed()) {
             graphics.fill(6, 6, 244, 26, 0xD6080A0B);
             graphics.text(font, "Skija renderer failed - check latest.log", 11, 14,
-                    UiTheme.TEXT, false);
+                    UiTheme.text(), false);
         }
     }
 
@@ -268,10 +268,10 @@ public final class HudEditorScreen extends Screen implements SkijaScreen {
         HudRenderUtil.panel(canvas, sidebarX, sidebarY, SIDEBAR_WIDTH, panelHeight, 184);
 
         SkijaUi.fill(canvas, sidebarX + 1.0F, sidebarY + SIDEBAR_HEADER - 1.0F,
-                SIDEBAR_WIDTH - 2.0F, 1.0F, UiTheme.withAlpha(UiTheme.BORDER, 170));
+                SIDEBAR_WIDTH - 2.0F, 1.0F, UiTheme.withAlpha(UiTheme.border(), 170));
         SkijaUi.boldText(canvas, HudRenderUtil.fit(compactLabel(selectedModule),
                         SIDEBAR_WIDTH - 14.0F, 7.2F, true),
-                sidebarX + 7.0F, sidebarY, SIDEBAR_HEADER, UiTheme.TEXT, 7.2F);
+                sidebarX + 7.0F, sidebarY, SIDEBAR_HEADER, UiTheme.text(), 7.2F);
 
         float bodyY = sidebarY + SIDEBAR_HEADER;
         canvas.save();
@@ -294,12 +294,12 @@ public final class HudEditorScreen extends Screen implements SkijaScreen {
         if (hovered) {
             SkijaUi.rounded(canvas, sidebarX + 4.0F, rowY + 1.0F,
                     SIDEBAR_WIDTH - 8.0F, Math.max(1.0F, rowHeight - 2.0F), 3.0F,
-                    UiTheme.withAlpha(UiTheme.SURFACE_HOVER, 120));
+                    UiTheme.withAlpha(UiTheme.surfaceHover(), 120));
         }
         float labelWidth = setting instanceof ColorSetting ? 52.0F
                 : setting instanceof StringSetting && !(setting instanceof FontSetting) ? 64.0F : 74.0F;
         SkijaUi.text(canvas, HudRenderUtil.fit(setting.displayName(), labelWidth, SETTING_FONT, false),
-                sidebarX + 8.0F, rowY, SETTING_HEIGHT, UiTheme.TEXT_MUTED, SETTING_FONT);
+                sidebarX + 8.0F, rowY, SETTING_HEIGHT, UiTheme.textMuted(), SETTING_FONT);
 
         if (setting instanceof BooleanSetting booleanSetting) {
             float boxX = sidebarX + SIDEBAR_WIDTH - 16.0F;
@@ -312,11 +312,11 @@ public final class HudEditorScreen extends Screen implements SkijaScreen {
             drawRight(canvas, HudRenderUtil.fit(enumSetting.displayValue(), 60.0F, SETTING_FONT, false),
                     rowY, SETTING_HEIGHT, UiTheme.accent(), SETTING_FONT);
         } else if (setting instanceof IntSetting intSetting) {
-            drawRight(canvas, Integer.toString(intSetting.get()), rowY, 12.0F, UiTheme.TEXT, SETTING_FONT);
+            drawRight(canvas, Integer.toString(intSetting.get()), rowY, 12.0F, UiTheme.text(), SETTING_FONT);
             drawNumberTrack(canvas, rowY, intSetting.fraction());
         } else if (setting instanceof DoubleSetting doubleSetting) {
             drawRight(canvas, trimZeros(String.format(Locale.ROOT, "%.2f", doubleSetting.get())),
-                    rowY, 12.0F, UiTheme.TEXT, SETTING_FONT);
+                    rowY, 12.0F, UiTheme.text(), SETTING_FONT);
             drawNumberTrack(canvas, rowY, doubleSetting.fraction());
         } else if (setting instanceof ColorSetting colorSetting) {
             drawColor(canvas, colorSetting, rowY);
@@ -337,11 +337,11 @@ public final class HudEditorScreen extends Screen implements SkijaScreen {
                 focused ? UiTheme.accent() : TRACK);
         SkijaUi.rounded(canvas, fieldX + 1.0F, fieldY + 1.0F,
                 fieldWidth - 2.0F, fieldHeight - 2.0F, 1.5F,
-                UiTheme.withAlpha(UiTheme.SURFACE, 238));
+                UiTheme.withAlpha(UiTheme.surface(), 238));
 
         String value = focused ? editText : setting.get();
         String shown = value.isEmpty() && !focused ? "Empty" : value;
-        int color = value.isEmpty() && !focused ? UiTheme.TEXT_FAINT : UiTheme.TEXT;
+        int color = value.isEmpty() && !focused ? UiTheme.textFaint() : UiTheme.text();
         float innerX = fieldX + 4.0F;
         float innerWidth = fieldWidth - 8.0F;
         float offset = 0.0F;
@@ -388,7 +388,7 @@ public final class HudEditorScreen extends Screen implements SkijaScreen {
                 focused ? UiTheme.accent() : TRACK);
         SkijaUi.rounded(canvas, fieldX + 1.0F, fieldY + 1.0F,
                 fieldWidth - 2.0F, fieldHeight - 2.0F, 1.5F,
-                UiTheme.withAlpha(UiTheme.SURFACE, 238));
+                UiTheme.withAlpha(UiTheme.surface(), 238));
 
         String value = focused ? editText : setting.hex();
         float innerX = fieldX + 3.0F;
@@ -407,7 +407,7 @@ public final class HudEditorScreen extends Screen implements SkijaScreen {
                     fieldHeight - 4.0F, UiTheme.withAlpha(UiTheme.accent(), 52));
         }
         SkijaUi.text(canvas, value, innerX - offset, fieldY, fieldHeight,
-                focused ? UiTheme.TEXT : UiTheme.TEXT_MUTED, SETTING_FONT);
+                focused ? UiTheme.text() : UiTheme.textMuted(), SETTING_FONT);
         if (focused && (System.currentTimeMillis() / 500L) % 2L == 0L) {
             float caretX = innerX - offset
                     + SkijaUi.textWidth(value.substring(0, editCursor), SETTING_FONT);
@@ -432,7 +432,7 @@ public final class HudEditorScreen extends Screen implements SkijaScreen {
             String channelValue = Integer.toString(values[i]);
             float valueWidth = SkijaUi.textWidth(channelValue, SETTING_FONT);
             SkijaUi.text(canvas, channelValue, sidebarX + SIDEBAR_WIDTH - 7.0F - valueWidth,
-                    channelY, COLOR_CHANNEL_HEIGHT, UiTheme.TEXT_MUTED, SETTING_FONT);
+                    channelY, COLOR_CHANNEL_HEIGHT, UiTheme.textMuted(), SETTING_FONT);
         }
     }
 
@@ -451,7 +451,7 @@ public final class HudEditorScreen extends Screen implements SkijaScreen {
         float maxScroll = contentHeight - bodyHeight;
         float thumbY = bodyY + (maxScroll <= 0.0F ? 0.0F : sidebarScroll / maxScroll * travel);
         SkijaUi.fill(canvas, sidebarX + SIDEBAR_WIDTH - 2.5F, bodyY, 2.0F, bodyHeight,
-                UiTheme.withAlpha(UiTheme.BORDER, 120));
+                UiTheme.withAlpha(UiTheme.border(), 120));
         SkijaUi.fill(canvas, sidebarX + SIDEBAR_WIDTH - 2.5F, thumbY, 2.0F, thumbHeight,
                 UiTheme.accent());
     }
@@ -490,10 +490,10 @@ public final class HudEditorScreen extends Screen implements SkijaScreen {
         }
 
         SkijaUi.fill(canvas, labelX, labelY, labelWidth, ITEM_LABEL_HEIGHT,
-                UiTheme.withAlpha(UiTheme.SURFACE, active ? 218 : 184));
+                UiTheme.withAlpha(UiTheme.surface(), active ? 218 : 184));
         drawOutline(canvas, labelX, labelY, labelWidth, ITEM_LABEL_HEIGHT, outline);
         SkijaUi.boldText(canvas, label, labelX + 3.5F, labelY,
-                ITEM_LABEL_HEIGHT, UiTheme.TEXT, 6.4F);
+                ITEM_LABEL_HEIGHT, UiTheme.text(), 6.4F);
     }
 
     private static void drawOutline(Canvas canvas, float x, float y,
@@ -521,16 +521,16 @@ public final class HudEditorScreen extends Screen implements SkijaScreen {
 
     private void drawButton(Canvas canvas, float x, float y, String label,
                             boolean primary, boolean hovered) {
-        int border = primary ? UiTheme.accent() : UiTheme.withAlpha(UiTheme.BORDER, 210);
+        int border = primary ? UiTheme.accent() : UiTheme.withAlpha(UiTheme.border(), 210);
         int background = hovered
-                ? UiTheme.withAlpha(UiTheme.CONTROL_HOVER, 218)
-                : UiTheme.withAlpha(UiTheme.SURFACE, 184);
+                ? UiTheme.withAlpha(UiTheme.controlHover(), 218)
+                : UiTheme.withAlpha(UiTheme.surface(), 184);
         SkijaUi.rounded(canvas, x, y, BUTTON_WIDTH, BUTTON_HEIGHT, 3.0F, border);
         SkijaUi.rounded(canvas, x + 1.0F, y + 1.0F, BUTTON_WIDTH - 2.0F,
                 BUTTON_HEIGHT - 2.0F, 2.0F, background);
         float textWidth = SkijaUi.boldTextWidth(label, 6.8F);
         SkijaUi.boldText(canvas, label, x + (BUTTON_WIDTH - textWidth) * 0.5F, y,
-                BUTTON_HEIGHT, primary ? UiTheme.TEXT : UiTheme.TEXT_MUTED, 6.8F);
+                BUTTON_HEIGHT, primary ? UiTheme.text() : UiTheme.textMuted(), 6.8F);
     }
 
     // --- input ---------------------------------------------------------------

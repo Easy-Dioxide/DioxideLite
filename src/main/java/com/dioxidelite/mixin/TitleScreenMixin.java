@@ -1,7 +1,7 @@
 package com.dioxidelite.mixin;
 
-import com.dioxidelite.ui.screen.MainMenuScreen;
 import com.dioxidelite.ui.screen.TitleScreenMode;
+import com.dioxidelite.ui.theme.ThemeRuntime;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.components.Button;
 import net.minecraft.client.gui.screens.Screen;
@@ -30,10 +30,10 @@ public abstract class TitleScreenMixin extends Screen {
             int buttonY = Math.max(8, height - buttonHeight - 14);
             addRenderableWidget(Button.builder(Component.literal("DIOXIDELITE UI"), button -> {
                 TitleScreenMode.useDioxideLite();
-                client.setScreen(new MainMenuScreen());
+                client.setScreen(ThemeRuntime.homeScreen());
             }).bounds(buttonX, buttonY, buttonWidth, buttonHeight).build());
             return;
         }
-        client.setScreen(new MainMenuScreen());
+        client.setScreen(ThemeRuntime.homeScreen());
     }
 }

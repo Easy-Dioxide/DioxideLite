@@ -7,6 +7,7 @@ import com.dioxidelite.event.events.KeyInputEvent;
 import com.dioxidelite.event.events.MouseButtonEvent;
 import com.dioxidelite.module.modules.ClickGui;
 import com.dioxidelite.module.modules.FontModule;
+import com.dioxidelite.module.modules.ThemeModule;
 import com.dioxidelite.module.modules.player.IrcModule;
 import com.dioxidelite.module.modules.render.FullBright;
 import com.dioxidelite.module.modules.render.HudEditorModule;
@@ -151,6 +152,7 @@ public final class ModuleManager {
         }
         register(ClickGui.INSTANCE);
         register(FontModule.INSTANCE);
+        register(ThemeModule.INSTANCE);
         register(HudEditorModule.INSTANCE);
         // [DioxideLite 移植] 以下模块移植自 DioxideLite（来源开源版）。
         // AltManagerModule 此前从未被注册，导致该模块永远无法从 GUI 或按键打开，

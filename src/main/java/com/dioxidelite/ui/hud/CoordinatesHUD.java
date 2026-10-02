@@ -25,7 +25,7 @@ public final class CoordinatesHUD extends EpsilonHudModule {
     public final BooleanSetting dimensionCoordinates = add(new BooleanSetting("Dimension Coordinates", true));
     public final BooleanSetting background = add(new BooleanSetting("Background", false));
     public final ColorSetting backgroundColor = add(new ColorSetting("Background Color",
-            new Color(UiTheme.withAlpha(UiTheme.SURFACE, 174), true), true)
+            new Color(UiTheme.withAlpha(UiTheme.surface(), 174), true), true)
             .visibleWhen(background::get));
     public final BooleanSetting blur = add(new BooleanSetting("Blur", false));
     public final IntSetting blurStrength = add(new IntSetting("Blur Strength", 6, 1, 16, 1)
@@ -113,17 +113,17 @@ public final class CoordinatesHUD extends EpsilonHudModule {
             float primaryTop = fused ? content.getTop() : drawY + 4.0F * s;
             float primaryHeight = fused ? content.getHeight() : row;
             SkijaUi.text(event.canvas(), primaryLabel, labelX, primaryTop,
-                    primaryHeight, UiTheme.TEXT_FAINT, labelSize);
+                    primaryHeight, UiTheme.textFaint(), labelSize);
             SkijaUi.boldText(event.canvas(), primaryValue, primaryValueX, primaryTop,
-                    primaryHeight, UiTheme.TEXT, valueSize);
+                    primaryHeight, UiTheme.text(), valueSize);
             if (dimensionCoordinates.get() && !fused) {
                 float secondaryTop = drawY + 15.0F * s;
                 float secondaryValueX = labelX
                         + SkijaUi.textWidth(secondaryLabel, labelSize) + textGap;
                 SkijaUi.text(event.canvas(), secondaryLabel, labelX, secondaryTop,
-                        row, UiTheme.TEXT_FAINT, labelSize);
+                        row, UiTheme.textFaint(), labelSize);
                 SkijaUi.boldText(event.canvas(), secondaryValue, secondaryValueX, secondaryTop,
-                        row, UiTheme.TEXT, valueSize);
+                        row, UiTheme.text(), valueSize);
             }
         };
         if (glow.get()) {

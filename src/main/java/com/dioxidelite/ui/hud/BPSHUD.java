@@ -23,7 +23,7 @@ public final class BPSHUD extends EpsilonHudModule {
     public final DoubleSetting scale = add(new DoubleSetting("Scale", 1.0, 0.65, 1.6, 0.05));
     public final BooleanSetting background = add(new BooleanSetting("Background", false));
     public final ColorSetting backgroundColor = add(new ColorSetting("Background Color",
-            new Color(UiTheme.withAlpha(UiTheme.SURFACE, 174), true), true)
+            new Color(UiTheme.withAlpha(UiTheme.surface(), 174), true), true)
             .visibleWhen(background::get));
     public final BooleanSetting blur = add(new BooleanSetting("Blur", false));
     public final IntSetting blurStrength = add(new IntSetting("Blur Strength", 6, 1, 16, 1)
@@ -38,7 +38,7 @@ public final class BPSHUD extends EpsilonHudModule {
             new EnumSetting<>("Border Mode", HudRenderUtil.BorderMode.Single)
                     .visibleWhen(border::get));
     public final ColorSetting borderColor = add(new ColorSetting("Border Color",
-            new Color(UiTheme.INFO, true), false).visibleWhen(() -> border.get()
+            new Color(UiTheme.info(), true), false).visibleWhen(() -> border.get()
             && borderMode.is(HudRenderUtil.BorderMode.Single)));
     public final ColorSetting borderStart = add(new ColorSetting("Border Start",
             new Color(82, 226, 190), false).visibleWhen(() -> border.get()
@@ -115,9 +115,9 @@ public final class BPSHUD extends EpsilonHudModule {
         Runnable drawText = () -> {
             SkijaUi.text(event.canvas(), "BPS", labelX,
                     content.getTop(), content.getHeight(),
-                    UiTheme.TEXT_FAINT, labelSize);
+                    UiTheme.textFaint(), labelSize);
             SkijaUi.boldText(event.canvas(), value, valueX,
-                    content.getTop(), content.getHeight(), UiTheme.TEXT, valueSize);
+                    content.getTop(), content.getHeight(), UiTheme.text(), valueSize);
         };
         if (glow.get()) {
             SkijaUi.glowLayer(event.canvas(), content.getLeft(), content.getTop(),
@@ -181,7 +181,7 @@ public final class BPSHUD extends EpsilonHudModule {
 
     @Override
     public int editorColor() {
-        return UiTheme.INFO;
+        return UiTheme.info();
     }
 
     @Override

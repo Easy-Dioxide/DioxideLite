@@ -159,6 +159,10 @@ dependencies {
     implementation("org.jetbrains.kotlin:kotlin-stdlib:2.4.0")
     include("org.jetbrains.kotlin:kotlin-stdlib:2.4.0")
 
+    // AudioManager 的 Ogg Vorbis 解码；jorbis 自带 jogg，约 100KB
+    implementation("com.googlecode.soundlibs:jorbis:0.0.17.4")
+    include("com.googlecode.soundlibs:jorbis:0.0.17.4")
+
     // mixin 相关：Xray 的 @WrapOperation 与 FabricMixinPlugin 的 ASM 依赖
     compileOnly("io.github.llamalad7:mixinextras-common:0.5.3")
     compileOnly("org.ow2.asm:asm:9.8")

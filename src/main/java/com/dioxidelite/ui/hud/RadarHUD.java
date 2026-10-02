@@ -44,13 +44,13 @@ public final class RadarHUD extends EpsilonHudModule {
 
         HudRenderUtil.panel(canvas, x, y, size, size, 170);
         SkijaUi.fill(canvas, x + 6.0F * s, centerY, size - 12.0F * s,
-                Math.max(1.0F, 0.6F * s), UiTheme.withAlpha(UiTheme.BORDER, 120));
+                Math.max(1.0F, 0.6F * s), UiTheme.withAlpha(UiTheme.border(), 120));
         SkijaUi.fill(canvas, centerX, y + 6.0F * s, Math.max(1.0F, 0.6F * s),
-                size - 12.0F * s, UiTheme.withAlpha(UiTheme.BORDER, 120));
+                size - 12.0F * s, UiTheme.withAlpha(UiTheme.border(), 120));
         drawCircle(canvas, centerX, centerY, radius * 0.5F,
-                UiTheme.withAlpha(UiTheme.BORDER, 95));
+                UiTheme.withAlpha(UiTheme.border(), 95));
         drawCircle(canvas, centerX, centerY, Math.max(0.0F, radius * 0.5F - 1.0F * s),
-                UiTheme.withAlpha(UiTheme.SURFACE, 168));
+                UiTheme.withAlpha(UiTheme.surface(), 168));
 
         double yaw = rotateFacing.get() ? Math.toRadians(mc.player.getYRot()) : 0.0;
         double range = radarRange.get();
@@ -81,10 +81,10 @@ public final class RadarHUD extends EpsilonHudModule {
     }
 
     private int entityColor(Entity entity) {
-        if (entity instanceof Player player && FriendManager.INSTANCE.isFriend(player)) return UiTheme.SUCCESS;
-        if (entity instanceof Monster) return UiTheme.DANGER;
-        if (entity instanceof Animal) return UiTheme.WARNING;
-        return UiTheme.INFO;
+        if (entity instanceof Player player && FriendManager.INSTANCE.isFriend(player)) return UiTheme.success();
+        if (entity instanceof Monster) return UiTheme.danger();
+        if (entity instanceof Animal) return UiTheme.warning();
+        return UiTheme.info();
     }
 
     private static void drawCircle(Canvas canvas, float centerX, float centerY, float radius, int color) {
@@ -95,7 +95,7 @@ public final class RadarHUD extends EpsilonHudModule {
 
     @Override
     public int editorColor() {
-        return UiTheme.INFO;
+        return UiTheme.info();
     }
 
     @Override

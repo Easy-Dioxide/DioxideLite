@@ -19,9 +19,14 @@ import com.dioxidelite.setting.settings.FontSetting;
 import com.dioxidelite.setting.settings.IntSetting;
 import com.dioxidelite.setting.settings.KeybindSetting;
 import com.dioxidelite.setting.settings.StringSetting;
+import com.dioxidelite.setting.settings.ThemeSelectSetting;
 import com.dioxidelite.ui.CategoryGlyphs;
 import com.dioxidelite.ui.SkijaScreen;
+import com.dioxidelite.ui.dr.DrIntroPlayer;
 import com.dioxidelite.ui.hud.WatermarkHUD;
+import com.dioxidelite.ui.theme.ThemePanelView;
+import com.dioxidelite.ui.theme.ThemeRuntime;
+import com.dioxidelite.ui.theme.Themes;
 import com.dioxidelite.util.KeyBindText;
 import io.github.humbleui.skija.Canvas;
 import io.github.humbleui.skija.Image;
@@ -119,6 +124,8 @@ public final class PopClickGuiScreen extends Screen implements SkijaScreen {
             .setMode(PaintMode.STROKE);
 
     private final Screen parent;
+    /** 打开时直接进 THEMES 分类（DR 底栏 UI_STYLE / 主题模块入口）。 */
+    private final boolean openThemes;
     private final Map<Category, Float> bubbleHover = new EnumMap<>(Category.class);
     private final Map<Module, Float> moduleEnabled = new IdentityHashMap<>();
     private final Map<Setting<?>, Float> toggleProgress = new IdentityHashMap<>();
@@ -127,6 +134,11 @@ public final class PopClickGuiScreen extends Screen implements SkijaScreen {
     private Module selectedModule;
     private boolean categoryRequested;
     private boolean settingsRequested;
+    /** THEMES 伪分类：气泡环上的第 7 个入口，面板内容换成主题卡片/编辑器。 */
+    private final ThemePanelView themeView = new ThemePanelView();
+    private boolean themesSelected;
+    private float themesHover;
+    private float themeScroll;
     private float introProgress;
     private float categoryProgress;
     private float settingsProgress;
@@ -172,8 +184,13 @@ public final class PopClickGuiScreen extends Screen implements SkijaScreen {
     }
 
     public PopClickGuiScreen(Screen parent) {
+        this(parent, false);
+    }
+
+    public PopClickGuiScreen(Screen parent, boolean openThemes) {
         super(Component.literal("DioxideLite ClickGUI / Pop"));
         this.parent = parent;
+        this.openThemes = openThemes;
         for (Category category : CATEGORIES) {
             bubbleHover.put(category, 0.0F);
         }
@@ -190,6 +207,13 @@ public final class PopClickGuiScreen extends Screen implements SkijaScreen {
         settingsRequested = false;
         selectedCategory = null;
         selectedModule = null;
+        themesSelected = openThemes;
+        themesHover = 0.0F;
+        themeScroll = 0.0F;
+        themeView.openList();
+        if (openThemes) {
+            categoryRequested = true;
+        }
         moduleScroll = 0.0F;
         settingScroll = 0.0F;
         closing = false;
@@ -249,6 +273,8 @@ public final class PopClickGuiScreen extends Screen implements SkijaScreen {
                 renderSettingsPanel(canvas, layout(logicalWidth, logicalHeight));
                 renderEspPreview(canvas, layout(logicalWidth, logicalHeight));
             }
+        } else if (themesSelected) {
+            renderThemePanel(canvas, layout(logicalWidth, logicalHeight));
         }
         canvas.restore();
         if (watermarkLogoTransferActive() && (closing || selectedCategory == null)) {
@@ -256,6 +282,17 @@ public final class PopClickGuiScreen extends Screen implements SkijaScreen {
                     smooth(introProgress));
         }
         canvas.restore();
+        drawIntroOverlay(canvas);
+    }
+
+    /** 重播预览：演出播放期间直接盖在 ClickGUI 上，播完自动归还。 */
+    private void drawIntroOverlay(Canvas canvas) {
+        if (!ThemeRuntime.introActive()) {
+            return;
+        }
+        if (!DrIntroPlayer.render(canvas, width, height)) {
+            canvas.drawColor(0xFF000000);
+        }
     }
 
     private void updateAnimations() {
@@ -273,9 +310,15 @@ public final class PopClickGuiScreen extends Screen implements SkijaScreen {
         daylightProgress = animate(daylightProgress,
                 ClickGui.INSTANCE.daylightMode.get() ? 1.0F : 0.0F, 7.0F);
 
-        if (!categoryRequested && categoryProgress < 0.01F && selectedCategory != null) {
-            selectedCategory = null;
-            selectedModule = null;
+        if (!categoryRequested && categoryProgress < 0.01F) {
+            if (selectedCategory != null) {
+                selectedCategory = null;
+                selectedModule = null;
+            }
+            if (themesSelected) {
+                themesSelected = false;
+                themeView.openList();
+            }
         }
         if (!settingsRequested && settingsProgress < 0.01F) {
             selectedModule = null;
@@ -289,6 +332,10 @@ public final class PopClickGuiScreen extends Screen implements SkijaScreen {
             bubbleHover.put(category, animate(bubbleHover.getOrDefault(category, 0.0F),
                     hovered ? 1.0F : 0.0F, 12.0F));
         }
+        Bubble themesBubble = themeBubble(logicalWidth(), logicalHeight());
+        boolean themesHovered = selectedCategory == null && !themesSelected
+                && distance(pointerX, pointerY, themesBubble.x(), themesBubble.y()) <= BUBBLE_RADIUS + 4.0F;
+        themesHover = animate(themesHover, themesHovered ? 1.0F : 0.0F, 12.0F);
         for (Module module : ModuleManager.INSTANCE.modules()) {
             moduleEnabled.put(module, animate(moduleEnabled.getOrDefault(module,
                     module.isEnabled() ? 1.0F : 0.0F), module.isEnabled() ? 1.0F : 0.0F, 13.0F));
@@ -316,40 +363,52 @@ public final class PopClickGuiScreen extends Screen implements SkijaScreen {
 
         for (Category category : CATEGORIES) {
             Bubble bubble = bubble(category, screenWidth, screenHeight);
-            boolean selected = category == selectedCategory;
-            float disappear = selected ? 1.0F : 1.0F - collapse;
-            if (disappear <= 0.01F) continue;
-
-            float hover = bubbleHover.getOrDefault(category, 0.0F);
-            float radius = BUBBLE_RADIUS + hover * 4.0F;
-            float x = lerp(centerX, bubble.x(), intro);
-            float y = lerp(centerY, bubble.y(), intro);
-            if (selected) {
-                PopLayout layout = layout(screenWidth, screenHeight);
-                x = lerp(x, layout.listX() + layout.panelWidth() * 0.5F, collapse);
-                y = lerp(y, layout.listY() + HEADER_HEIGHT * 0.5F, collapse);
-                radius = lerp(radius, 15.0F, collapse);
-            }
-
-            int color = categoryColor(category);
-            SkijaUi.rounded(canvas, x - radius - 1.0F, y - radius - 1.0F,
-                    radius * 2.0F + 2.0F, radius * 2.0F + 2.0F, radius + 1.0F,
-                    withAlpha(themeEdge(), Math.round(150.0F * disappear)));
-            SkijaUi.rounded(canvas, x - radius, y - radius, radius * 2.0F,
-                    radius * 2.0F, radius, withAlpha(theme(0xFF11191E, 0xFFF7F9FA),
-                            Math.round(238.0F * disappear)));
-            float iconAlpha = disappear * (selected ? 1.0F - smooth(collapse) : 1.0F);
-            drawCenteredIcon(canvas, categoryIcon(category), x, y - 6.0F,
-                    withAlpha(color, Math.round(255.0F * iconAlpha)), 14.0F);
-            if (!selected || collapse < 0.35F) {
-                drawCenteredText(canvas, categoryTitle(category), x, y + 8.0F,
-                        withAlpha(themeText(), Math.round(220.0F * iconAlpha)), 6.5F, true);
-            }
+            drawRingBubble(canvas, centerX, centerY, bubble, category == selectedCategory,
+                    bubbleHover.getOrDefault(category, 0.0F), categoryColor(category),
+                    categoryIcon(category), categoryTitle(category));
         }
+        drawRingBubble(canvas, centerX, centerY, themeBubble(screenWidth, screenHeight), themesSelected,
+                themesHover, themeCategoryColor(), CategoryGlyphs.CONFIG, "Themes");
 
-        if (selectedCategory == null && !watermarkLogoTransferActive()) {
+        if (selectedCategory == null && !themesSelected && !watermarkLogoTransferActive()) {
             drawPopLogo(canvas, centerX, centerY, intro);
         }
+    }
+
+    /** 分类气泡与 THEMES 气泡共用同一套绘制。 */
+    private void drawRingBubble(Canvas canvas, float centerX, float centerY, Bubble bubble,
+                                boolean selected, float hover, int color, String icon, String title) {
+        float intro = smooth(introProgress);
+        float collapse = smooth(categoryProgress);
+        float disappear = selected ? 1.0F : 1.0F - collapse;
+        if (disappear <= 0.01F) return;
+
+        float radius = BUBBLE_RADIUS + hover * 4.0F;
+        float x = lerp(centerX, bubble.x(), intro);
+        float y = lerp(centerY, bubble.y(), intro);
+        if (selected) {
+            PopLayout layout = layout(logicalWidth(), logicalHeight());
+            x = lerp(x, layout.listX() + layout.panelWidth() * 0.5F, collapse);
+            y = lerp(y, layout.listY() + HEADER_HEIGHT * 0.5F, collapse);
+            radius = lerp(radius, 15.0F, collapse);
+        }
+        SkijaUi.rounded(canvas, x - radius - 1.0F, y - radius - 1.0F,
+                radius * 2.0F + 2.0F, radius * 2.0F + 2.0F, radius + 1.0F,
+                withAlpha(themeEdge(), Math.round(150.0F * disappear)));
+        SkijaUi.rounded(canvas, x - radius, y - radius, radius * 2.0F,
+                radius * 2.0F, radius, withAlpha(theme(0xFF11191E, 0xFFF7F9FA),
+                        Math.round(238.0F * disappear)));
+        float iconAlpha = disappear * (selected ? 1.0F - smooth(collapse) : 1.0F);
+        drawCenteredIcon(canvas, icon, x, y - 6.0F,
+                withAlpha(color, Math.round(255.0F * iconAlpha)), 14.0F);
+        if (!selected || collapse < 0.35F) {
+            drawCenteredText(canvas, title, x, y + 8.0F,
+                    withAlpha(themeText(), Math.round(220.0F * iconAlpha)), 6.5F, true);
+        }
+    }
+
+    private static int themeCategoryColor() {
+        return GuiPalette.primary();
     }
 
     private static boolean watermarkLogoTransferActive() {
@@ -437,6 +496,71 @@ public final class PopClickGuiScreen extends Screen implements SkijaScreen {
         canvas.restore();
         renderScrollbar(canvas, panelX, bodyY, panelWidth, bodyHeight,
                 modules.size() * MODULE_ROW_HEIGHT, moduleScroll, categoryColor);
+    }
+
+    /** THEMES 面板：比分类面板宽一档，编辑器才有足够横向空间。 */
+    private ThemeRect themeRect() {
+        PopLayout layout = layout(logicalWidth(), logicalHeight());
+        float width = clamp(layout.screenWidth() * 0.32F, 210.0F, 300.0F);
+        float height = Math.min(layout.settingsHeight(), layout.screenHeight() - 16.0F);
+        float x = (layout.screenWidth() - width) * 0.5F;
+        float y = (layout.screenHeight() - height) * 0.5F;
+        return new ThemeRect(x, y, width, height);
+    }
+
+    /** THEMES 面板：与模块面板同款开合，内容换成主题卡片/编辑器。 */
+    private void renderThemePanel(Canvas canvas, PopLayout layout) {
+        float progress = smooth(categoryProgress);
+        Bubble origin = themeBubble(layout.screenWidth(), layout.screenHeight());
+        ThemeRect target = themeRect();
+        float startX = origin.x() - BUBBLE_RADIUS;
+        float startY = origin.y() - BUBBLE_RADIUS;
+        float startSize = BUBBLE_RADIUS * 2.0F;
+        float panelX = lerp(startX, target.x(), progress);
+        float panelY = lerp(startY, target.y(), progress);
+        float panelWidth = lerp(startSize, target.width(), progress);
+        float panelHeight = lerp(startSize, target.height(), progress);
+        float radius = lerp(BUBBLE_RADIUS, GuiPalette.PANEL_RADIUS, progress);
+        int color = themeCategoryColor();
+
+        SkijaUi.rounded(canvas, panelX - 1.0F, panelY - 1.0F,
+                panelWidth + 2.0F, panelHeight + 2.0F, radius + 1.0F,
+                withAlpha(themeEdge(), Math.round(215.0F * progress)));
+        SkijaUi.rounded(canvas, panelX, panelY, panelWidth, panelHeight, radius,
+                withAlpha(themePanel(), Math.round(255.0F * progress)));
+        if (progress < 0.36F) return;
+
+        float contentAlpha = smooth((progress - 0.36F) / 0.64F);
+        renderThemesHeader(canvas, panelX, panelY, panelWidth, contentAlpha);
+
+        float bodyY = panelY + HEADER_HEIGHT;
+        float bodyHeight = panelHeight - HEADER_HEIGHT;
+        clampThemeScroll(panelWidth, bodyHeight);
+        canvas.save();
+        canvas.clipRect(Rect.makeXYWH(panelX, bodyY, panelWidth, bodyHeight));
+        themeView.render(canvas, panelX, bodyY - themeScroll, panelWidth,
+                pointerX, pointerY - bodyY + themeScroll);
+        canvas.restore();
+        renderScrollbar(canvas, panelX, bodyY, panelWidth, bodyHeight,
+                themeView.contentHeight(panelWidth), themeScroll, color);
+    }
+
+    private void renderThemesHeader(Canvas canvas, float x, float y, float width, float alpha) {
+        int color = themeCategoryColor();
+        SkijaUi.rounded(canvas, x + 8.0F, y + 8.0F, 28.0F, 28.0F, 14.0F,
+                withAlpha(color, Math.round(205.0F * alpha)));
+        drawCenteredIcon(canvas, CategoryGlyphs.CONFIG, x + 22.0F, y + 22.0F,
+                withAlpha(themeText(), Math.round(255.0F * alpha)), 11.0F);
+        SkijaUi.boldText(canvas, "Themes", x + 44.0F, y, HEADER_HEIGHT,
+                withAlpha(themeText(), Math.round(255.0F * alpha)), 8.6F);
+        SkijaUi.fill(canvas, x + 12.0F, y + HEADER_HEIGHT - 1.0F,
+                Math.max(0.0F, width - 24.0F), 1.0F,
+                withAlpha(color, Math.round(105.0F * alpha)));
+    }
+
+    private void clampThemeScroll(float width, float height) {
+        themeScroll = clamp(themeScroll, 0.0F,
+                Math.max(0.0F, themeView.contentHeight(width) - height));
     }
 
     private void renderPanelHeader(Canvas canvas, float x, float y, float width,
@@ -694,7 +818,8 @@ public final class PopClickGuiScreen extends Screen implements SkijaScreen {
             return;
         }
 
-        float labelReserve = setting instanceof ColorSetting ? 112.0F : 68.0F;
+        float labelReserve = setting instanceof ColorSetting
+                || setting instanceof ThemeSelectSetting ? 112.0F : 68.0F;
         SkijaUi.text(canvas, fit(setting.name(), width - labelReserve, 7.2F, false),
                 x + 13.0F, y, SETTING_ROW_HEIGHT, labelColor, 7.2F);
         if (setting instanceof BooleanSetting booleanSetting) {
@@ -743,6 +868,9 @@ public final class PopClickGuiScreen extends Screen implements SkijaScreen {
             SkijaUi.text(canvas, fit(value.isEmpty() ? "Empty" : value, 57.0F, 6.8F, false),
                     fieldX + 4.0F, y + 7.0F, 17.0F,
                     value.isEmpty() ? themeTextFaint() : themeText(), 6.8F);
+        } else if (setting instanceof ThemeSelectSetting themeSelect) {
+            drawRight(canvas, fit(themeSelect.displayValue(), 84.0F, 7.0F, false),
+                    x + width - 13.0F, y, SETTING_ROW_HEIGHT, valueColor, 7.0F);
         }
     }
 
@@ -812,6 +940,7 @@ public final class PopClickGuiScreen extends Screen implements SkijaScreen {
     @Override
     public boolean mouseClicked(MouseButtonEvent event, boolean doubleClick) {
         if (closing) return true;
+        if (ThemeRuntime.introActive()) return true;
         float mouseX = (float) logical(event.x());
         float mouseY = (float) logical(event.y());
         int button = event.button();
@@ -820,10 +949,35 @@ public final class PopClickGuiScreen extends Screen implements SkijaScreen {
         capturingKeybind = null;
 
         if (selectedCategory == null) {
+            ThemeRect themeRect = themeRect();
+            if (themesSelected && categoryProgress > 0.3F) {
+                if (categoryProgress > 0.75F && inside(mouseX, mouseY,
+                        themeRect.x() + 8.0F, themeRect.y() + 8.0F, 28.0F, 28.0F)) {
+                    categoryRequested = false;
+                    return true;
+                }
+                float themesBodyY = themeRect.y() + HEADER_HEIGHT;
+                if (inside(mouseX, mouseY, themeRect.x(), themesBodyY,
+                        themeRect.width(), themeRect.height() - HEADER_HEIGHT)) {
+                    if (themeView.mouseClicked(themeRect.x(), themeRect.width(),
+                            mouseX, mouseY - themesBodyY + themeScroll, button)) {
+                        return true;
+                    }
+                }
+            }
             if (button != GLFW.GLFW_MOUSE_BUTTON_LEFT) return false;
+            Bubble themesBubble = themeBubble(logicalWidth(), logicalHeight());
+            if (distance(mouseX, mouseY, themesBubble.x(), themesBubble.y()) <= BUBBLE_RADIUS + 6.0F) {
+                themesSelected = true;
+                categoryRequested = true;
+                themeScroll = 0.0F;
+                themeView.openList();
+                return true;
+            }
             for (Category category : CATEGORIES) {
                 Bubble bubble = bubble(category, logicalWidth(), logicalHeight());
                 if (distance(mouseX, mouseY, bubble.x(), bubble.y()) <= BUBBLE_RADIUS + 6.0F) {
+                    themesSelected = false;
                     selectedCategory = category;
                     categoryRequested = true;
                     moduleScroll = 0.0F;
@@ -918,6 +1072,8 @@ public final class PopClickGuiScreen extends Screen implements SkijaScreen {
             fontSetting.cycle(button == GLFW.GLFW_MOUSE_BUTTON_RIGHT ? -1 : 1);
         } else if (setting instanceof EnumSetting<?> enumSetting) {
             enumSetting.cycle(button == GLFW.GLFW_MOUSE_BUTTON_RIGHT ? -1 : 1);
+        } else if (setting instanceof ThemeSelectSetting themeSelect) {
+            themeSelect.cycle(button == GLFW.GLFW_MOUSE_BUTTON_RIGHT ? -1 : 1);
         } else if (setting instanceof IntSetting intSetting) {
             if (button == GLFW.GLFW_MOUSE_BUTTON_RIGHT) intSetting.set(intSetting.get() - intSetting.step());
             else if (button == GLFW.GLFW_MOUSE_BUTTON_LEFT) beginNumberDrag(setting,
@@ -963,6 +1119,11 @@ public final class PopClickGuiScreen extends Screen implements SkijaScreen {
     @Override
     public boolean mouseDragged(MouseButtonEvent event, double dragX, double dragY) {
         if (closing) return true;
+        if (ThemeRuntime.introActive()) return true;
+        if (themesSelected && themeView.mouseDragged((float) (dragX / activeScale),
+                (float) (dragY / activeScale))) {
+            return true;
+        }
         if (draggingNumber != null || draggingColor != null) {
             dragCursorX += (float) dragX / activeScale;
             dragCursorY += (float) dragY / activeScale;
@@ -976,6 +1137,10 @@ public final class PopClickGuiScreen extends Screen implements SkijaScreen {
     @Override
     public boolean mouseReleased(MouseButtonEvent event) {
         if (closing) return true;
+        if (ThemeRuntime.introActive()) return true;
+        if (themesSelected) {
+            themeView.mouseReleased();
+        }
         boolean consumed = draggingNumber != null || draggingColor != null;
         draggingNumber = null;
         draggingColor = null;
@@ -991,6 +1156,7 @@ public final class PopClickGuiScreen extends Screen implements SkijaScreen {
     public boolean mouseScrolled(double mouseX, double mouseY,
                                  double horizontalAmount, double verticalAmount) {
         if (closing) return true;
+        if (ThemeRuntime.introActive()) return true;
         float x = (float) logical(mouseX);
         float y = (float) logical(mouseY);
         PopLayout layout = layout(logicalWidth(), logicalHeight());
@@ -1000,6 +1166,14 @@ public final class PopClickGuiScreen extends Screen implements SkijaScreen {
             settingScroll -= (float) verticalAmount * SCROLL_STEP;
             clampScrolls(layout);
             return true;
+        }
+        if (themesSelected && categoryProgress > 0.65F) {
+            ThemeRect themeRect = themeRect();
+            if (inside(x, y, themeRect.x(), themeRect.y(), themeRect.width(), themeRect.height())) {
+                themeScroll -= (float) verticalAmount * SCROLL_STEP;
+                clampThemeScroll(themeRect.width(), themeRect.height() - HEADER_HEIGHT);
+                return true;
+            }
         }
         if (selectedCategory != null && categoryProgress > 0.65F
                 && inside(x, y, layout.listX(), layout.listY(),
@@ -1014,6 +1188,7 @@ public final class PopClickGuiScreen extends Screen implements SkijaScreen {
     @Override
     public boolean keyPressed(KeyEvent event) {
         if (closing) return true;
+        if (ThemeRuntime.introActive()) return true;
         if (capturingKeybind != null) {
             captureKey(event, capturingKeybind);
             return true;
@@ -1030,8 +1205,11 @@ public final class PopClickGuiScreen extends Screen implements SkijaScreen {
             return true;
         }
         if (hasTextInput() && handleTextKey(event)) return true;
+        if (themesSelected && themeView.keyPressed(event.key())) return true;
         if (event.key() == GLFW.GLFW_KEY_ESCAPE) {
-            if (settingsRequested) settingsRequested = false;
+            if (themesSelected) {
+                categoryRequested = false;
+            } else if (settingsRequested) settingsRequested = false;
             else if (categoryRequested) categoryRequested = false;
             else onClose();
             return true;
@@ -1053,6 +1231,12 @@ public final class PopClickGuiScreen extends Screen implements SkijaScreen {
 
     @Override
     public boolean charTyped(CharacterEvent event) {
+        if (ThemeRuntime.introActive()) return true;
+        if (themesSelected && event.isAllowedChatCharacter()
+                && !event.codepointAsString().isEmpty()
+                && themeView.charTyped(event.codepointAsString().charAt(0))) {
+            return true;
+        }
         if (!hasTextInput() || !event.isAllowedChatCharacter()) {
             return super.charTyped(event);
         }
@@ -1351,7 +1535,16 @@ public final class PopClickGuiScreen extends Screen implements SkijaScreen {
         int index = 0;
         for (; index < CATEGORIES.length && CATEGORIES[index] != category; index++) {
         }
-        float angle = -90.0F + index * (360.0F / CATEGORIES.length);
+        return bubbleAt(index, screenWidth, screenHeight);
+    }
+
+    /** THEMES 气泡排在六个分类之后。 */
+    private Bubble themeBubble(float screenWidth, float screenHeight) {
+        return bubbleAt(CATEGORIES.length, screenWidth, screenHeight);
+    }
+
+    private Bubble bubbleAt(int index, float screenWidth, float screenHeight) {
+        float angle = -90.0F + index * (360.0F / (CATEGORIES.length + 1));
         double radians = Math.toRadians(angle);
         float radius = ringRadius(screenWidth, screenHeight);
         return new Bubble(screenWidth * 0.5F + (float) Math.cos(radians) * radius,
@@ -1456,8 +1649,7 @@ public final class PopClickGuiScreen extends Screen implements SkijaScreen {
     }
 
     private static int accent() {
-        Color color = ClickGui.INSTANCE.accent.get();
-        return argb(255, color.getRed(), color.getGreen(), color.getBlue());
+        return Themes.accent();
     }
 
     private int theme(int dark, int light) {
@@ -1552,6 +1744,9 @@ public final class PopClickGuiScreen extends Screen implements SkijaScreen {
     }
 
     private record Bubble(float x, float y) {
+    }
+
+    private record ThemeRect(float x, float y, float width, float height) {
     }
 
 

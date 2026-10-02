@@ -55,11 +55,11 @@ public final class MusicLyricsHUD extends EpsilonHudModule {
     public final DoubleSetting scale = add(new DoubleSetting("Scale", 1.0, 0.6, 1.6, 0.05));
     public final BooleanSetting background = add(new BooleanSetting("Background", true));
     public final ColorSetting backgroundColor = add(new ColorSetting("Background Color",
-            new Color(UiTheme.withAlpha(UiTheme.SURFACE, 174), true), true)
+            new Color(UiTheme.withAlpha(UiTheme.surface(), 174), true), true)
             .visibleWhen(background::get));
     public final BooleanSetting border = add(new BooleanSetting("Border", true));
     public final ColorSetting borderColor = add(new ColorSetting("Border Color",
-            new Color(UiTheme.withAlpha(UiTheme.BORDER, 190), true), true)
+            new Color(UiTheme.withAlpha(UiTheme.border(), 190), true), true)
             .visibleWhen(border::get));
     public final DoubleSetting borderWidth = add(new DoubleSetting(
             "Border Width", 1.0, 0.5, 4.0, 0.1).visibleWhen(border::get));
@@ -213,7 +213,7 @@ public final class MusicLyricsHUD extends EpsilonHudModule {
         String title = current == null ? "Not Playing" : current.getName();
         String artist = current == null ? "NetEase / QQ Music" : current.getArtistsName();
         SkijaUi.boldText(canvas, HudRenderUtil.fit(title, titleLimit, 8.8F * s, true),
-                infoX, y + 11.0F * s, 14.0F * s, UiTheme.TEXT, 8.8F * s);
+                infoX, y + 11.0F * s, 14.0F * s, UiTheme.text(), 8.8F * s);
         SkijaUi.text(canvas, HudRenderUtil.fit(artist, titleLimit, 6.8F * s, false),
                 infoX, y + 26.0F * s, 11.0F * s, 0xD9FFFFFF, 6.8F * s);
         String lyric = currentLyric(current, player);
