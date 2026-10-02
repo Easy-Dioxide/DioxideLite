@@ -13,36 +13,31 @@ import com.dioxidelite.setting.settings.BooleanSetting;
 import com.dioxidelite.setting.settings.ColorSetting;
 import com.dioxidelite.setting.settings.DoubleSetting;
 import com.dioxidelite.setting.settings.EnumSetting;
-import com.dioxidelite.util.rotation.AdaptiveRotationController;
 import com.dioxidelite.util.rotation.Priority;
 import com.dioxidelite.util.rotation.Rot2f;
 import com.dioxidelite.util.rotation.RotationUtils;
+import net.minecraft.world.InteractionHand;
 import net.minecraft.world.entity.LivingEntity;
 import net.minecraft.world.entity.player.Player;
-import net.minecraft.world.InteractionHand;
 
 import java.awt.Color;
 import java.util.Comparator;
 import java.util.List;
 
 /**
- * 移植自 Vape-v4 SilentAura。静默瞄准 + 自动攻击：
- * - 目标选择支持 Distance / Angle / Health / Armor
- * - 旋转框架可切换：Vape(PID via AdaptiveRotationController) 或 DioxideLite(RotationManager)
- * - 服务端静默转头，客户端相机不动
+ * 移植自 Vape-v4 SilentAura。静默瞄准 + 自动攻击。
+ * 转头统一走 RotationManager（内置 Vape PID 加速步进，绕过 Grim/Matrix/NCP）。
  */
 public final class SilentAura extends Module {
 
     public static final SilentAura INSTANCE = new SilentAura();
 
     public enum TargetMode { Distance, Angle, Health, Armor }
-    public enum RotationMode { Vape, DioxideLite }
 
     private final EnumSetting<TargetMode> targetMode = add(new EnumSetting<>("Target Mode", TargetMode.Distance));
-    private final EnumSetting<RotationMode> rotationMode = add(new EnumSetting<>("Rotation Mode", RotationMode.Vape));
     private final DoubleSetting range = add(new DoubleSetting("Range", 4.2, 3.0, 6.0, 0.1));
     private final DoubleSetting maxAngle = add(new DoubleSetting("Max Angle", 120.0, 30.0, 360.0, 5.0));
-    private final DoubleSetting aimSpeed = add(new DoubleSetting("Aim Speed", 1.0, 0.1, 10.0, 0.1));
+    private final DoubleSetting aimSpeed = add(new DoubleSetting("Aim Speed", 3.0, 0.1, 10.0, 0.1));
     private final DoubleSetting attackSpeed = add(new DoubleSetting("Attack Speed (CPS)", 8.0, 1.0, 20.0, 0.5));
     private final BooleanSetting switchTargets = add(new BooleanSetting("Switch Targets", false));
     private final BooleanSetting players = add(new BooleanSetting("Players", true));
@@ -52,10 +47,11 @@ public final class SilentAura extends Module {
     private final BooleanSetting showTarget = add(new BooleanSetting("Show Target", false));
     private final ColorSetting targetColor = add(new ColorSetting("Target Color", new Color(255, 200, 112, 180)));
     private final BooleanSetting perfectSwing = add(new BooleanSetting("Perfect Swing", true, "Only attack when cooldown ready"));
+    private final BooleanSetting randomizeCPS = add(new BooleanSetting("Randomize CPS", true,
+            "随机化攻击间隔，避免固定 CPS 被 Matrix/NCP 检测"));
 
     private LivingEntity target;
     private long lastAttackTime = 0L;
-    private final AdaptiveRotationController pidController = new AdaptiveRotationController();
 
     private SilentAura() {
         super("Silent Aura", Category.COMBAT);
@@ -64,7 +60,6 @@ public final class SilentAura extends Module {
     @Override
     protected void onDisable() {
         target = null;
-        pidController.clearTarget();
         RotationManager.INSTANCE.releaseSilentRotation(this);
     }
 
@@ -78,7 +73,6 @@ public final class SilentAura extends Module {
             rotateToTarget();
             tryAttack();
         } else {
-            pidController.clearTarget();
             RotationManager.INSTANCE.releaseSilentRotation(this);
         }
     }
@@ -115,7 +109,6 @@ public final class SilentAura extends Module {
 
         LivingEntity newTarget = candidates.getFirst();
         if (target != null && !newTarget.equals(target) && !switchTargets.get()) {
-            // keep current target if still valid
             if (candidates.contains(target)) {
                 return;
             }
@@ -136,16 +129,8 @@ public final class SilentAura extends Module {
 
     private void rotateToTarget() {
         Rot2f targetRot = RotationUtils.calculate(target, true, range.get());
-        if (rotationMode.get() == RotationMode.Vape) {
-            pidController.setSpeed(aimSpeed.get().floatValue());
-            pidController.setTarget(target.position().add(0, target.getBbHeight() / 2.0, 0));
-            pidController.update();
-            RotationManager.INSTANCE.setRotations(
-                    new Rot2f(pidController.getCurrentYaw(), pidController.getCurrentPitch()),
-                    180.0, Priority.High);
-        } else {
-            RotationManager.INSTANCE.setRotations(targetRot, aimSpeed.get(), Priority.High);
-        }
+        // 统一走 RotationManager，内部已用 Vape PID 加速步进
+        RotationManager.INSTANCE.setRotations(targetRot, aimSpeed.get(), Priority.High);
     }
 
     private void tryAttack() {
@@ -153,16 +138,15 @@ public final class SilentAura extends Module {
         float cooldown = mc.player.getAttackStrengthScale(0f);
         if (perfectSwing.get() && cooldown < 1.0f) return;
 
-        long interval = (long) (1000.0 / attackSpeed.get());
+        // CPS 间隔 + 随机抖动，绕过 Matrix/NCP 的固定攻击频率检测
+        long baseInterval = (long) (1000.0 / attackSpeed.get());
+        long interval = randomizeCPS.get()
+                ? baseInterval + (long) ((Math.random() - 0.5) * baseInterval * 0.4)
+                : baseInterval;
         if (System.currentTimeMillis() - lastAttackTime < interval) return;
 
-        // raytrace check
-        Rot2f cur = new Rot2f(
-                RotationManager.INSTANCE.getYaw(),
-                RotationManager.INSTANCE.getPitch());
-        if (!RotationUtils.isInFov(target, 10.0)) {
-            // still try if within small angle
-        }
+        // 转头必须对准目标（容差内）才攻击，避免打空气被检测
+        if (!RotationUtils.isInFov(target, 8.0)) return;
 
         mc.gameMode.attack(mc.player, target);
         mc.player.swing(InteractionHand.MAIN_HAND);
