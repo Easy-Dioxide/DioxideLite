@@ -44,12 +44,13 @@ public final class RenderModuleRegistry {
                 Chams.INSTANCE, ContainerESP.INSTANCE, Crosshair.INSTANCE,
                 ESP.INSTANCE, FogBlur.INSTANCE, FogRemove.INSTANCE, Freelook.INSTANCE,
                 Fullbright.INSTANCE, GlowESP.INSTANCE, Hand.INSTANCE, Hurtcam.INSTANCE,
-                ItemPhysics.INSTANCE, JumpCircles.INSTANCE, NoRender.INSTANCE,
+                ItemPhysics.INSTANCE, NoRender.INSTANCE,
                 ParticleLimiter.INSTANCE, Particles.INSTANCE, SeeInvisibles.INSTANCE,
                 SkeletonESP.INSTANCE, SkinChanger.INSTANCE, Skybox.INSTANCE, TNTTimer.INSTANCE,
-                TargetESP.INSTANCE, Trails.INSTANCE, Trajectories.INSTANCE, Zoom.INSTANCE,
+                TargetESP.INSTANCE, Trajectories.INSTANCE, Zoom.INSTANCE,
         };
         // 已移除：ChinaHat（彩虹锥帽+光晕拖尾，过于猎奇）、Wings（翅膀装饰，过于猎奇）
+        //         JumpCircles（跳跃光圈装饰）、Trails（实体拖尾装饰）—— 纯装饰，不符合 Opal 简洁风格
         // 如需启用，将对应 INSTANCE 加回上方数组即可。
         int count = 0;
         for (Module module : modules) {

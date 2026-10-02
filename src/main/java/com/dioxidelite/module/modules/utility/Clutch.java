@@ -7,6 +7,7 @@ import com.dioxidelite.module.Category;
 import com.dioxidelite.module.Module;
 import com.dioxidelite.setting.settings.BooleanSetting;
 import com.dioxidelite.setting.settings.DoubleSetting;
+import com.dioxidelite.setting.settings.IntSetting;
 import com.dioxidelite.util.player.FindItemResult;
 import com.dioxidelite.util.player.InvUtils;
 import com.dioxidelite.util.rotation.Priority;
@@ -36,12 +37,12 @@ public final class Clutch extends Module {
             .visibleWhen(onMoreThanX::get));
     private final DoubleSetting speed = add(new DoubleSetting("Speed", 3.5, 1.0, 10.0, 0.1));
     private final BooleanSetting resetAngle = add(new BooleanSetting("Reset Angle", true));
+    private final IntSetting resetDelay = add(new IntSetting("Reset Delay (ticks)", 3, 1, 10, 1)
+            .visibleWhen(resetAngle::get));
     private final BooleanSetting returnToLastSlot = add(new BooleanSetting("Return To Last Slot", true));
-    private final BooleanSetting placeDelay = add(new BooleanSetting("Place Delay", true,
-            "转头对准后再放置，避免 Grim 的 invalid place 检测"));
-
-    private static final int RESET_DELAY_TICKS = 3;
-    private static final int RETURN_DELAY_TICKS = 3;
+    private final IntSetting returnDelay = add(new IntSetting("Return Delay (ticks)", 3, 1, 10, 1)
+            .visibleWhen(returnToLastSlot::get));
+    private final BooleanSetting placeDelay = add(new BooleanSetting("Place Delay", true));
 
     private int resetAngleDelayTicks = 0;
     private int returnDelayTicks = 0;
@@ -80,7 +81,7 @@ public final class Clutch extends Module {
             if (clutched) {
                 clutched = false;
                 if (resetAngle.get() && resetAngleDelayTicks == 0) {
-                    resetAngleDelayTicks = RESET_DELAY_TICKS;
+                    resetAngleDelayTicks = resetDelay.get();
                 }
             }
         }
@@ -135,12 +136,12 @@ public final class Clutch extends Module {
         }
 
         if (previousSlot < 0 && returnToLastSlot.get()) {
-            previousSlot = mc.player.getInventory().selected;
+            previousSlot = mc.player.getInventory().getSelectedSlot();
         }
         BlockPlaceHelper.place(info, block, true, true);
 
         if (returnToLastSlot.get() && previousSlot >= 0) {
-            returnDelayTicks = RETURN_DELAY_TICKS;
+            returnDelayTicks = returnDelay.get();
         }
     }
 
