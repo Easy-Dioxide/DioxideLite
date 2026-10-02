@@ -1,6 +1,8 @@
 package com.dioxidelite.mixin;
 
 import com.mojang.blaze3d.vertex.PoseStack;
+import com.dioxidelite.module.modules.render.advanced.NoFOV;
+import com.dioxidelite.module.modules.render.advanced.NoHurtCamera;
 import com.dioxidelite.module.modules.render.advanced.NoRender;
 import com.dioxidelite.render.SkijaRenderer;
 import com.dioxidelite.ui.screen.VanillaScreenTheme;
@@ -15,6 +17,7 @@ import org.spongepowered.asm.mixin.Shadow;
 import org.spongepowered.asm.mixin.injection.At;
 import org.spongepowered.asm.mixin.injection.Inject;
 import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
+import org.spongepowered.asm.mixin.injection.callback.CallbackInfoReturnable;
 
 @Mixin(GameRenderer.class)
 public class GameRendererMixin {
@@ -35,8 +38,16 @@ public class GameRendererMixin {
     @Inject(method = "bobHurt", at = @At("HEAD"), cancellable = true)
     private void DioxideLite$disableHurtCamera(CameraRenderState cameraState, PoseStack poseStack, CallbackInfo ci) {
         NoRender noRender = NoRender.INSTANCE;
-        if (noRender.isEnabled() && noRender.hurtCamera.get()) {
+        if ((noRender.isEnabled() && noRender.hurtCamera.get()) || NoHurtCamera.INSTANCE.isEnabled()) {
             ci.cancel();
+        }
+    }
+
+    @Inject(method = "getFov", at = @At("HEAD"), cancellable = true)
+    private void DioxideLite$lockFov(net.minecraft.client.Camera camera, float partialTick, boolean useFovSetting,
+                                     CallbackInfoReturnable<Double> cir) {
+        if (NoFOV.INSTANCE.isEnabled() && minecraft.options != null) {
+            cir.setReturnValue((double) minecraft.options.fov().get());
         }
     }
 

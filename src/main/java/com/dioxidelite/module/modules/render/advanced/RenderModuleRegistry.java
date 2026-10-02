@@ -39,15 +39,18 @@ public final class RenderModuleRegistry {
         // 这样它们的名字（ESP / Chams / NoRender / ...）可以原样使用，界面上只剩这一套。
         retireBuiltInRenderModules();
         Module[] modules = {
-                Ambience.INSTANCE, Animations.INSTANCE, Arrows.INSTANCE, BedESP.INSTANCE,
-                BlockOverlay.INSTANCE, Boxes.INSTANCE, Camera.INSTANCE, CapeChanger.INSTANCE,
+                Ambience.INSTANCE, Animations.INSTANCE, Arrows.INSTANCE, AttackEffects.INSTANCE,
+                BedESP.INSTANCE, BlockOverlay.INSTANCE, Boxes.INSTANCE, BreakProgress.INSTANCE,
+                Camera.INSTANCE, CapeChanger.INSTANCE,
                 Chams.INSTANCE, ContainerESP.INSTANCE, Crosshair.INSTANCE,
                 ESP.INSTANCE, FogBlur.INSTANCE, FogRemove.INSTANCE, Freelook.INSTANCE,
                 Fullbright.INSTANCE, GlowESP.INSTANCE, Hand.INSTANCE, Hurtcam.INSTANCE,
-                ItemPhysics.INSTANCE, NoRender.INSTANCE,
-                ParticleLimiter.INSTANCE, Particles.INSTANCE, SeeInvisibles.INSTANCE,
-                SkeletonESP.INSTANCE, SkinChanger.INSTANCE, Skybox.INSTANCE, TNTTimer.INSTANCE,
-                TargetESP.INSTANCE, Trajectories.INSTANCE, Zoom.INSTANCE,
+                ItemPhysics.INSTANCE, NoFOV.INSTANCE, NoHurtCamera.INSTANCE, NoRender.INSTANCE,
+                ParticleLimiter.INSTANCE, Particles.INSTANCE, PostProcessing.INSTANCE,
+                SeeInvisibles.INSTANCE,
+                SkeletonESP.INSTANCE, SkinChanger.INSTANCE, Skybox.INSTANCE, StreamerMode.INSTANCE,
+                TNTTimer.INSTANCE, TargetESP.INSTANCE, TitleChanger.INSTANCE, Trajectories.INSTANCE,
+                Zoom.INSTANCE,
         };
         // 已移除：ChinaHat（彩虹锥帽+光晕拖尾，过于猎奇）、Wings（翅膀装饰，过于猎奇）
         //         JumpCircles（跳跃光圈装饰）、Trails（实体拖尾装饰）—— 纯装饰，不符合 Opal 简洁风格
