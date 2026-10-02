@@ -2,7 +2,6 @@ package com.dioxidelite.module.modules.combat;
 
 import com.dioxidelite.event.Listen;
 import com.dioxidelite.event.events.PlayerTickEvent;
-import com.dioxidelite.event.events.Render3DEvent;
 import com.dioxidelite.manager.FriendManager;
 import com.dioxidelite.manager.RotationManager;
 import com.dioxidelite.manager.target.TargetManager;
@@ -10,7 +9,6 @@ import com.dioxidelite.manager.target.TargetRequest;
 import com.dioxidelite.module.Category;
 import com.dioxidelite.module.Module;
 import com.dioxidelite.setting.settings.BooleanSetting;
-import com.dioxidelite.setting.settings.ColorSetting;
 import com.dioxidelite.setting.settings.DoubleSetting;
 import com.dioxidelite.setting.settings.EnumSetting;
 import com.dioxidelite.util.rotation.Priority;
@@ -20,7 +18,6 @@ import net.minecraft.world.InteractionHand;
 import net.minecraft.world.entity.LivingEntity;
 import net.minecraft.world.entity.player.Player;
 
-import java.awt.Color;
 import java.util.Comparator;
 import java.util.List;
 
@@ -44,11 +41,7 @@ public final class SilentAura extends Module {
     private final BooleanSetting mobs = add(new BooleanSetting("Mobs", false));
     private final BooleanSetting animals = add(new BooleanSetting("Animals", false));
     private final BooleanSetting invisibles = add(new BooleanSetting("Invisibles", false));
-    private final BooleanSetting showTarget = add(new BooleanSetting("Show Target", false));
-    private final ColorSetting targetColor = add(new ColorSetting("Target Color", new Color(255, 200, 112, 180)));
     private final BooleanSetting perfectSwing = add(new BooleanSetting("Perfect Swing", true, "Only attack when cooldown ready"));
-    private final BooleanSetting randomizeCPS = add(new BooleanSetting("Randomize CPS", true,
-            "随机化攻击间隔，避免固定 CPS 被 Matrix/NCP 检测"));
 
     private LivingEntity target;
     private long lastAttackTime = 0L;
@@ -138,11 +131,9 @@ public final class SilentAura extends Module {
         float cooldown = mc.player.getAttackStrengthScale(0f);
         if (perfectSwing.get() && cooldown < 1.0f) return;
 
-        // CPS 间隔 + 随机抖动，绕过 Matrix/NCP 的固定攻击频率检测
+        // CPS 间隔 + 随机抖动（默认启用，绕过 Matrix/NCP 的固定攻击频率检测）
         long baseInterval = (long) (1000.0 / attackSpeed.get());
-        long interval = randomizeCPS.get()
-                ? baseInterval + (long) ((Math.random() - 0.5) * baseInterval * 0.4)
-                : baseInterval;
+        long interval = baseInterval + (long) ((Math.random() - 0.5) * baseInterval * 0.4);
         if (System.currentTimeMillis() - lastAttackTime < interval) return;
 
         // 转头必须对准目标（容差内）才攻击，避免打空气被检测
@@ -151,18 +142,5 @@ public final class SilentAura extends Module {
         mc.gameMode.attack(mc.player, target);
         mc.player.swing(InteractionHand.MAIN_HAND);
         lastAttackTime = System.currentTimeMillis();
-    }
-
-    @Listen
-    private void onRender3D(Render3DEvent event) {
-        if (!showTarget.get() || target == null) return;
-        try {
-            Color c = targetColor.get();
-            com.dioxidelite.util.render.esp.CircleESP.render(
-                    event.getPoseStack(), target,
-                    target.getBbWidth() * 0.6f,
-                    c, c, 1.0f);
-        } catch (Throwable ignored) {
-        }
     }
 }
