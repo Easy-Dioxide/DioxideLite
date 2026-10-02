@@ -29,12 +29,13 @@ public final class LegitScaffold extends Module {
     public static final LegitScaffold INSTANCE = new LegitScaffold();
 
     private final BooleanSetting requireSneak = add(new BooleanSetting("Require Sneak", false));
-    private final DoubleSetting sneakDelay = add(new DoubleSetting("Sneak Delay (ms)", 100.0, 0.0, 500.0, 10.0));
     private final DoubleSetting aimSpeed = add(new DoubleSetting("Aim Speed", 3.5, 1.0, 10.0, 0.1));
     private final BooleanSetting placeBlocks = add(new BooleanSetting("Place Blocks", true));
     private final BooleanSetting autoSprint = add(new BooleanSetting("Auto Sprint", true));
     private final BooleanSetting placeCheck = add(new BooleanSetting("Place Check", true,
             "转头对准后再放置，绕过 Grim 的 scaffold 检测"));
+
+    private static final long SNEAK_DELAY_MS = 100L;
 
     private boolean wasSneaking;
     private long edgeSneakTime = 0L;
@@ -62,7 +63,7 @@ public final class LegitScaffold extends Module {
         boolean atEdge = isAtEdge();
         boolean shouldSneak = atEdge;
 
-        if (!shouldSneak && System.currentTimeMillis() - edgeSneakTime < sneakDelay.get().longValue()) {
+        if (!shouldSneak && System.currentTimeMillis() - edgeSneakTime < SNEAK_DELAY_MS) {
             shouldSneak = true;
         }
 

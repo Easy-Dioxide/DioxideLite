@@ -2,6 +2,7 @@ package com.dioxidelite.module.modules.combat;
 
 import com.dioxidelite.event.Listen;
 import com.dioxidelite.event.events.PlayerTickEvent;
+import com.dioxidelite.event.events.Render3DEvent;
 import com.dioxidelite.manager.FriendManager;
 import com.dioxidelite.manager.RotationManager;
 import com.dioxidelite.manager.target.TargetManager;
@@ -9,6 +10,7 @@ import com.dioxidelite.manager.target.TargetRequest;
 import com.dioxidelite.module.Category;
 import com.dioxidelite.module.Module;
 import com.dioxidelite.setting.settings.BooleanSetting;
+import com.dioxidelite.setting.settings.ColorSetting;
 import com.dioxidelite.setting.settings.DoubleSetting;
 import com.dioxidelite.setting.settings.EnumSetting;
 import com.dioxidelite.util.rotation.Priority;
@@ -18,6 +20,7 @@ import net.minecraft.world.InteractionHand;
 import net.minecraft.world.entity.LivingEntity;
 import net.minecraft.world.entity.player.Player;
 
+import java.awt.Color;
 import java.util.Comparator;
 import java.util.List;
 
@@ -41,6 +44,8 @@ public final class SilentAura extends Module {
     private final BooleanSetting mobs = add(new BooleanSetting("Mobs", false));
     private final BooleanSetting animals = add(new BooleanSetting("Animals", false));
     private final BooleanSetting invisibles = add(new BooleanSetting("Invisibles", false));
+    private final BooleanSetting showTarget = add(new BooleanSetting("Show Target", false));
+    private final ColorSetting targetColor = add(new ColorSetting("Target Color", new Color(255, 200, 112, 180)));
     private final BooleanSetting perfectSwing = add(new BooleanSetting("Perfect Swing", true, "Only attack when cooldown ready"));
 
     private LivingEntity target;
@@ -142,5 +147,18 @@ public final class SilentAura extends Module {
         mc.gameMode.attack(mc.player, target);
         mc.player.swing(InteractionHand.MAIN_HAND);
         lastAttackTime = System.currentTimeMillis();
+    }
+
+    @Listen
+    private void onRender3D(Render3DEvent event) {
+        if (!showTarget.get() || target == null) return;
+        try {
+            Color c = targetColor.get();
+            com.dioxidelite.util.render.esp.CircleESP.render(
+                    event.getPoseStack(), target,
+                    target.getBbWidth() * 0.6f,
+                    c, c, 1.0f);
+        } catch (Throwable ignored) {
+        }
     }
 }
