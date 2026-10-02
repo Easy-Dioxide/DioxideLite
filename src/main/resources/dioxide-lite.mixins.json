@@ -58,7 +58,8 @@
     "SectionCompilerMixin",
     "EquipmentLayerRendererMixin",
     "AbstractRecipeBookScreenMixin",
-    "AbstractClientPlayerMixin"
+    "AbstractClientPlayerMixin",
+    "LevelMixin"
   ],
   "injectors": {
     "defaultRequire": 1
