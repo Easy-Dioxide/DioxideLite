@@ -22,10 +22,15 @@ import com.dioxidelite.setting.settings.FontSetting;
 import com.dioxidelite.setting.settings.IntSetting;
 import com.dioxidelite.setting.settings.KeybindSetting;
 import com.dioxidelite.setting.settings.StringSetting;
+import com.dioxidelite.setting.settings.ThemeSelectSetting;
 import com.dioxidelite.ui.CategoryGlyphs;
 import com.dioxidelite.ui.SkijaScreen;
+import com.dioxidelite.ui.dr.DrIntroPlayer;
 import com.dioxidelite.ui.hud.EpsilonHudModule;
 import com.dioxidelite.ui.hud.HUD;
+import com.dioxidelite.ui.theme.ThemePanelView;
+import com.dioxidelite.ui.theme.ThemeRuntime;
+import com.dioxidelite.ui.theme.Themes;
 import com.dioxidelite.util.KeyBindText;
 import io.github.humbleui.skija.Canvas;
 import io.github.humbleui.skija.Paint;
@@ -177,6 +182,7 @@ public final class WindowClickGuiScreen extends Screen implements SkijaScreen {
     }
 
     private final List<Panel> panels = new ArrayList<>();
+    private ThemePanel themePanel;
 
     private Panel draggingPanel;
     private float dragOffsetX;
@@ -208,14 +214,21 @@ public final class WindowClickGuiScreen extends Screen implements SkijaScreen {
     private float renderMouseY;
     private long lastFrame = System.nanoTime();
     private final Screen parent;
+    /** 打开时定位到 THEMES 主题面板（DR 底栏 UI_STYLE / 主题模块入口）。 */
+    private final boolean openThemes;
 
     public WindowClickGuiScreen() {
         this(null);
     }
 
     public WindowClickGuiScreen(Screen parent) {
+        this(parent, false);
+    }
+
+    public WindowClickGuiScreen(Screen parent, boolean openThemes) {
         super(Component.literal(tr("title", "DioxideLite ClickGUI")));
         this.parent = parent;
+        this.openThemes = openThemes;
     }
 
     @Override
@@ -236,7 +249,12 @@ public final class WindowClickGuiScreen extends Screen implements SkijaScreen {
                 y += HEADER_HEIGHT + 4.0F;
             }
             panels.add(new ConfigPanel(MARGIN, y));
+            themePanel = new ThemePanel(MARGIN, y + HEADER_HEIGHT + 4.0F);
+            panels.add(themePanel);
             restorePanelMemory();
+            if (openThemes) {
+                themePanel.expandPanel();
+            }
         }
         clampPanels();
     }
@@ -282,10 +300,22 @@ public final class WindowClickGuiScreen extends Screen implements SkijaScreen {
             renderCornerInfo(canvas, logicalHeight);
         }
         canvas.restore();
+        drawIntroOverlay(canvas);
+    }
+
+    /** 重播预览：演出播放期间直接盖在 ClickGUI 上，播完自动归还。 */
+    private void drawIntroOverlay(Canvas canvas) {
+        if (!ThemeRuntime.introActive()) {
+            return;
+        }
+        if (!DrIntroPlayer.render(canvas, width, height)) {
+            canvas.drawColor(0xFF000000);
+        }
     }
 
     @Override
     public boolean mouseClicked(MouseButtonEvent event, boolean doubleClick) {
+        if (ThemeRuntime.introActive()) return true;
         float mouseX = (float) logical(event.x());
         float mouseY = (float) logical(event.y());
         int button = event.button();
@@ -307,6 +337,11 @@ public final class WindowClickGuiScreen extends Screen implements SkijaScreen {
 
     @Override
     public boolean mouseDragged(MouseButtonEvent event, double dragX, double dragY) {
+        if (ThemeRuntime.introActive()) return true;
+        if (themePanel != null
+                && themePanel.handleDrag((float) dragX / activeScale, (float) dragY / activeScale)) {
+            return true;
+        }
         if (draggingPanel != null || draggingNumber != null || draggingColor != null) {
             // Treat dragX/dragY as the authoritative delta. This avoids stale
             // MouseButtonEvent coordinates on 26.1 input paths.
@@ -328,6 +363,10 @@ public final class WindowClickGuiScreen extends Screen implements SkijaScreen {
 
     @Override
     public boolean mouseReleased(MouseButtonEvent event) {
+        if (ThemeRuntime.introActive()) return true;
+        if (themePanel != null) {
+            themePanel.handleRelease();
+        }
         draggingPanel = null;
         draggingNumber = null;
         draggingColor = null;
@@ -342,6 +381,7 @@ public final class WindowClickGuiScreen extends Screen implements SkijaScreen {
 
     @Override
     public boolean mouseScrolled(double mouseX, double mouseY, double horizontalAmount, double verticalAmount) {
+        if (ThemeRuntime.introActive()) return true;
         float logicalX = (float) logical(mouseX);
         float logicalY = (float) logical(mouseY);
         for (int i = panels.size() - 1; i >= 0; i--) {
@@ -355,6 +395,7 @@ public final class WindowClickGuiScreen extends Screen implements SkijaScreen {
 
     @Override
     public boolean keyPressed(KeyEvent event) {
+        if (ThemeRuntime.introActive()) return true;
         if (capturingKeybind != null) {
             if (event.key() == GLFW.GLFW_KEY_ESCAPE) {
                 capturingKeybind = null;
@@ -382,11 +423,20 @@ public final class WindowClickGuiScreen extends Screen implements SkijaScreen {
         if (textTarget != TextTarget.NONE && handleTextKey(event)) {
             return true;
         }
+        if (themePanel != null && themePanel.handleKey(event.key())) {
+            return true;
+        }
         return super.keyPressed(event);
     }
 
     @Override
     public boolean charTyped(CharacterEvent event) {
+        if (ThemeRuntime.introActive()) return true;
+        if (themePanel != null && event.isAllowedChatCharacter()
+                && !event.codepointAsString().isEmpty()
+                && themePanel.handleChar(event.codepointAsString().charAt(0))) {
+            return true;
+        }
         if (textTarget == TextTarget.NONE || !event.isAllowedChatCharacter()) {
             return super.charTyped(event);
         }
@@ -586,11 +636,15 @@ public final class WindowClickGuiScreen extends Screen implements SkijaScreen {
                     Math.max(1.0F, height - 2.0F), GuiPalette.CARD_RADIUS, settingBackground());
         }
 
-        private float bodyX() {
+        protected final void expandPanel() {
+            collapsed = false;
+        }
+
+        protected final float bodyX() {
             return x + BODY_INSET;
         }
 
-        private float bodyWidth() {
+        protected final float bodyWidth() {
             return panelWidth - BODY_INSET * 2.0F;
         }
 
@@ -854,6 +908,9 @@ public final class WindowClickGuiScreen extends Screen implements SkijaScreen {
                     MusicPresetPreview.draw(canvas, x + 10.0F, rowY + SETTING_HEIGHT,
                             Math.max(1.0F, panelWidth - 20.0F), height - SETTING_HEIGHT, 1.0F);
                 }
+            } else if (setting instanceof ThemeSelectSetting themeSelect) {
+                drawRight(canvas, fit(themeSelect.displayValue(), 58.0F, false),
+                        rowY, SETTING_HEIGHT, headerColor, FONT_SMALL);
             } else if (setting instanceof IntSetting intSetting) {
                 renderNumberSlider(canvas, rowY, intSetting.fraction(),
                         Integer.toString(intSetting.get()));
@@ -1076,6 +1133,10 @@ public final class WindowClickGuiScreen extends Screen implements SkijaScreen {
                 if (button == GLFW.GLFW_MOUSE_BUTTON_LEFT || button == GLFW.GLFW_MOUSE_BUTTON_RIGHT) {
                     enumSetting.cycle(button == GLFW.GLFW_MOUSE_BUTTON_RIGHT ? -1 : 1);
                 }
+            } else if (setting instanceof ThemeSelectSetting themeSelect) {
+                if (button == GLFW.GLFW_MOUSE_BUTTON_LEFT || button == GLFW.GLFW_MOUSE_BUTTON_RIGHT) {
+                    themeSelect.cycle(button == GLFW.GLFW_MOUSE_BUTTON_RIGHT ? -1 : 1);
+                }
             } else if (setting instanceof IntSetting intSetting) {
                 if (button == GLFW.GLFW_MOUSE_BUTTON_RIGHT) {
                     intSetting.set(intSetting.get() - intSetting.step());
@@ -1222,6 +1283,47 @@ public final class WindowClickGuiScreen extends Screen implements SkijaScreen {
 
         private String configTargetName() {
             return name.isBlank() ? currentConfigName() : name.trim();
+        }
+    }
+
+    /** ClickGUI 内嵌的主题面板：卡片列表 + 就地编辑器，两个模式共用同一视图。 */
+    private final class ThemePanel extends Panel {
+        private final ThemePanelView view = new ThemePanelView();
+
+        private ThemePanel(float x, float y) {
+            super("Themes", tr("themes", "Themes"), CategoryGlyphs.CONFIG, accent(), x, y);
+        }
+
+        @Override
+        protected float contentHeight() {
+            return view.contentHeight(bodyWidth());
+        }
+
+        @Override
+        protected void renderContent(Canvas canvas, float top, float bodyY, float bodyHeight) {
+            view.render(canvas, bodyX(), top, bodyWidth(), renderMouseX, renderMouseY - top);
+        }
+
+        @Override
+        protected boolean clickContent(float mouseX, float contentMouseY, int button) {
+            return view.mouseClicked(bodyX(), bodyWidth(), mouseX,
+                    contentMouseY - (y + HEADER_HEIGHT), button);
+        }
+
+        private boolean handleKey(int keyCode) {
+            return view.keyPressed(keyCode);
+        }
+
+        private boolean handleChar(char chr) {
+            return view.charTyped(chr);
+        }
+
+        private boolean handleDrag(float deltaX, float deltaY) {
+            return view.mouseDragged(deltaX, deltaY);
+        }
+
+        private void handleRelease() {
+            view.mouseReleased();
         }
     }
 
@@ -1643,8 +1745,7 @@ public final class WindowClickGuiScreen extends Screen implements SkijaScreen {
     }
 
     private static int accent() {
-        Color configured = ClickGui.INSTANCE.accent.get();
-        int seed = argb(255, configured.getRed(), configured.getGreen(), configured.getBlue());
+        int seed = Themes.accent();
         // The reference theme is seeded by one accent colour; keep GuiPalette in sync with the setting.
         GuiPalette.seed(seed);
         return seed;

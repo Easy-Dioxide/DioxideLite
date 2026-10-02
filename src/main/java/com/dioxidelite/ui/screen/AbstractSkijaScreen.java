@@ -10,7 +10,7 @@ import net.minecraft.client.gui.screens.Screen;
 import net.minecraft.network.chat.Component;
 
 /** Common Minecraft-to-Skija screen bridge with a deterministic backdrop. */
-abstract class AbstractSkijaScreen extends Screen implements SkijaScreen {
+public abstract class AbstractSkijaScreen extends Screen implements SkijaScreen {
 
     protected int mouseX;
     protected int mouseY;

@@ -137,7 +137,7 @@ public final class HudFusionManager {
         float height = selection.bounds().getHeight();
         float margin = Math.max(3.0F, Math.min(7.0F, height * 0.24F));
         float lineHeight = Math.max(1.0F, height - margin * 2.0F);
-        int color = UiTheme.withAlpha(UiTheme.TEXT_FAINT, 104);
+        int color = UiTheme.withAlpha(UiTheme.textFaint(), 104);
         for (int index = 1; index < selection.cells().size(); index++) {
             float x = selection.cells().get(index).bounds().getLeft();
             HudRenderUtil.hairline(canvas, x - 0.5F, top + margin, 1.0F, lineHeight, color);

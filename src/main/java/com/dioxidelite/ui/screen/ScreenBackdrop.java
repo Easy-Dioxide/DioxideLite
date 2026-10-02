@@ -2,6 +2,8 @@ package com.dioxidelite.ui.screen;
 
 import com.dioxidelite.DioxideLite;
 import com.dioxidelite.ui.UiTheme;
+import com.dioxidelite.ui.theme.Slot;
+import com.dioxidelite.ui.theme.Themes;
 import io.github.humbleui.skija.Canvas;
 import io.github.humbleui.skija.Image;
 import io.github.humbleui.skija.Paint;
@@ -144,7 +146,7 @@ final class ScreenBackdrop {
 
         drawGradient(canvas, Rect.makeXYWH(0.0F, 0.0F, width, height),
                 0.0F, 0.0F, width, height,
-                new int[]{0xFF06070A, 0xFF10141A, 0xFF090A0E},
+                backdropStops(),
                 new float[]{0.0F, 0.58F, 1.0F});
 
         float parallaxX = clamp((pointerX / width - 0.5F) * 10.0F, -5.0F, 5.0F);
@@ -157,6 +159,23 @@ final class ScreenBackdrop {
             canvas.drawColor(UiTheme.argb(Math.min(255, shadeAlpha), 4, 6, 9));
         }
         drawEdgeShade(canvas, width, height);
+    }
+
+    /** 主题 backdrop 槽显式设置时换成同色系三段渐变；否则保持原色。 */
+    private static int[] backdropStops() {
+        Integer custom = Themes.explicit(Slot.BACKDROP);
+        if (custom == null) {
+            return new int[]{0xFF06070A, 0xFF10141A, 0xFF090A0E};
+        }
+        return new int[]{darken(custom, 0.42F), custom, darken(custom, 0.66F)};
+    }
+
+    private static int darken(int argb, float factor) {
+        int alpha = (argb >>> 24) & 0xFF;
+        int red = Math.min(255, Math.round(((argb >> 16) & 0xFF) * factor));
+        int green = Math.min(255, Math.round(((argb >> 8) & 0xFF) * factor));
+        int blue = Math.min(255, Math.round((argb & 0xFF) * factor));
+        return (alpha << 24) | (red << 16) | (green << 8) | blue;
     }
 
     private static void drawPerspectivePlane(Canvas canvas, float width, float height, float time,

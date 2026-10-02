@@ -148,7 +148,7 @@ public final class Crosshair extends Module {
                 Color base = Color.getHSBColor((time * RAINBOW_HUE_SPEED) % 1.0F, 0.75F, 1.0F);
                 yield new Color(base.getRed(), base.getGreen(), base.getBlue(), 255).getRGB();
             }
-            case ACCENT -> UiTheme.ACCENT | 0xFF000000;
+            case ACCENT -> UiTheme.accent();
             case CUSTOM -> customColor.argb();
         };
     }

@@ -3,6 +3,7 @@ package com.dioxidelite.ui.screen;
 import com.dioxidelite.DioxideLite;
 import com.dioxidelite.render.SkijaUi;
 import com.dioxidelite.ui.UiTheme;
+import com.dioxidelite.ui.dr.DrIntroPlayer;
 import io.github.humbleui.skija.Canvas;
 import io.github.humbleui.skija.Paint;
 import io.github.humbleui.skija.PaintMode;
@@ -89,6 +90,16 @@ public final class MainMenuScreen extends AbstractSkijaScreen {
 
     @Override
     protected void drawScreen(Canvas canvas) {
+        // 启动动画独立于主菜单版式：演出播放期间整个屏幕让给演出
+        if (DrIntroPlayer.isActive() && !DrIntroPlayer.isFinished()) {
+            if (!DrIntroPlayer.render(canvas, width, height)) {
+                canvas.drawColor(0xFF000000);
+            }
+            return;
+        }
+        if (DrIntroPlayer.isActive()) {
+            DrIntroPlayer.close();
+        }
 
         long now = System.nanoTime();
         float delta = frameDelta(now);
@@ -284,6 +295,9 @@ public final class MainMenuScreen extends AbstractSkijaScreen {
 
     @Override
     public boolean mouseClicked(MouseButtonEvent event, boolean doubleClick) {
+        if (DrIntroPlayer.isActive() && !DrIntroPlayer.isFinished()) {
+            return true;
+        }
         if (event.button() != GLFW.GLFW_MOUSE_BUTTON_LEFT || pendingAction != null) {
             return false;
         }
@@ -398,6 +412,9 @@ public final class MainMenuScreen extends AbstractSkijaScreen {
 
     @Override
     public boolean keyPressed(KeyEvent event) {
+        if (DrIntroPlayer.isActive() && !DrIntroPlayer.isFinished()) {
+            return true;
+        }
         return event.isEscape() || super.keyPressed(event);
     }
 

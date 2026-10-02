@@ -64,7 +64,6 @@ public final class BedESP extends Module {
     private static final int SCAN_DOWN = 12;
     /** 每张床的防御标签最多列几行（来源的 FeatureSupport_261 也是固定行数）。 */
     private static final int TAG_ROWS = 5;
-    private static final int TEXT_COLOR = UiTheme.TEXT;
     private static final int TAG_PLATE = 0x8C0A0F14;
     private static final int TAG_PLATE_BLUR = 0xD90A0F14;
 
@@ -258,7 +257,7 @@ public final class BedESP extends Module {
             SkijaUi.rounded(canvas, left, top, boxWidth, boxHeight, 2.0F * scale, plateColor);
             float textTop = top + padding;
             for (String row : tag.rows()) {
-                SkijaUi.textShadow(canvas, row, left + padding, textTop, lineHeight, TEXT_COLOR, fontSize);
+                SkijaUi.textShadow(canvas, row, left + padding, textTop, lineHeight, UiTheme.text(), fontSize);
                 textTop += lineHeight;
             }
         }

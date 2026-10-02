@@ -52,6 +52,9 @@ public final class FeatureRuntime {
             com.dioxidelite.module.modules.render.advanced.RenderModuleRegistry.registerAll();
             LuaScriptManager.INSTANCE.loadAll();
             ConfigManager.INSTANCE.load();
+            // 主题状态先落地；启动动画附加项开启时立刻预热演出（加载画面阶段就能接管）
+            com.dioxidelite.ui.theme.ThemeRuntime.init();
+            com.dioxidelite.ui.dr.DrIntroPlayer.preloadAsync();
             CommandManager.INSTANCE.init();
             NotificationManager.INSTANCE.start();
             musicStarted = true;
@@ -100,6 +103,7 @@ public final class FeatureRuntime {
             musicStarted = false;
         }
         active = false;
+        com.dioxidelite.audio.AudioManager.close();
         SkijaRenderer.close();
     }
 }

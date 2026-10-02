@@ -415,7 +415,7 @@ final class UiControls {
 
         void draw(Canvas canvas, int mouseX, int mouseY, int accent, int fill, int border) {
             boolean hovered = bounds.contains(mouseX, mouseY);
-            int outline = focused ? accent : hovered ? UiTheme.TEXT_FAINT : border;
+            int outline = focused ? accent : hovered ? UiTheme.textFaint() : border;
             SkijaUi.rounded(canvas, bounds.x, bounds.y, bounds.width, bounds.height, UiTheme.RADIUS_SMALL, outline);
             SkijaUi.rounded(
                     canvas,
@@ -434,7 +434,7 @@ final class UiControls {
                         bounds.x + 5,
                         bounds.y,
                         bounds.height,
-                        UiTheme.TEXT_FAINT,
+                        UiTheme.textFaint(),
                         9.0F
                 );
                 return;
@@ -475,13 +475,13 @@ final class UiControls {
                     bounds.x + 5,
                     bounds.y,
                     bounds.height,
-                    UiTheme.TEXT,
+                    UiTheme.text(),
                     9.0F
             );
             if (focused && (System.currentTimeMillis() / 500L) % 2L == 0L) {
                 int visibleCursor = Math.max(viewStart, Math.min(cursor, visibleEnd));
                 float cursorX = bounds.x + 5 + inputTextWidth(shown.substring(viewStart, visibleCursor));
-                SkijaUi.fill(canvas, cursorX, bounds.y + 4, 1, Math.max(1, bounds.height - 8), UiTheme.TEXT);
+                SkijaUi.fill(canvas, cursorX, bounds.y + 4, 1, Math.max(1, bounds.height - 8), UiTheme.text());
             }
         }
 

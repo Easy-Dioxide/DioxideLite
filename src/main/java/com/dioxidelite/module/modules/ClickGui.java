@@ -51,4 +51,12 @@ public final class ClickGui extends Module {
             case Setsuna -> new PopClickGuiScreen(parent);
         };
     }
+
+    /** 直接开到 THEMES 主题页（DR 底栏 UI_STYLE、主题模块入口）。 */
+    public Screen createThemeScreen(Screen parent) {
+        return switch (mode.get()) {
+            case LegacyStyle -> new WindowClickGuiScreen(parent, true);
+            case Setsuna -> new PopClickGuiScreen(parent, true);
+        };
+    }
 }

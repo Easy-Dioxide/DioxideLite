@@ -1,6 +1,8 @@
 package com.dioxidelite.ui.clickgui;
 
 import com.dioxidelite.render.SkijaUi;
+import com.dioxidelite.ui.theme.Slot;
+import com.dioxidelite.ui.theme.Themes;
 import io.github.humbleui.skija.Canvas;
 
 /**
@@ -122,9 +124,9 @@ public final class GuiPalette {
         return hsla(seedHue, seedSat * chromaScale, tone, 1.0F);
     }
 
-    /** Accent highlight (MD3 primary, tone ~81). */
+    /** Accent highlight (MD3 primary, tone ~81)：主题 accent 槽优先。 */
     public static int primary() {
-        return tonal(1.10F, 0.81F);
+        return Themes.resolve(Slot.ACCENT, () -> tonal(1.10F, 0.81F));
     }
 
     /** Text/icon colour on top of the accent. */
@@ -137,9 +139,10 @@ public final class GuiPalette {
         return tonal(0.72F, 0.38F);
     }
 
-    /** Soft accent surface used for "enabled" rows (MD3 secondaryContainer). */
+    /** Soft accent surface used for "enabled" rows：cardEnabled → accentSoft 依次回退。 */
     public static int secondaryContainer() {
-        return withAlpha(tonal(0.35F, 0.30F), alpha(0.92F));
+        return Themes.resolve(Slot.CARD_ENABLED, () -> Themes.resolve(Slot.ACCENT_SOFT,
+                () -> withAlpha(tonal(0.35F, 0.30F), alpha(0.92F))));
     }
 
     // surfaces ---------------------------------------------------------
@@ -148,34 +151,40 @@ public final class GuiPalette {
         return withAlpha(0xFF000000, alpha(ALPHA_BACKDROP * alphaMultiplier));
     }
 
-    /** Panel body (MD3 surfaceContainer). */
+    /** Panel body (MD3 surfaceContainer)：panel 槽优先，其次 windowBg。 */
     public static int panel() {
-        return withAlpha(tonal(0.09F, 0.115F), alpha(0.94F));
+        return Themes.resolve(Slot.PANEL, () -> Themes.resolve(Slot.WINDOW_BG,
+                () -> withAlpha(tonal(0.09F, 0.115F), alpha(0.94F))));
     }
 
     /** Cards / rows inside a panel (MD3 surfaceContainerHigh). */
     public static int panelInner() {
-        return withAlpha(tonal(0.10F, 0.155F), alpha(0.90F));
+        return Themes.resolve(Slot.PANEL_INNER,
+                () -> withAlpha(tonal(0.10F, 0.155F), alpha(0.90F)));
     }
 
     /** Highest elevation surface (MD3 surfaceContainerHighest). */
     public static int section() {
-        return withAlpha(tonal(0.10F, 0.195F), alpha(0.86F));
+        return Themes.resolve(Slot.SECTION,
+                () -> withAlpha(tonal(0.10F, 0.195F), alpha(0.86F)));
     }
 
-    /** Panel header band. */
+    /** Panel header band：header 槽优先，其次 windowHeader。 */
     public static int header() {
-        return withAlpha(tonal(0.10F, 0.145F), alpha(0.92F));
+        return Themes.resolve(Slot.HEADER, () -> Themes.resolve(Slot.WINDOW_HEADER,
+                () -> withAlpha(tonal(0.10F, 0.145F), alpha(0.92F))));
     }
 
-    /** MD3 outline - the stroke colour used by every GUI surface. */
+    /** MD3 outline - the stroke colour used by every GUI surface：outline → windowStroke。 */
     public static int outline() {
-        return withAlpha(tonal(0.16F, 0.47F), alpha(0.95F));
+        return Themes.resolve(Slot.OUTLINE, () -> Themes.resolve(Slot.WINDOW_STROKE,
+                () -> withAlpha(tonal(0.16F, 0.47F), alpha(0.95F))));
     }
 
-    /** MD3 outlineVariant - separators and faint strokes. */
+    /** MD3 outlineVariant - separators and faint strokes：outlineVariant → strokeSoft。 */
     public static int outlineVariant() {
-        return withAlpha(tonal(0.14F, 0.26F), alpha(0.85F));
+        return Themes.resolve(Slot.OUTLINE_VARIANT, () -> Themes.resolve(Slot.STROKE_SOFT,
+                () -> withAlpha(tonal(0.14F, 0.26F), alpha(0.85F))));
     }
 
     /** Stroke colour (alias of {@link #outline()}). */
@@ -188,50 +197,55 @@ public final class GuiPalette {
         return primary();
     }
 
-    /** Hover overlay: onSurface at 8 % (reference UiSupport_545). */
+    /** Hover overlay: onSurface at 8 % (reference UiSupport_545)：surfaceHover 槽优先。 */
     public static int hover() {
-        return withAlpha(onSurface(), alpha(ALPHA_HOVER));
+        return Themes.resolve(Slot.SURFACE_HOVER,
+                () -> withAlpha(onSurface(), alpha(ALPHA_HOVER)));
     }
 
-    /** Selected/pressed plate: secondaryContainer. */
+    /** Selected/pressed plate：accentSoft → secondaryContainer 依次回退。 */
     public static int active() {
-        return secondaryContainer();
+        return Themes.resolve(Slot.ACCENT_SOFT, GuiPalette::secondaryContainer);
     }
 
     // text -------------------------------------------------------------
     public static int text() {
-        return tonal(0.05F, 0.90F);
+        return Themes.resolve(Slot.TEXT_PRIMARY, () -> tonal(0.05F, 0.90F));
     }
 
     public static int textDim() {
-        return withAlpha(tonal(0.07F, 0.78F), alpha(0.92F));
+        return Themes.resolve(Slot.TEXT_MUTED,
+                () -> withAlpha(tonal(0.07F, 0.78F), alpha(0.92F)));
     }
 
     public static int textFaint() {
-        return withAlpha(tonal(0.07F, 0.62F), alpha(0.62F));
+        return Themes.resolve(Slot.TEXT_FAINT,
+                () -> withAlpha(tonal(0.07F, 0.62F), alpha(0.62F)));
     }
 
     public static int textOff() {
-        return withAlpha(tonal(0.07F, 0.52F), alpha(0.48F));
+        return Themes.resolve(Slot.TEXT_FAINT,
+                () -> withAlpha(tonal(0.07F, 0.52F), alpha(0.48F)));
     }
 
     public static int onSurface() {
-        return tonal(0.05F, 0.90F);
+        return text();
     }
 
     // tracks / bars ----------------------------------------------------
     /** Unfilled slider/toggle track (MD3 surfaceContainerHighest). */
     public static int track() {
-        return tonal(0.10F, 0.22F);
+        return Themes.resolve(Slot.TRACK, () -> tonal(0.10F, 0.22F));
     }
 
     public static int trackFaint() {
-        return withAlpha(tonal(0.10F, 0.22F), alpha(0.55F));
+        return Themes.resolve(Slot.TRACK,
+                () -> withAlpha(tonal(0.10F, 0.22F), alpha(0.55F)));
     }
 
     /** Scrollbar thumb (MD3 outlineVariant at 80 %). */
     public static int scroll() {
-        return withAlpha(outlineVariant(), alpha(0.85F));
+        return Themes.resolve(Slot.SCROLL, () -> withAlpha(outlineVariant(), alpha(0.85F)));
     }
 
     public static int white(float fraction) {
@@ -244,11 +258,13 @@ public final class GuiPalette {
 
     // light (daylight) variants ---------------------------------------
     public static int lightPanel() {
-        return withAlpha(hsla(seedHue, seedSat * 0.10F, 0.965F, 1.0F), alpha(0.94F));
+        return Themes.resolve(Slot.PANEL, () -> Themes.resolve(Slot.WINDOW_BG,
+                () -> withAlpha(hsla(seedHue, seedSat * 0.10F, 0.965F, 1.0F), alpha(0.94F))));
     }
 
     public static int lightPanelInner() {
-        return withAlpha(hsla(seedHue, seedSat * 0.12F, 0.925F, 1.0F), alpha(0.90F));
+        return Themes.resolve(Slot.PANEL_INNER,
+                () -> withAlpha(hsla(seedHue, seedSat * 0.12F, 0.925F, 1.0F), alpha(0.90F)));
     }
 
     public static int lightHover() {
@@ -256,19 +272,23 @@ public final class GuiPalette {
     }
 
     public static int lightText() {
-        return hsla(seedHue, seedSat * 0.30F, 0.18F, 1.0F);
+        return Themes.resolve(Slot.TEXT_PRIMARY,
+                () -> hsla(seedHue, seedSat * 0.30F, 0.18F, 1.0F));
     }
 
     public static int lightTextDim() {
-        return hsla(seedHue, seedSat * 0.18F, 0.38F, 1.0F);
+        return Themes.resolve(Slot.TEXT_MUTED,
+                () -> hsla(seedHue, seedSat * 0.18F, 0.38F, 1.0F));
     }
 
     public static int lightTextFaint() {
-        return hsla(seedHue, seedSat * 0.12F, 0.56F, 1.0F);
+        return Themes.resolve(Slot.TEXT_FAINT,
+                () -> hsla(seedHue, seedSat * 0.12F, 0.56F, 1.0F));
     }
 
     public static int lightTrack() {
-        return hsla(seedHue, seedSat * 0.10F, 0.80F, 1.0F);
+        return Themes.resolve(Slot.TRACK,
+                () -> hsla(seedHue, seedSat * 0.10F, 0.80F, 1.0F));
     }
 
     // ------------------------------------------------------------------

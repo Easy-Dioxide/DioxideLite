@@ -40,7 +40,7 @@ public final class ScaffoldBlockHUD extends EpsilonHudModule {
     public final DoubleSetting scale = add(new DoubleSetting("Scale", 1.0, 0.65, 1.6, 0.05));
     public final BooleanSetting background = add(new BooleanSetting("Background", true));
     public final ColorSetting backgroundColor = add(new ColorSetting("Background Color",
-            new Color(UiTheme.withAlpha(UiTheme.SURFACE, 174), true), true)
+            new Color(UiTheme.withAlpha(UiTheme.surface(), 174), true), true)
             .visibleWhen(background::get));
     public final BooleanSetting border = add(new BooleanSetting("Border", true));
     public final DoubleSetting borderRadius = add(new DoubleSetting(
@@ -138,10 +138,10 @@ public final class ScaffoldBlockHUD extends EpsilonHudModule {
                 contentX + 3.0F * s, contentY + 2.0F * s, 16.0F * s, textAlpha);
         float valueX = contentX + 22.0F * s;
         SkijaUi.boldText(event.canvas(), value, valueX, contentY, contentHeight,
-                UiTheme.withAlpha(UiTheme.TEXT, textAlpha), valueFont);
+                UiTheme.withAlpha(UiTheme.text(), textAlpha), valueFont);
         float labelX = valueX + 3.0F * s + SkijaUi.boldTextWidth(value, valueFont);
         SkijaUi.text(event.canvas(), "BLOCKS", labelX, contentY, contentHeight,
-                UiTheme.withAlpha(UiTheme.TEXT_FAINT, textAlpha), labelFont);
+                UiTheme.withAlpha(UiTheme.textFaint(), textAlpha), labelFont);
 
     }
 

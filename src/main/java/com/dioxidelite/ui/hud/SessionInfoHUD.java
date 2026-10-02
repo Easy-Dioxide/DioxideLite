@@ -32,7 +32,7 @@ public final class SessionInfoHUD extends EpsilonHudModule {
     public final BooleanSetting showServerIp = add(new BooleanSetting("Show Server IP", false));
     public final BooleanSetting background = add(new BooleanSetting("Background", true));
     public final ColorSetting backgroundColor = add(new ColorSetting("Background Color",
-            new Color(UiTheme.withAlpha(UiTheme.SURFACE, 208), true), true)
+            new Color(UiTheme.withAlpha(UiTheme.surface(), 208), true), true)
             .visibleWhen(background::get));
     public final BooleanSetting blur = add(new BooleanSetting("Blur", false));
     public final IntSetting blurStrength = add(new IntSetting("Blur Strength", 6, 1, 16, 1)
@@ -110,7 +110,7 @@ public final class SessionInfoHUD extends EpsilonHudModule {
 
         float headerHeight = 17.0F * s;
         SkijaUi.boldText(event.canvas(), "SESSION INFO", x + padding, y,
-                headerHeight, UiTheme.TEXT, titleSize);
+                headerHeight, UiTheme.text(), titleSize);
         SkijaUi.fill(event.canvas(), x + padding, y + headerHeight - 1.0F * s,
                 width - padding * 2.0F, 1.0F * s,
                 UiTheme.withAlpha(UiTheme.accent(), 150));
@@ -123,13 +123,13 @@ public final class SessionInfoHUD extends EpsilonHudModule {
         float textX = avatarX + avatarSize + gap;
         if (showServer) {
             SkijaUi.boldText(event.canvas(), elapsed, textX, contentY + 2.0F * s,
-                    17.0F * s, UiTheme.TEXT, timeSize);
+                    17.0F * s, UiTheme.text(), timeSize);
             SkijaUi.text(event.canvas(), HudRenderUtil.fit(server, textWidth, serverSize, false),
                     textX, contentY + 19.0F * s, 12.0F * s,
-                    UiTheme.TEXT_MUTED, serverSize);
+                    UiTheme.textMuted(), serverSize);
         } else {
             SkijaUi.boldText(event.canvas(), elapsed, textX, contentY, contentHeight,
-                    UiTheme.TEXT, timeSize);
+                    UiTheme.text(), timeSize);
         }
     }
 

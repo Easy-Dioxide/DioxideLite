@@ -3,6 +3,12 @@ package com.dioxidelite.ui.screen;
 import com.dioxidelite.manager.AltManager;
 import com.dioxidelite.render.SkijaUi;
 import com.dioxidelite.ui.UiTheme;
+import com.dioxidelite.ui.dr.DrFont;
+import com.dioxidelite.ui.dr.DrPage;
+import com.dioxidelite.ui.dr.DrPageRenderer;
+import com.dioxidelite.ui.dr.DrSound;
+import com.dioxidelite.ui.dr.DrTheme;
+import com.dioxidelite.ui.dr.DrThemeState;
 import com.dioxidelite.util.alt.Alt;
 import com.dioxidelite.util.alt.MicrosoftAuthService;
 import io.github.humbleui.skija.Canvas;
@@ -14,6 +20,7 @@ import net.minecraft.network.chat.Component;
 import org.lwjgl.glfw.GLFW;
 
 import java.time.Duration;
+import java.util.ArrayList;
 import java.util.List;
 
 /** Account picker: a scrollable account-card grid over a bottom action bar. */
@@ -38,6 +45,8 @@ public final class AltManagerScreen extends AbstractSkijaScreen {
     private boolean loginRunning;
     private String status = "Select an account";
     private boolean statusError;
+    // DR 主题下的列表版式（320x240），非 DR 时完全不参与
+    private final DrPageRenderer drPage = new DrPageRenderer(new DrPageSource());
 
     public AltManagerScreen(Screen parent) {
         super(Component.literal("Alt Manager"));
@@ -50,11 +59,19 @@ public final class AltManagerScreen extends AbstractSkijaScreen {
     protected void init() {
         AltManager.INSTANCE.load();
         refreshAccounts();
-        updateInputBounds(layout());
+        if (DrTheme.active()) {
+            drInputBounds();
+        } else {
+            updateInputBounds(layout());
+        }
     }
 
     @Override
     protected void drawScreen(Canvas canvas) {
+        if (DrTheme.active()) {
+            drawDrScreen(canvas);
+            return;
+        }
         Layout layout = layout();
         updateInputBounds(layout);
         clampFirstVisible(layout);
@@ -64,6 +81,175 @@ public final class AltManagerScreen extends AbstractSkijaScreen {
         drawGrid(canvas, layout);
         drawActionBar(canvas, layout);
         drawStatusBar(canvas, layout);
+    }
+
+    // DR 版式
+
+    private static final String[] DR_ACTIONS_CN = {"登录", "添加", "微软", "删除", "返回"};
+    private static final String[] DR_ACTIONS_EN = {"USE", "ADD", "MICROSOFT", "REMOVE", "BACK"};
+
+    private void drawDrScreen(Canvas canvas) {
+        drInputBounds();
+        drPage.render(canvas, width, height, 255);
+        float s = DrPage.scale(width, height);
+        float ox = DrPage.originX(width, s);
+        float oy = DrPage.originY(height, s);
+        canvas.save();
+        try {
+            canvas.translate(ox, oy);
+            canvas.scale(s, s);
+            drawDrInput(canvas);
+            drawDrStatus(canvas);
+        } finally {
+            canvas.restore();
+        }
+    }
+
+    /** 离线名输入框落在第三行空位，登录流程需要它 */
+    private void drInputBounds() {
+        offlineName.setBounds(new UiControls.Box(DrPage.BOX_X, 156f, DrPage.XL, 16f));
+    }
+
+    private void drawDrInput(Canvas canvas) {
+        String text = offlineName.text();
+        int color = DrBackdropTextColor();
+        if (text.isEmpty() && !offlineName.isFocused()) {
+            DrFont.drawShadowed(canvas, offlinePlaceholder(), DrPage.BOX_X + 4f, 159f, DrPage.FONT,
+                    DrBackdropArgba(color, 150));
+        } else {
+            offlineName.draw(canvas, Integer.MIN_VALUE, Integer.MIN_VALUE);
+        }
+        if (offlineName.isFocused()) {
+            float cursor = DrPage.BOX_X + 4f + DrFont.measureWidth(text, DrPage.FONT);
+            DrFont.drawShadowed(canvas, "_", cursor, 159f, DrPage.FONT, DrBackdropArgba(color, 230));
+        }
+    }
+
+    private void drawDrStatus(Canvas canvas) {
+        String mode = loginRunning ? "WORKING" : statusError ? "FAILED" : "READY";
+        String line = status == null ? "" : status;
+        DrFont.drawShadowed(canvas, DrFont.truncate(line, DrPage.FONT, 200f, ".."), 8f, 22f, DrPage.FONT,
+                DrBackdropArgba(DrBackdropTextColor(), 220));
+        DrFont.drawShadowed(canvas, mode, 8f, 4f, 6f, DrBackdropArgba(DrBackdropTextColor(), 160));
+    }
+
+    private String offlinePlaceholder() {
+        return DrThemeState.isChinese ? "输入离线用户名" : "Offline username";
+    }
+
+    private static int DrBackdropTextColor() {
+        return DrPage.colA();
+    }
+
+    private static int DrBackdropArgba(int rgb, int alpha) {
+        return (Math.max(0, Math.min(255, alpha)) << 24) | (rgb & 0xFFFFFF);
+    }
+
+    private List<DrPage.Action> drActions() {
+        String[] labels = DrThemeState.isChinese ? DR_ACTIONS_CN : DR_ACTIONS_EN;
+        return DrPage.layoutActions(labels);
+    }
+
+    private void drAction(int index) {
+        switch (index) {
+            case 0 -> {
+                drPlay(DrSound.Sfx.SELECT);
+                loginSelected();
+            }
+            case 1 -> {
+                drPlay(DrSound.Sfx.SELECT);
+                addOffline();
+            }
+            case 2 -> {
+                drPlay(DrSound.Sfx.SELECT);
+                startMicrosoftLogin();
+            }
+            case 3 -> {
+                drPlay(DrSound.Sfx.SELECT);
+                removeSelected();
+            }
+            default -> {
+                drPlay(DrSound.Sfx.BACK);
+                onClose();
+            }
+        }
+    }
+
+    private void drPlay(DrSound.Sfx sfx) {
+        DrSound.play(sfx);
+    }
+
+    private int drSelectedIndex() {
+        for (int i = 0; i < accounts.size(); i++) {
+            if (sameAccount(accounts.get(i), selected)) {
+                return i;
+            }
+        }
+        return -1;
+    }
+
+    private boolean drMouseClicked(MouseButtonEvent event, boolean doubleClick) {
+        float s = DrPage.scale(width, height);
+        float lx = (float) ((event.x() - DrPage.originX(width, s)) / s);
+        float ly = (float) ((event.y() - DrPage.originY(height, s)) / s);
+        if (event.button() == GLFW.GLFW_MOUSE_BUTTON_LEFT && offlineName.click(lx, ly, doubleClick)) {
+            return true;
+        }
+        int action = drPage.actionAt(event.x(), event.y(), width, height);
+        if (action >= 0) {
+            drAction(action);
+            return true;
+        }
+        int hit = drPage.mouseMoved(event.x(), event.y(), width, height);
+        if (hit >= 0 && hit < accounts.size()) {
+            if (sameAccount(accounts.get(hit), selected)) {
+                drPlay(DrSound.Sfx.SELECT);
+                loginSelected();
+            } else {
+                selected = accounts.get(hit);
+                setStatus("Selected " + selected.getUsername(), false);
+                drPlay(DrSound.Sfx.MOVE);
+            }
+        }
+        return true;
+    }
+
+    /** DR 版式的列表数据源：账号名 + 类型，底栏换成本页操作 */
+    private final class DrPageSource implements DrPageRenderer.Source {
+
+        private List<DrPage.Action> cachedActions;
+
+        @Override
+        public List<DrPage.Row> rows() {
+            List<DrPage.Row> list = new ArrayList<>(accounts.size());
+            for (Alt alt : accounts) {
+                list.add(new DrPage.Row(alt.getUsername(), "", accountType(alt)));
+            }
+            return list;
+        }
+
+        @Override
+        public List<DrPage.Action> actions() {
+            if (cachedActions == null) {
+                cachedActions = drActions();
+            }
+            return cachedActions;
+        }
+
+        @Override
+        public String title() {
+            return DrThemeState.isChinese ? "账号管理" : "Accounts";
+        }
+
+        @Override
+        public int selected() {
+            return drSelectedIndex();
+        }
+
+        @Override
+        public int version() {
+            return accounts.size() * 31 + (selected == null ? 0 : selected.getUsername().hashCode());
+        }
     }
 
     private void drawTopBar(Canvas canvas, Layout layout) {
@@ -85,7 +271,7 @@ public final class AltManagerScreen extends AbstractSkijaScreen {
         if (accounts.isEmpty()) {
             UiControls.centeredText(canvas, "No saved accounts",
                     new UiControls.Box(grid.x() + 8, grid.y(), grid.width() - 16, grid.height()),
-                    UiTheme.TEXT_FAINT, false);
+                    UiTheme.textFaint(), false);
             return;
         }
 
@@ -158,7 +344,7 @@ public final class AltManagerScreen extends AbstractSkijaScreen {
     private void drawStatusBar(Canvas canvas, Layout layout) {
         SkijaUi.fill(canvas, layout.statusBar.x(), layout.statusBar.y(), layout.statusBar.width(),
                 layout.statusBar.height(), UiTheme.argb(150, 8, 12, 14));
-        int color = statusError ? UiTheme.DANGER : loginRunning ? UiTheme.INFO : UiTheme.TEXT_MUTED;
+        int color = statusError ? UiTheme.danger() : loginRunning ? UiTheme.info() : UiTheme.textMuted();
         SkijaUi.rounded(canvas, layout.statusBar.x() + 10, layout.statusBar.y() + 9, 5, 5, 2.5F, color);
         SkijaUi.text(canvas, UiControls.ellipsize(status, layout.statusBar.width() - 80),
                 layout.statusBar.x() + 21, layout.statusBar.y() + 4, layout.statusBar.height() - 4,
@@ -171,6 +357,9 @@ public final class AltManagerScreen extends AbstractSkijaScreen {
 
     @Override
     public boolean mouseClicked(MouseButtonEvent event, boolean doubleClick) {
+        if (DrTheme.active()) {
+            return drMouseClicked(event, doubleClick);
+        }
         Layout layout = layout();
         updateInputBounds(layout);
         if (event.button() == GLFW.GLFW_MOUSE_BUTTON_LEFT) {
@@ -214,6 +403,10 @@ public final class AltManagerScreen extends AbstractSkijaScreen {
 
     @Override
     public boolean mouseScrolled(double mouseX, double mouseY, double scrollX, double scrollY) {
+        if (DrTheme.active()) {
+            drPage.mouseScrolled(scrollY);
+            return true;
+        }
         Layout layout = layout();
         if (!layout.grid.contains(mouseX, mouseY)) {
             return false;
@@ -226,6 +419,9 @@ public final class AltManagerScreen extends AbstractSkijaScreen {
 
     @Override
     public boolean keyPressed(KeyEvent event) {
+        if (DrTheme.active()) {
+            return drKeyPressed(event);
+        }
         if (event.key() == GLFW.GLFW_KEY_TAB) {
             if (offlineName.isFocused()) {
                 offlineName.blur();
@@ -256,7 +452,56 @@ public final class AltManagerScreen extends AbstractSkijaScreen {
 
     @Override
     public boolean charTyped(CharacterEvent event) {
+        if (DrTheme.active()) {
+            return offlineName.charTyped(event) || super.charTyped(event);
+        }
         return offlineName.charTyped(event) || minecraftToken.charTyped(event) || super.charTyped(event);
+    }
+
+    @Override
+    public void mouseMoved(double mouseX, double mouseY) {
+        if (DrTheme.active()) {
+            drPage.mouseMoved(mouseX, mouseY, width, height);
+        }
+    }
+
+    private boolean drKeyPressed(KeyEvent event) {
+        if (offlineName.isFocused()) {
+            if (event.isEscape()) {
+                offlineName.blur();
+                return true;
+            }
+            if (event.isConfirmation()) {
+                addOffline();
+                return true;
+            }
+            if (offlineName.keyPressed(event, minecraft)) {
+                return true;
+            }
+        }
+        if (event.isEscape()) {
+            drPlay(DrSound.Sfx.BACK);
+            onClose();
+            return true;
+        }
+        int confirm = drPage.confirmKey(event.key());
+        if (confirm != -2) {
+            if (confirm >= 0 && confirm < accounts.size()) {
+                if (sameAccount(accounts.get(confirm), selected)) {
+                    drPlay(DrSound.Sfx.SELECT);
+                    loginSelected();
+                } else {
+                    selected = accounts.get(confirm);
+                    setStatus("Selected " + selected.getUsername(), false);
+                    drPlay(DrSound.Sfx.MOVE);
+                }
+            } else {
+                drAction(drPage.cursorActionIndex());
+            }
+            return true;
+        }
+        drPage.keyPressed(event.key());
+        return true;
     }
 
     @Override

@@ -387,7 +387,7 @@ public final class MusicScreen extends AbstractSkijaScreen {
                 accountBusy ? "Refresh QR code" : "Generate QR code", !playQueued, true);
         String loginStatus = qrLoginStatus();
         SkijaUi.text(canvas, UiControls.ellipsize(loginStatus, panelWidth), x,
-                layout.qrLogin.y() + 25, 12, statusError ? UiTheme.DANGER : TEXT_MUTED, 8);
+                layout.qrLogin.y() + 25, 12, statusError ? UiTheme.danger() : TEXT_MUTED, 8);
         clickRegions.add(new ClickRegion(Action.QR_LOGIN, null, layout.qrLogin));
     }
 
@@ -520,7 +520,7 @@ public final class MusicScreen extends AbstractSkijaScreen {
         clampScroll(content.height(), totalHeight);
         float y = content.y() + contentScroll;
         SkijaUi.boldText(canvas, pageTitle(), content.x() + 12, y + 10, 18, TEXT, 11);
-        int statusColor = statusError ? UiTheme.DANGER : TEXT_MUTED;
+        int statusColor = statusError ? UiTheme.danger() : TEXT_MUTED;
         SkijaUi.text(canvas, UiControls.ellipsize(loadingPage ? "Loading..." : displayStatus(),
                         content.width() - 24), content.x() + 12, y + 27, 12, statusColor, 7);
         drawSongs(canvas, content.x() + 10, y + 47, content.width() - 20, visibleSongs, content);
