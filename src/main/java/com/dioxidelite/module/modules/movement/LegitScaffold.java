@@ -29,13 +29,11 @@ public final class LegitScaffold extends Module {
     public static final LegitScaffold INSTANCE = new LegitScaffold();
 
     private final BooleanSetting requireSneak = add(new BooleanSetting("Require Sneak", false));
+    private final DoubleSetting sneakDelay = add(new DoubleSetting("Sneak Delay (ms)", 100.0, 0.0, 500.0, 10.0));
     private final DoubleSetting aimSpeed = add(new DoubleSetting("Aim Speed", 3.5, 1.0, 10.0, 0.1));
     private final BooleanSetting placeBlocks = add(new BooleanSetting("Place Blocks", true));
     private final BooleanSetting autoSprint = add(new BooleanSetting("Auto Sprint", true));
-    private final BooleanSetting placeCheck = add(new BooleanSetting("Place Check", true,
-            "转头对准后再放置，绕过 Grim 的 scaffold 检测"));
-
-    private static final long SNEAK_DELAY_MS = 100L;
+    private final BooleanSetting placeCheck = add(new BooleanSetting("Place Check", true));
 
     private boolean wasSneaking;
     private long edgeSneakTime = 0L;
@@ -63,7 +61,7 @@ public final class LegitScaffold extends Module {
         boolean atEdge = isAtEdge();
         boolean shouldSneak = atEdge;
 
-        if (!shouldSneak && System.currentTimeMillis() - edgeSneakTime < SNEAK_DELAY_MS) {
+        if (!shouldSneak && System.currentTimeMillis() - edgeSneakTime < sneakDelay.get().longValue()) {
             shouldSneak = true;
         }
 
@@ -73,7 +71,7 @@ public final class LegitScaffold extends Module {
         }
 
         if (autoSprint.get() && mc.player.onGround() && !shouldSneak
-                && mc.player.forwardImpulse > 0 && !mc.player.isUsingItem()) {
+                && mc.player.input.getMoveVector().y > 0 && !mc.player.isUsingItem()) {
             mc.player.setSprinting(true);
         }
 
@@ -92,7 +90,7 @@ public final class LegitScaffold extends Module {
 
         AABB box = mc.player.getBoundingBox();
         AABB checkBox = box.inflate(-0.2, 0.0, -0.2).move(mx, -1.0, mz);
-        return mc.level.getBlockCollisions(mc.player, checkBox).findAny().isEmpty();
+        return !mc.level.getBlockCollisions(mc.player, checkBox).iterator().hasNext();
     }
 
     private void placeUnderFeet() {

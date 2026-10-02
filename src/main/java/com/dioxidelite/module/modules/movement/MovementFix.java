@@ -34,8 +34,7 @@ public final class MovementFix extends Module {
     private final EnumSetting<Mode> mode = add(new EnumSetting<>("Mode", Mode.Silent));
     private final BooleanSetting packetOnly = add(new BooleanSetting("Packet Only", false)
             .visibleWhen(() -> mode.is(Mode.Packet) || isSprintOnlyMode()));
-    private final BooleanSetting vapeStrafe = add(new BooleanSetting("Vape Strafe", true,
-            "Vape 模式：按静默 yaw 重映射 WASD 方向")
+    private final BooleanSetting vapeStrafe = add(new BooleanSetting("Vape Strafe", true)
             .visibleWhen(() -> mode.is(Mode.Vape)));
 
     private MovementFix() {

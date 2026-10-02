@@ -46,7 +46,8 @@ public final class SilentAura extends Module {
     private final BooleanSetting invisibles = add(new BooleanSetting("Invisibles", false));
     private final BooleanSetting showTarget = add(new BooleanSetting("Show Target", false));
     private final ColorSetting targetColor = add(new ColorSetting("Target Color", new Color(255, 200, 112, 180)));
-    private final BooleanSetting perfectSwing = add(new BooleanSetting("Perfect Swing", true, "Only attack when cooldown ready"));
+    private final BooleanSetting perfectSwing = add(new BooleanSetting("Perfect Swing", true));
+    private final BooleanSetting randomizeCPS = add(new BooleanSetting("Randomize CPS", true));
 
     private LivingEntity target;
     private long lastAttackTime = 0L;
@@ -77,14 +78,8 @@ public final class SilentAura extends Module {
 
     private void updateTarget() {
         double r = range.get();
-        TargetRequest request = TargetRequest.builder()
-                .range(r)
-                .players(players.get())
-                .mobs(mobs.get())
-                .animals(animals.get())
-                .invisibles(invisibles.get())
-                .maxTargets(10)
-                .build();
+        TargetRequest request = TargetRequest.of(r, maxAngle.get().floatValue(),
+                players.get(), mobs.get(), animals.get(), false, invisibles.get(), 10);
 
         List<LivingEntity> candidates = TargetManager.INSTANCE.acquireTargets(request);
         candidates.removeIf(e -> !isValidTarget(e));
@@ -117,7 +112,7 @@ public final class SilentAura extends Module {
     private boolean isValidTarget(LivingEntity e) {
         if (e == null || !e.isAlive() || e.isRemoved()) return false;
         if (e == mc.player) return false;
-        if (FriendManager.INSTANCE.isFriend(e)) return false;
+        if (e instanceof Player p && FriendManager.INSTANCE.isFriend(p)) return false;
         if (RotationUtils.getEyeDistanceToEntity(e) > range.get()) return false;
         Rot2f rot = RotationUtils.getRotationsToEntity(e);
         double angleDiff = Math.abs(((rot.getYaw() - mc.player.getYRot() + 540) % 360) - 180);
@@ -136,13 +131,15 @@ public final class SilentAura extends Module {
         float cooldown = mc.player.getAttackStrengthScale(0f);
         if (perfectSwing.get() && cooldown < 1.0f) return;
 
-        // CPS 间隔 + 随机抖动（默认启用，绕过 Matrix/NCP 的固定攻击频率检测）
+        // CPS 间隔 + 随机抖动，绕过 Matrix/NCP 的固定攻击频率检测
         long baseInterval = (long) (1000.0 / attackSpeed.get());
-        long interval = baseInterval + (long) ((Math.random() - 0.5) * baseInterval * 0.4);
+        long interval = randomizeCPS.get()
+                ? baseInterval + (long) ((Math.random() - 0.5) * baseInterval * 0.4)
+                : baseInterval;
         if (System.currentTimeMillis() - lastAttackTime < interval) return;
 
         // 转头必须对准目标（容差内）才攻击，避免打空气被检测
-        if (!RotationUtils.isInFov(target, 8.0)) return;
+        if (!RotationUtils.isInFov(target, 8.0f)) return;
 
         mc.gameMode.attack(mc.player, target);
         mc.player.swing(InteractionHand.MAIN_HAND);
