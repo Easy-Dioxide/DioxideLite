@@ -27,6 +27,7 @@ import com.dioxidelite.module.modules.player.AntiResourcePack;
 import com.dioxidelite.module.modules.player.AntiWeb;
 import com.dioxidelite.module.modules.combat.AutoHitCrystal;
 import com.dioxidelite.module.modules.player.AutoMLG;
+import com.dioxidelite.module.modules.utility.Clutch;
 import com.dioxidelite.module.modules.player.AutoTool;
 import com.dioxidelite.module.modules.combat.AutoTotem;
 import com.dioxidelite.module.modules.combat.Backtrack;
@@ -45,6 +46,7 @@ import com.dioxidelite.module.modules.player.InvManager;
 import com.dioxidelite.module.modules.movement.InvMove;
 import com.dioxidelite.module.modules.movement.KeepSprint;
 import com.dioxidelite.module.modules.combat.KillAura;
+import com.dioxidelite.module.modules.combat.SilentAura;
 import com.dioxidelite.module.modules.combat.KillAuraPlus;
 import com.dioxidelite.module.modules.combat.MaceAura;
 import com.dioxidelite.module.modules.misc.MiddleClickFriend;
@@ -55,6 +57,7 @@ import com.dioxidelite.module.modules.movement.NoSlow;
 import com.dioxidelite.module.modules.render.OreTracers;
 import com.dioxidelite.module.modules.player.PacketEat;
 import com.dioxidelite.module.modules.movement.Scaffold;
+import com.dioxidelite.module.modules.movement.LegitScaffold;
 import com.dioxidelite.module.modules.render.SpawnerFinder;
 import com.dioxidelite.module.modules.combat.SpearKill;
 import com.dioxidelite.module.modules.movement.Speed;
@@ -167,6 +170,7 @@ public final class ModuleManager {
         register(FakeLag.INSTANCE);
         register(KillAura.INSTANCE);
         register(KillAuraPlus.INSTANCE);
+        register(SilentAura.INSTANCE);
         register(MaceAura.INSTANCE);
         register(SpearKill.INSTANCE);
         register(Surround.INSTANCE);
@@ -184,6 +188,7 @@ public final class ModuleManager {
         register(NoJumpDelay.INSTANCE);
         register(NoSlow.INSTANCE);
         register(Scaffold.INSTANCE);
+        register(LegitScaffold.INSTANCE);
         register(Speed.INSTANCE);
         register(Velocity.INSTANCE);
         // --- PLAYER ---
@@ -194,6 +199,7 @@ public final class ModuleManager {
         register(NameChanger.INSTANCE);
         register(AntiWeb.INSTANCE);
         register(AutoMLG.INSTANCE);
+        register(Clutch.INSTANCE);
         register(AutoTool.INSTANCE);
         register(BedAura.INSTANCE);
         register(ChestStealer.INSTANCE);
