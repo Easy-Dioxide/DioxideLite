@@ -252,7 +252,12 @@ public final class RotationManager {
                 }
             }
 
-            rotations = RotationUtils.smooth(new Rot2f(targetYaw, targetPitch), Math.ceil(rotationSpeed) + Math.random());
+            // Vape 风格 PID 加速步进（替换原 RotationUtils.smooth 的简单 lerp）
+            // - 步长基于鼠标灵敏度（getMouseScale），与真人手搓输入一致，绕过 Grim/Matrix/NCP 的
+            //   旋转速度/加速度检测
+            // - 加速度模式 angle-based：剩余角度越大步进越快，但不会超过每 tick 上限
+            // - 微抖动避免完美瞄准被检测
+            rotations = vapeSmooth(targetYaw, targetPitch);
         }
 
         smoothed = true;
@@ -266,6 +271,76 @@ public final class RotationManager {
         }
 
         mc.pick(1.0f);
+    }
+
+    /**
+     * Vape 风格旋转步进（移植自 gg.vape.rotation.FixedRotationController）。
+     * 每 tick 以「鼠标灵敏度单位」步进，剩余角度越大加速度越高，模拟真人甩枪轨迹。
+     * 绕过 Grim（rotation velocity/acceleration）、Matrix（snap/angle 检测）、
+     * NCP（rotation speed/head-body consistency）。
+     */
+    private Rot2f vapeSmooth(float targetYaw, float targetPitch) {
+        float curYaw = lastRotations.getYaw();
+        float curPitch = lastRotations.getPitch();
+
+        float yawError = Mth.wrapDegrees(targetYaw - curYaw);
+        float pitchError = Mth.wrapDegrees(targetPitch - curPitch);
+        float absYaw = Math.abs(yawError);
+        float absPitch = Math.abs(pitchError);
+
+        // 鼠标灵敏度系数（与游戏内 mouseSensitivity 换算一致）
+        double sens = mc.options.sensitivity().get();
+        float mouseScale = (float) (sens * 0.6f + 0.2f);
+        mouseScale = mouseScale * mouseScale * mouseScale * 8.0f;
+        float rotationPerStep = mouseScale * 0.15f;
+
+        float step = (float) (Math.max(rotationSpeed, 1.0) * 0.25);
+
+        // 容差内直接对准（不再步进），避免在目标点抖动
+        float tolerance = rotationPerStep * 1.5f;
+        if (absYaw <= tolerance && absPitch <= tolerance) {
+            return new Rot2f(targetYaw, targetPitch);
+        }
+
+        // yaw 步进 + angle-based 加速度
+        if (absYaw > tolerance) {
+            float yawStep = step;
+            // 比例缩放：当 pitch 误差更大时，yaw 步进按比例减小
+            if (absPitch > 0.001f) {
+                float ratio = absYaw / absPitch;
+                if (ratio < 1.0f) yawStep *= ratio;
+            }
+            // angle-based acceleration：剩余角度越大，步进越大（有上限）
+            double accel = (225.0 + absYaw) / 180.0;
+            yawStep *= (float) accel;
+            // 限制单 tick 最大步数，避免被判定为 snap
+            float maxSteps = absYaw / rotationPerStep;
+            yawStep = Math.min(yawStep, maxSteps);
+            curYaw += Math.signum(yawError) * yawStep * rotationPerStep;
+        }
+
+        // pitch 步进
+        if (absPitch > tolerance) {
+            float pitchStep = step;
+            if (absYaw > 0.001f) {
+                float ratio = absPitch / absYaw;
+                if (ratio < 1.0f) pitchStep *= ratio;
+            }
+            double accel = (135.0 + absPitch) / 90.0;
+            pitchStep *= (float) accel;
+            float maxSteps = absPitch / rotationPerStep;
+            pitchStep = Math.min(pitchStep, maxSteps);
+            curPitch += Math.signum(pitchError) * pitchStep * rotationPerStep;
+            curPitch = Mth.clamp(curPitch, -90f, 90f);
+        }
+
+        // 微抖动：避免每 tick 完美对准，真人不会每次都正中
+        float jitterYaw = (float) ((Math.random() - 0.5) * rotationPerStep * 0.3);
+        float jitterPitch = (float) ((Math.random() - 0.5) * rotationPerStep * 0.2);
+        curYaw += jitterYaw;
+        curPitch = Mth.clamp(curPitch + jitterPitch, -90f, 90f);
+
+        return new Rot2f(curYaw, curPitch);
     }
 
     private void correctDisabledRotations() {

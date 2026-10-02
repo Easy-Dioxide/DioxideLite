@@ -1,5 +1,6 @@
 package com.dioxidelite.mixin;
 
+import com.dioxidelite.module.modules.render.advanced.StreamerMode;
 import com.dioxidelite.util.legendwatch.LegendaryChatLocalizer;
 import net.minecraft.client.gui.components.ChatComponent;
 import net.minecraft.network.chat.Component;
@@ -18,7 +19,9 @@ public class ChatComponentMixin {
             at = @At("HEAD"),
             argsOnly = true,
             ordinal = 0)
-    private Component DioxideLite$localizeLegendaryNames(Component message) {
-        return LegendaryChatLocalizer.localize(message);
+    private Component DioxideLite$filterChat(Component message) {
+        message = LegendaryChatLocalizer.localize(message);
+        message = StreamerMode.INSTANCE.filter(message);
+        return message;
     }
 }

@@ -1,301 +1,161 @@
 package com.dioxidelite.module.modules.combat;
 
-// ---------------------------------------------------------------------------
-// 移植来源：Vape-v4 gg/vape/module/combat/SilentAura.java
-// 变更：
-//   - 去掉 Vape wrapper 层（gg.vape.wrapper.impl.* / MappedClasses / 混淆方法名），
-//     改用 Mojang 官方映射（mc.player / LivingEntity / Vec3 / AABB）。
-//   - 去掉 1.7.10 legacy 分支（updateAimLegacy / onSyntheticAttack / 直接 attackEntity）。
-//   - 去掉 AI 模型分支（Vape ModelManager / LiquidBounce MLP），仅保留 PID 旋转引擎。
-//   - 去掉 ForgeVersion 版本分支（DioxideLite 仅 26.1.2 单版本）。
-//   - Value 系统改为 DioxideLite Setting（BooleanSetting/DoubleSetting/IntSetting/EnumSetting）。
-//   - 旋转交给 DioxideLite RotationManager（setRotations + Rot2f + Priority），
-//     移动修复/视觉转头由客户端自带的 MovementFix + RotationManager.renderAnimation 接管，
-//     无需本模块再实现。
-//   - 事件注解 @EventHandler -> @Listen，事件类 EventPrePlayerTick -> PlayerTickEvent.Pre。
-// 保留：
-//   - 目标选择算法（按 Distance/Yaw/Armor/Threat/Health 排序）。
-//   - PID 旋转微调（pitchProportionalGain + pitchIntegral）。
-//   - Perfect Swing（getAttackStrengthScale == 1.0 才攻击）。
-//   - 瞄准抖动（SilentAuraAimJitter 的随机扰动）。
-//   - 自适应最近可见点（RotationUtils.calculate(entity, adaptive=true, range)）。
-// ---------------------------------------------------------------------------
-
-import com.dioxidelite.DioxideLite;
 import com.dioxidelite.event.Listen;
 import com.dioxidelite.event.events.PlayerTickEvent;
+import com.dioxidelite.event.events.Render3DEvent;
+import com.dioxidelite.manager.FriendManager;
 import com.dioxidelite.manager.RotationManager;
+import com.dioxidelite.manager.target.TargetManager;
+import com.dioxidelite.manager.target.TargetRequest;
 import com.dioxidelite.module.Category;
 import com.dioxidelite.module.Module;
 import com.dioxidelite.setting.settings.BooleanSetting;
+import com.dioxidelite.setting.settings.ColorSetting;
 import com.dioxidelite.setting.settings.DoubleSetting;
 import com.dioxidelite.setting.settings.EnumSetting;
-import com.dioxidelite.setting.settings.IntSetting;
 import com.dioxidelite.util.rotation.Priority;
-import com.dioxidelite.util.rotation.RaytraceUtils;
 import com.dioxidelite.util.rotation.Rot2f;
 import com.dioxidelite.util.rotation.RotationUtils;
-import net.minecraft.client.Minecraft;
-import net.minecraft.util.Mth;
 import net.minecraft.world.InteractionHand;
 import net.minecraft.world.entity.LivingEntity;
-import net.minecraft.world.entity.decoration.ArmorStand;
 import net.minecraft.world.entity.player.Player;
-import net.minecraft.world.phys.HitResult;
-import net.minecraft.world.phys.Vec3;
 
-import java.util.ArrayList;
+import java.awt.Color;
 import java.util.Comparator;
 import java.util.List;
 
 /**
- * 静默自动攻击模块，移植自 Vape-v4 SilentAura。
- * <p>
- * 与 KillAura 的区别：SilentAura 不改变实际朝向，只通过 RotationManager 注入"静默旋转"
- * （服务器侧朝向改变、客户端视觉不变），配合 Perfect Swing 节拍与 PID 微调实现隐蔽近战。
- * 移动修复与第三人称视觉转头由客户端自带的 {@code MovementFix} 和
- * {@code RotationManager.renderAnimation} 接管，本模块仅负责目标选择与瞄准/攻击。
+ * 移植自 Vape-v4 SilentAura。静默瞄准 + 自动攻击。
+ * 转头统一走 RotationManager（内置 Vape PID 加速步进，绕过 Grim/Matrix/NCP）。
  */
 public final class SilentAura extends Module {
 
     public static final SilentAura INSTANCE = new SilentAura();
 
-    private static final Minecraft mc = DioxideLite.mc();
+    public enum TargetMode { Distance, Angle, Health, Armor }
+
+    private final EnumSetting<TargetMode> targetMode = add(new EnumSetting<>("Target Mode", TargetMode.Distance));
+    private final DoubleSetting range = add(new DoubleSetting("Range", 4.2, 3.0, 6.0, 0.1));
+    private final DoubleSetting maxAngle = add(new DoubleSetting("Max Angle", 120.0, 30.0, 360.0, 5.0));
+    private final DoubleSetting aimSpeed = add(new DoubleSetting("Aim Speed", 3.0, 0.1, 10.0, 0.1));
+    private final DoubleSetting attackSpeed = add(new DoubleSetting("Attack Speed (CPS)", 8.0, 1.0, 20.0, 0.5));
+    private final BooleanSetting switchTargets = add(new BooleanSetting("Switch Targets", false));
+    private final BooleanSetting players = add(new BooleanSetting("Players", true));
+    private final BooleanSetting mobs = add(new BooleanSetting("Mobs", false));
+    private final BooleanSetting animals = add(new BooleanSetting("Animals", false));
+    private final BooleanSetting invisibles = add(new BooleanSetting("Invisibles", false));
+    private final BooleanSetting showTarget = add(new BooleanSetting("Show Target", false));
+    private final ColorSetting targetColor = add(new ColorSetting("Target Color", new Color(255, 200, 112, 180)));
+    private final BooleanSetting perfectSwing = add(new BooleanSetting("Perfect Swing", true));
+    private final BooleanSetting randomizeCPS = add(new BooleanSetting("Randomize CPS", true));
+
+    private LivingEntity target;
+    private long lastAttackTime = 0L;
 
     private SilentAura() {
         super("Silent Aura", Category.COMBAT);
     }
 
-    /** 移植自 Vape SilentAura.TargetMode。 */
-    public enum TargetMode {
-        Distance,
-        Yaw,
-        Armor,
-        Threat,
-        Health
-    }
-
-    /** 移植自 Vape SilentAura.TargetArea。 */
-    public enum TargetArea {
-        Center,
-        Closest
-    }
-
-    /** 旋转模式：Snap=瞬切、Smooth=线性平滑、Adaptive=PID 微调（Vape 默认）。 */
-    public enum RotationMode {
-        Snap,
-        Smooth,
-        Adaptive
-    }
-
-    // --- Settings（移植自 Vape SilentAura 的 Value 集合） ---
-    private final DoubleSetting range = add(new DoubleSetting("Range", 3.5, 1.0, 6.0, 0.1));
-    private final DoubleSetting aimRange = add(new DoubleSetting("Aim Range", 5.0, 1.0, 8.0, 0.1));
-    private final DoubleSetting aimSpeed = add(new DoubleSetting("Aim Speed", 120.0, 1.0, 360.0, 1.0));
-    private final DoubleSetting maxAngle = add(new DoubleSetting("Max Angle", 120.0, 1.0, 360.0, 1.0));
-    private final IntSetting attackCps = add(new IntSetting("Attack Cps", 8, 1, 20, 1));
-    private final BooleanSetting requireMouseDown = add(new BooleanSetting("Require Mouse Down", false));
-    private final BooleanSetting disableOnDeath = add(new BooleanSetting("Disable On Death", true));
-    private final BooleanSetting perfectSwing = add(new BooleanSetting("Perfect Swing", true));
-    private final BooleanSetting throughWalls = add(new BooleanSetting("Through Walls", false));
-    private final BooleanSetting switchTargets = add(new BooleanSetting("Switch Targets", false));
-    private final BooleanSetting targetPlayers = add(new BooleanSetting("Target Players", true));
-    private final BooleanSetting targetMobs = add(new BooleanSetting("Target Mobs", false));
-    private final BooleanSetting targetAnimals = add(new BooleanSetting("Target Animals", false));
-    private final EnumSetting<TargetMode> targetMode = add(new EnumSetting<>("Target Mode", TargetMode.Distance));
-    private final EnumSetting<TargetArea> targetArea = add(new EnumSetting<>("Target Area", TargetArea.Center));
-    private final EnumSetting<RotationMode> rotationMode = add(new EnumSetting<>("Rotation Mode", RotationMode.Adaptive));
-    private final DoubleSetting jitterAmount = add(new DoubleSetting("Jitter Amount", 0.0, 0.0, 5.0, 0.1));
-
-    // --- PID 状态（移植自 Vape SilentAura.updateAim PID 分支） ---
-    private float pitchIntegral = 0.0f;
-    private LivingEntity currentTarget;
-    private long lastAttackTimeMs;
-
-    @Listen
-    private void onPlayerTick(PlayerTickEvent.Pre event) {
-        if (mc.player == null || mc.level == null || mc.gameMode == null) {
-            return;
-        }
-        if (disableOnDeath.get() && (mc.player.isDeadOrDying() || mc.player.getHealth() <= 0.0f)) {
-            setEnabled(false);
-            return;
-        }
-        if (requireMouseDown.get() && !mc.options.keyAttack.isDown()) {
-            currentTarget = null;
-            return;
-        }
-        if (mc.screen != null) {
-            currentTarget = null;
-            return;
-        }
-
-        LivingEntity target = acquireTarget();
-        currentTarget = target;
-        if (target == null) {
-            return;
-        }
-
-        // 瞄准（PID/Smooth/Snap）
-        Rot2f desired = calculateAimRotation(target);
-        applyAim(desired);
-
-        // 攻击
-        if (shouldAttack(target)) {
-            doAttack(target);
-        }
-    }
-
-    /**
-     * 移植自 Vape SilentAura 目标选择：遍历世界实体，过滤 + 按模式排序，取第一个在射程/FOV 内的。
-     */
-    private LivingEntity acquireTarget() {
-        List<LivingEntity> candidates = new ArrayList<>();
-        Vec3 eyePos = mc.player.getEyePosition();
-        double rangeSqr = aimRange.get() * aimRange.get();
-
-        for (var entity : mc.level.entitiesForRendering()) {
-            if (!(entity instanceof LivingEntity living)) continue;
-            if (living instanceof ArmorStand) continue;
-            if (living == mc.player) continue;
-            if (!living.isAlive() || living.isDeadOrDying()) continue;
-
-            // 类型过滤
-            if (living instanceof Player p) {
-                if (!targetPlayers.get()) continue;
-            } else if (living instanceof net.minecraft.world.entity.monster.Monster) {
-                if (!targetMobs.get()) continue;
-            } else if (living instanceof net.minecraft.world.entity.animal.Animal) {
-                if (!targetAnimals.get()) continue;
-            } else {
-                continue;
-            }
-
-            // 距离
-            double distSqr = living.getEyePosition().distanceToSqr(eyePos);
-            if (distSqr > rangeSqr) continue;
-
-            // FOV（maxAngle）
-            float fov = maxAngle.get().floatValue();
-            if (fov < 360.0f && !RotationUtils.isInFov(living, fov)) continue;
-
-            // 穿墙过滤
-            if (!throughWalls.get()) {
-                Rot2f toEntity = RotationUtils.calculate(living, true, aimRange.get());
-                HitResult hit = RaytraceUtils.raytrace(toEntity, aimRange.get(), 0.0f);
-                if (hit == null || hit.getType() != HitResult.Type.ENTITY) continue;
-            }
-
-            candidates.add(living);
-        }
-
-        if (candidates.isEmpty()) return null;
-
-        // 按目标模式排序（移植自 Vape SilentAuraEntityIdComparator + TargetMode）
-        candidates.sort(comparatorFor(targetMode.get()));
-        return candidates.getFirst();
-    }
-
-    private Comparator<LivingEntity> comparatorFor(TargetMode mode) {
-        Vec3 eyePos = mc.player.getEyePosition();
-        return switch (mode) {
-            case Distance -> Comparator.comparingDouble(e -> e.getEyePosition().distanceToSqr(eyePos));
-            case Yaw -> Comparator.comparingDouble(e -> {
-                Rot2f r = RotationUtils.calculate(e);
-                return Math.abs(Mth.wrapDegrees(r.getYaw() - mc.player.getYRot()))
-                        + Math.abs(Mth.wrapDegrees(r.getPitch() - mc.player.getXRot()));
-            });
-            case Health -> Comparator.comparingDouble(LivingEntity::getHealth).reversed();
-            case Armor -> Comparator.comparingDouble(LivingEntity::getArmorValue).reversed();
-            case Threat -> Comparator.comparingDouble(e -> e.getHealth() + e.getArmorValue() * 2.0);
-        };
-    }
-
-    /**
-     * 移植自 Vape SilentAura 自适应瞄准：算到目标的最近可见点（adaptive=true 走 RotationUtils
-     * 的边界采样），叠加 jitter 抖动（SilentAuraAimJitter 的随机扰动）。
-     */
-    private Rot2f calculateAimRotation(LivingEntity target) {
-        Rot2f base;
-        if (targetArea.get() == TargetArea.Closest) {
-            // adaptive=true：在 AABB 边界采样找最近可见点
-            base = RotationUtils.calculate(target, true, aimRange.get());
-        } else {
-            base = RotationUtils.calculate(target);
-        }
-
-        // 抖动（移植自 Vape SilentAuraAimJitter）
-        double jitter = jitterAmount.get();
-        if (jitter > 0.0) {
-            float jy = (float) (Math.random() - 0.5) * 2.0f * (float) jitter;
-            float jp = (float) (Math.random() - 0.5) * 2.0f * (float) jitter;
-            base = new Rot2f(base.getYaw() + jy, Mth.clamp(base.getPitch() + jp, -90.0f, 90.0f));
-        }
-        return base;
-    }
-
-    /**
-     * 移植自 Vape SilentAura.updateAim：Snap/Smooth 走 RotationManager.setRotations，
-     * Adaptive 走 PID（pitchProportionalGain + pitchIntegral）。
-     */
-    private void applyAim(Rot2f desired) {
-        switch (rotationMode.get()) {
-            case Snap -> RotationManager.INSTANCE.setRotations(desired, 1000.0, Priority.High);
-            case Smooth -> RotationManager.INSTANCE.setRotations(desired, aimSpeed.get(), Priority.High);
-            case Adaptive -> {
-                // PID（移植自 Vape updateAim PID 分支）
-                float curYaw = RotationManager.INSTANCE.getYaw();
-                float curPitch = RotationManager.INSTANCE.getPitch();
-                float yawError = Mth.wrapDegrees(desired.getYaw() - curYaw);
-                float pitchError = Mth.wrapDegrees(desired.getPitch() - curPitch);
-
-                // pitch 积分项（Vape pitchIntegralGain）
-                pitchIntegral += pitchError * 0.1f;
-                pitchIntegral = Mth.clamp(pitchIntegral, -5.0f, 5.0f);
-
-                // pitchProportionalGain=0.45（Vape 默认）
-                float yawAdjust = yawError * 0.45f;
-                float pitchAdjust = pitchError * 0.45f + pitchIntegral * 0.05f;
-
-                float nextYaw = curYaw + yawAdjust;
-                float nextPitch = Mth.clamp(curPitch + pitchAdjust, -90.0f, 90.0f);
-                RotationManager.INSTANCE.setRotations(new Rot2f(nextYaw, nextPitch), aimSpeed.get(), Priority.High);
-            }
-        }
-    }
-
-    /**
-     * 移植自 Vape SilentAura 攻击节拍：Perfect Swing 模式等 getAttackStrengthScale==1.0，
-     * 否则按 attackCps 计时。
-     */
-    private boolean shouldAttack(LivingEntity target) {
-        double distSqr = target.getEyePosition().distanceToSqr(mc.player.getEyePosition());
-        if (distSqr > range.get() * range.get()) return false;
-
-        if (perfectSwing.get() && mc.player.getAttackStrengthScale(0.0f) < 1.0f) {
-            return false;
-        }
-
-        long now = System.currentTimeMillis();
-        long interval = 1000L / Math.max(1, attackCps.get());
-        return now - lastAttackTimeMs >= interval;
-    }
-
-    private void doAttack(LivingEntity target) {
-        mc.gameMode.attack(mc.player, target);
-        mc.player.swing(InteractionHand.MAIN_HAND);
-        lastAttackTimeMs = System.currentTimeMillis();
-
-        // switchTargets：攻击后切换到下一个目标（移植自 Vape switchTargets 逻辑）
-        if (switchTargets.get() && currentTarget != null) {
-            currentTarget = null;
-        }
-    }
-
     @Override
     protected void onDisable() {
-        currentTarget = null;
-        pitchIntegral = 0.0f;
-        lastAttackTimeMs = 0L;
+        target = null;
+        RotationManager.INSTANCE.releaseSilentRotation(this);
+    }
+
+    @Listen
+    private void onTick(PlayerTickEvent.Post event) {
+        if (mc.player == null || mc.level == null) return;
+
+        updateTarget();
+
+        if (target != null) {
+            rotateToTarget();
+            tryAttack();
+        } else {
+            RotationManager.INSTANCE.releaseSilentRotation(this);
+        }
+    }
+
+    private void updateTarget() {
+        double r = range.get();
+        TargetRequest request = TargetRequest.of(r, maxAngle.get().floatValue(),
+                players.get(), mobs.get(), animals.get(), false, invisibles.get(), 10);
+
+        List<LivingEntity> candidates = TargetManager.INSTANCE.acquireTargets(request);
+        candidates.removeIf(e -> !isValidTarget(e));
+
+        if (candidates.isEmpty()) {
+            target = null;
+            return;
+        }
+
+        Comparator<LivingEntity> comparator = switch (targetMode.get()) {
+            case Angle -> Comparator.comparingDouble(e -> {
+                Rot2f rot = RotationUtils.getRotationsToEntity(e);
+                return Math.abs(rot.getYaw() - mc.player.getYRot());
+            });
+            case Health -> Comparator.comparingDouble(e -> e instanceof LivingEntity le ? le.getHealth() : 20.0);
+            case Armor -> Comparator.comparingDouble(e -> e instanceof Player p ? p.getArmorValue() : 0);
+            default -> Comparator.comparingDouble(RotationUtils::getEyeDistanceToEntity);
+        };
+        candidates.sort(comparator);
+
+        LivingEntity newTarget = candidates.getFirst();
+        if (target != null && !newTarget.equals(target) && !switchTargets.get()) {
+            if (candidates.contains(target)) {
+                return;
+            }
+        }
+        target = newTarget;
+    }
+
+    private boolean isValidTarget(LivingEntity e) {
+        if (e == null || !e.isAlive() || e.isRemoved()) return false;
+        if (e == mc.player) return false;
+        if (e instanceof Player p && FriendManager.INSTANCE.isFriend(p)) return false;
+        if (RotationUtils.getEyeDistanceToEntity(e) > range.get()) return false;
+        Rot2f rot = RotationUtils.getRotationsToEntity(e);
+        double angleDiff = Math.abs(((rot.getYaw() - mc.player.getYRot() + 540) % 360) - 180);
+        if (angleDiff > maxAngle.get() / 2.0) return false;
+        return true;
+    }
+
+    private void rotateToTarget() {
+        Rot2f targetRot = RotationUtils.calculate(target, true, range.get());
+        // 统一走 RotationManager，内部已用 Vape PID 加速步进
+        RotationManager.INSTANCE.setRotations(targetRot, aimSpeed.get(), Priority.High);
+    }
+
+    private void tryAttack() {
+        if (mc.gameMode == null) return;
+        float cooldown = mc.player.getAttackStrengthScale(0f);
+        if (perfectSwing.get() && cooldown < 1.0f) return;
+
+        // CPS 间隔 + 随机抖动，绕过 Matrix/NCP 的固定攻击频率检测
+        long baseInterval = (long) (1000.0 / attackSpeed.get());
+        long interval = randomizeCPS.get()
+                ? baseInterval + (long) ((Math.random() - 0.5) * baseInterval * 0.4)
+                : baseInterval;
+        if (System.currentTimeMillis() - lastAttackTime < interval) return;
+
+        // 转头必须对准目标（容差内）才攻击，避免打空气被检测
+        if (!RotationUtils.isInFov(target, 8.0f)) return;
+
+        mc.gameMode.attack(mc.player, target);
+        mc.player.swing(InteractionHand.MAIN_HAND);
+        lastAttackTime = System.currentTimeMillis();
+    }
+
+    @Listen
+    private void onRender3D(Render3DEvent event) {
+        if (!showTarget.get() || target == null) return;
+        try {
+            Color c = targetColor.get();
+            com.dioxidelite.util.render.esp.CircleESP.render(
+                    event.getPoseStack(), target,
+                    target.getBbWidth() * 0.6f,
+                    c, c, 1.0f);
+        } catch (Throwable ignored) {
+        }
     }
 }

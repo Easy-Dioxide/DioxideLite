@@ -3,6 +3,7 @@ package com.dioxidelite.mixin;
 import com.dioxidelite.DioxideLite;
 import com.dioxidelite.module.modules.render.CameraClip;
 import com.dioxidelite.module.modules.render.advanced.Freelook;
+import com.dioxidelite.module.modules.render.advanced.NoFOV;
 import com.dioxidelite.module.modules.render.advanced.Zoom;
 import net.minecraft.client.Camera;
 import net.minecraft.client.CameraType;
@@ -22,6 +23,14 @@ public class CameraMixin {
         CameraClip cameraClip = CameraClip.INSTANCE;
         if (cameraClip.isEnabled()) {
             cir.setReturnValue(cameraClip.distance.get().floatValue());
+        }
+    }
+
+    /** NoFOV：锁定 FOV 到设置值，禁用速度/缓行等效果带来的视角变化。 */
+    @Inject(method = "getFov", at = @At("HEAD"), cancellable = true)
+    private void DioxideLite$lockFov(CallbackInfoReturnable<Float> cir) {
+        if (NoFOV.INSTANCE.isEnabled()) {
+            cir.setReturnValue((float) (int) DioxideLite.mc().options.fov().get());
         }
     }
 

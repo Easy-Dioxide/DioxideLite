@@ -95,6 +95,15 @@ public final class ESP extends Module {
     public final ColorSetting textColor = add(new ColorSetting("Text Color", new Color(0xFFFFFFFF, true)));
     public final ColorSetting backgroundColor = add(new ColorSetting("Background", new Color(0xA0181A1F, true)));
 
+    // --- Opal 风格 2D 框 + 血条 ---
+    public final BooleanSetting box = add(new BooleanSetting("Box", false));
+    public final BooleanSetting boxStroke = add(new BooleanSetting("Box Stroke", true).visibleWhen(box::get));
+    public final ColorSetting boxColor = add(new ColorSetting("Box Color", new Color(0xFFFFFFFF, true))
+            .visibleWhen(box::get));
+    public final BooleanSetting healthBar = add(new BooleanSetting("Health Bar", false));
+    public final BooleanSetting healthBarStroke = add(new BooleanSetting("Health Bar Stroke", true)
+            .visibleWhen(healthBar::get));
+
     // --- Layout ---
     public final BooleanSetting freeLayout = add(new BooleanSetting("Free Layout", false));
     public final EnumSetting<Zone> nameZone = add(new EnumSetting<>("Name Zone", Zone.TOP)
@@ -380,6 +389,41 @@ public final class ESP extends Module {
     // --- drawing ---------------------------------------------------------------
 
     private void drawPlate(Canvas canvas, Plate plate) {
+        // Opal 风格 2D 描边框
+        if (box.get()) {
+            float x = plate.left();
+            float y = plate.top();
+            float w = plate.right() - plate.left();
+            float h = plate.bottom() - plate.top();
+            int color = boxColor.get().getRGB();
+            if (boxStroke.get()) {
+                // 黑色外描边 + 彩色内框
+                SkijaUi.outline(canvas, x - 1.0F, y - 1.0F, w + 2.0F, h + 2.0F, 0.0F, 2.0F, 0xFF000000);
+                SkijaUi.outline(canvas, x, y, w, h, 0.0F, 1.0F, color);
+            } else {
+                SkijaUi.outline(canvas, x, y, w, h, 0.0F, 1.0F, color);
+            }
+        }
+
+        // Opal 风格血条（左侧竖条）
+        if (healthBar.get() && plate.player() != null) {
+            float x = plate.left();
+            float y = plate.top();
+            float h = plate.bottom() - plate.top();
+            float health = HealthDetectionUtils.getHealth(plate.player());
+            float maximum = Math.max(1.0F, Math.max(plate.player().getMaxHealth(), health));
+            float ratio = Mth.clamp(health / maximum, 0.0F, 1.0F);
+            float barThickness = 2.0F;
+            float barX = x - barThickness - 2.0F;
+            float barY = y + h * (1.0F - ratio);
+            float barH = h * ratio;
+            int barColor = healthColor(ratio);
+            if (healthBarStroke.get()) {
+                SkijaUi.outline(canvas, barX - 1.0F, y - 1.0F, barThickness + 2.0F, h + 2.0F, 0.0F, 1.0F, 0xFF000000);
+            }
+            SkijaUi.fill(canvas, barX, barY, barThickness, barH, barColor);
+        }
+
         if (!plate.lines().isEmpty()) {
             float x = plate.nameCx() - plate.nameW() * 0.5F;
             float y = plate.nameCy() - plate.nameH() * 0.5F;

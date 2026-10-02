@@ -7,7 +7,6 @@ import com.dioxidelite.event.Listen;
 import com.dioxidelite.module.ModuleManager;
 import com.dioxidelite.runtime.FeatureRuntime;
 import com.dioxidelite.integration.apollo.ApolloTeamNetworking;
-import com.dioxidelite.module.modules.render.Halo;
 import net.fabricmc.api.ClientModInitializer;
 import net.fabricmc.fabric.api.client.event.lifecycle.v1.ClientLifecycleEvents;
 
@@ -17,7 +16,6 @@ public final class DioxideLiteClient implements ClientModInitializer {
     public void onInitializeClient() {
         DioxideLite.LOGGER.info("Initializing {} {}...", DioxideLite.NAME, DioxideLite.VERSION);
         ModuleManager.INSTANCE.init();
-        Halo.INSTANCE.setEnabled(true);
         ApolloTeamNetworking.init();
         EventBus.INSTANCE.subscribe(this);
         EventBus.INSTANCE.subscribe(DioxideDynamicIsland.getInstance());
