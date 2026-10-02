@@ -224,7 +224,8 @@ public final class ModuleManager {
         register(BlockHighlight.INSTANCE);
         register(CameraClip.INSTANCE);
         register(Compass.INSTANCE);
-        register(Halo.INSTANCE);
+        // Halo（蔚蓝档案动漫光环）视觉过于猎奇，默认不注册
+        // register(Halo.INSTANCE);
         register(DeltaForceStyle.INSTANCE);
         register(ItemTag.INSTANCE);
         register(KillEffect.INSTANCE);

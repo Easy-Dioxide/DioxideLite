@@ -27,12 +27,16 @@ public final class MovementFix extends Module {
         Off,
         Strict,
         Silent,
-        ChangeLook
+        ChangeLook,
+        Vape
     }
 
     private final EnumSetting<Mode> mode = add(new EnumSetting<>("Mode", Mode.Silent));
     private final BooleanSetting packetOnly = add(new BooleanSetting("Packet Only", false)
             .visibleWhen(() -> mode.is(Mode.Packet) || isSprintOnlyMode()));
+    private final BooleanSetting vapeStrafe = add(new BooleanSetting("Vape Strafe", true,
+            "Vape 模式：按静默 yaw 重映射 WASD 方向")
+            .visibleWhen(() -> mode.is(Mode.Vape)));
 
     private MovementFix() {
         super("Movement Fix", Category.MOVEMENT);
@@ -40,7 +44,8 @@ public final class MovementFix extends Module {
     }
 
     public boolean shouldFixInput() {
-        return mode.is(Mode.Setting) || mode.is(Mode.Silent) || (mode.is(Mode.Packet) && !packetOnly.get());
+        return mode.is(Mode.Setting) || mode.is(Mode.Silent) || mode.is(Mode.Vape)
+                || (mode.is(Mode.Packet) && !packetOnly.get());
     }
 
     public boolean shouldFixRotationYaw() {
@@ -49,7 +54,8 @@ public final class MovementFix extends Module {
                 || mode.is(Mode.SprintOnly)
                 || mode.is(Mode.Strict)
                 || mode.is(Mode.Silent)
-                || mode.is(Mode.ChangeLook);
+                || mode.is(Mode.ChangeLook)
+                || mode.is(Mode.Vape);
     }
 
     public boolean shouldChangeLook() {

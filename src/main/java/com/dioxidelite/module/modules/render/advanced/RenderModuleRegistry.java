@@ -41,15 +41,16 @@ public final class RenderModuleRegistry {
         Module[] modules = {
                 Ambience.INSTANCE, Animations.INSTANCE, Arrows.INSTANCE, BedESP.INSTANCE,
                 BlockOverlay.INSTANCE, Boxes.INSTANCE, Camera.INSTANCE, CapeChanger.INSTANCE,
-                Chams.INSTANCE, ChinaHat.INSTANCE, ContainerESP.INSTANCE, Crosshair.INSTANCE,
+                Chams.INSTANCE, ContainerESP.INSTANCE, Crosshair.INSTANCE,
                 ESP.INSTANCE, FogBlur.INSTANCE, FogRemove.INSTANCE, Freelook.INSTANCE,
                 Fullbright.INSTANCE, GlowESP.INSTANCE, Hand.INSTANCE, Hurtcam.INSTANCE,
                 ItemPhysics.INSTANCE, JumpCircles.INSTANCE, NoRender.INSTANCE,
                 ParticleLimiter.INSTANCE, Particles.INSTANCE, SeeInvisibles.INSTANCE,
                 SkeletonESP.INSTANCE, SkinChanger.INSTANCE, Skybox.INSTANCE, TNTTimer.INSTANCE,
-                TargetESP.INSTANCE, Trails.INSTANCE, Trajectories.INSTANCE, Wings.INSTANCE,
-                Zoom.INSTANCE,
+                TargetESP.INSTANCE, Trails.INSTANCE, Trajectories.INSTANCE, Zoom.INSTANCE,
         };
+        // 已移除：ChinaHat（彩虹锥帽+光晕拖尾，过于猎奇）、Wings（翅膀装饰，过于猎奇）
+        // 如需启用，将对应 INSTANCE 加回上方数组即可。
         int count = 0;
         for (Module module : modules) {
             try {
