@@ -134,7 +134,7 @@ local holdRight = dioxidelite:isKeyHeld("mouse_right")
 
 | 版本 | Devlog |
 | --- | --- |
-| v2.2.5 | [devlog-2.2.5.md](devlog-2.2.5.md) — 补全 Animations / FogBlur / PostProcessing / Skybox 四模块真实实现 + 全平台原生库依赖 |
+| v2.2.5 | [devlog-2.2.5.md](devlog-2.2.5.md) — 补全 Animations / FogBlur / PostProcessing / Skybox 四模块真实实现 + 新增 BedDefender（Combat）+ 全平台原生库依赖 |
 | v2.2.4 | [devlog-2.2.4.md](devlog-2.2.4.md) — 静默旋转引擎重构（Vape PID）+ SilentAura 重构 + 新增 LegitScaffold/AttackEffects/BreakProgress/NoFOV/NoHurtCamera/PostProcessing/StreamerMode/TitleChanger + ESP 增强 + 移除装饰模块 |
 | v2.2.3 | [devlog-2.2.3.md](devlog-2.2.3.md) — Vape 移植（SilentAura + Clutch）+ MovementFix 三种模式 + Lua 内置脚本 + 网易云扫码登录修复 |
 | v2.2.2 | [devlog-2.2.2.md](devlog-2.2.2.md) — 多平台移植 + ClickGUI 双模式 + Render 模块重组 + 品牌清理 |
