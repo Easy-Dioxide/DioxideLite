@@ -23,7 +23,9 @@ import com.dioxidelite.setting.settings.EnumSetting;
  * （模块默认就应"改变动画"），因此这里定义 {@code VANILLA}/{@code DIOXIDE} 两个值并让
  * 默认落在 {@code DIOXIDE} 上。</p>
  */
-// PORT-NOTE: 需要 ItemInHandRenderer#renderArmWithItem（equip / swing 进度与 applyItemArmTransform 的注入点，Dioxide 现有 ItemInHandRendererMixin 只接了 CombatVisuals）才能真的改变手持物格挡姿态与挥舞驱动；本端口只实现了 Block / Swing 两个模式设置与静态查询方法（blockOverride / equipDrivenSwing）。
+// [v2.2.5 补全] 已在 ItemInHandRendererMixin 接入：
+//   - blockOverride() -> 强制剑使用 BLOCK 格挡姿态，并在 applyItemArmTransform 后叠加"举高 + 随挥动扫过"变换；
+//   - equipDrivenSwing() -> ModifyArg 注入 swingArm，把物品晃动驱动从挥动进度改为装备进度。
 public final class Animations extends Module {
 
     public static final Animations INSTANCE = new Animations();

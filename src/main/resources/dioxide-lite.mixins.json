@@ -59,7 +59,8 @@
     "EquipmentLayerRendererMixin",
     "AbstractRecipeBookScreenMixin",
     "AbstractClientPlayerMixin",
-    "LevelMixin"
+    "LevelMixin",
+    "SkyRendererMixin"
   ],
   "injectors": {
     "defaultRequire": 1

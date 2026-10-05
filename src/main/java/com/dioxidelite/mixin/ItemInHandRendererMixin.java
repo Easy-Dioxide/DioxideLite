@@ -1,6 +1,7 @@
 package com.dioxidelite.mixin;
 
 import com.dioxidelite.module.modules.render.CombatVisuals;
+import com.dioxidelite.module.modules.render.advanced.Animations;
 import com.dioxidelite.module.modules.render.advanced.Hand;
 import com.llamalad7.mixinextras.injector.ModifyExpressionValue;
 import com.llamalad7.mixinextras.sugar.Local;
@@ -19,6 +20,7 @@ import net.minecraft.world.item.ItemUseAnimation;
 import org.spongepowered.asm.mixin.Mixin;
 import org.spongepowered.asm.mixin.injection.At;
 import org.spongepowered.asm.mixin.injection.Inject;
+import org.spongepowered.asm.mixin.injection.ModifyArg;
 import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
 
 /** Applies optional first-person sword swing/block presentation without changing combat logic. */
@@ -27,7 +29,9 @@ public class ItemInHandRendererMixin {
     @ModifyExpressionValue(method = "renderArmWithItem", at = @At(value = "INVOKE", target = "Lnet/minecraft/world/item/ItemStack;getUseAnimation()Lnet/minecraft/world/item/ItemUseAnimation;", ordinal = 0))
     private ItemUseAnimation dioxide$blockAnimation(ItemUseAnimation original, @Local(argsOnly = true, name = "player") AbstractClientPlayer player, @Local(argsOnly = true, name = "itemStack") ItemStack stack) {
         CombatVisuals visuals = CombatVisuals.INSTANCE;
-        if (visuals.isEnabled() && visuals.blockAnimation.get() && player == Minecraft.getInstance().player && stack.is(ItemTags.SWORDS) && player.isUsingItem()) {
+        boolean useBlock = player == Minecraft.getInstance().player && stack.is(ItemTags.SWORDS) && player.isUsingItem()
+                && ((visuals.isEnabled() && visuals.blockAnimation.get()) || Animations.INSTANCE.blockOverride());
+        if (useBlock) {
             return ItemUseAnimation.BLOCK;
         }
         return original;
@@ -83,5 +87,35 @@ public class ItemInHandRendererMixin {
         HumanoidArm arm = hand == InteractionHand.MAIN_HAND ? player.getMainArm() : player.getMainArm().getOpposite();
         int side = arm == HumanoidArm.RIGHT ? 1 : -1;
         poseStack.translate(side * offset * 0.25F, -offset * 0.15F, -offset * 0.25F);
+    }
+
+    /**
+     * [v2.2.5 补全] Animations.Block = DIOXIDE 生效：把剑举得更高，并随挥动扫过。
+     * 叠加在原版 BLOCK 格挡姿态之上（仅在模块启用、手持剑、正在使用物品时应用）。
+     */
+    @Inject(method = "renderArmWithItem", at = @At(value = "INVOKE", target = "Lnet/minecraft/client/renderer/ItemInHandRenderer;applyItemArmTransform(Lcom/mojang/blaze3d/vertex/PoseStack;Lnet/minecraft/world/entity/HumanoidArm;F)V", ordinal = 0, shift = org.spongepowered.asm.mixin.injection.At.Shift.AFTER))
+    private void dioxidelite$animationsBlockLift(AbstractClientPlayer player, float frameInterp, float xRot, InteractionHand hand, float attack, ItemStack itemStack, float inverseArmHeight, PoseStack poseStack, SubmitNodeCollector collector, int lightCoords, CallbackInfo ci) {
+        Animations anim = Animations.INSTANCE;
+        if (!anim.blockOverride() || player != Minecraft.getInstance().player || !itemStack.is(ItemTags.SWORDS) || !player.isUsingItem()) return;
+        HumanoidArm arm = hand == InteractionHand.MAIN_HAND ? player.getMainArm() : player.getMainArm().getOpposite();
+        int side = arm == HumanoidArm.RIGHT ? 1 : -1;
+        poseStack.translate(side * 0.02F, 0.18F, -0.12F);
+        poseStack.mulPose(Axis.XP.rotationDegrees(-12.0F));
+        float sweep = Mth.sin(Mth.clamp(attack, 0.0F, 1.0F) * (float) Math.PI);
+        poseStack.mulPose(Axis.ZP.rotationDegrees(side * (6.0F + sweep * 10.0F)));
+    }
+
+    /**
+     * [v2.2.5 补全] Animations.Swing = DIOXIDE 生效：物品晃动由装备进度（equip progress）
+     * 驱动，而非原版的挥动进度（swing progress）。把注入给 swingArm 的 attack 替换为
+     * 装备进度（1 - inverseArmHeight，逆臂高即装备未就位程度）。
+     */
+    @ModifyArg(method = "renderArmWithItem", at = @At(value = "INVOKE", target = "Lnet/minecraft/client/renderer/ItemInHandRenderer;swingArm(FLcom/mojang/blaze3d/vertex/PoseStack;ILnet/minecraft/world/entity/HumanoidArm;)V"), index = 0)
+    private float dioxidelite$equipDrivenSwing(float attack, @Local(argsOnly = true, name = "player") AbstractClientPlayer player, @Local(argsOnly = true, name = "inverseArmHeight") float inverseArmHeight) {
+        if (Animations.INSTANCE.equipDrivenSwing() && player == Minecraft.getInstance().player) {
+            float equipProgress = 1.0F - Mth.clamp(inverseArmHeight, 0.0F, 1.0F);
+            return Mth.clamp(equipProgress, 0.0F, 1.0F);
+        }
+        return attack;
     }
 }

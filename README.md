@@ -2,7 +2,7 @@
 
 **DioxideLite** 是一个基于 Skija 渲染的 Minecraft 视觉客户端（Fabric），为 Minecraft **26.1.2** 打造，专注流畅的 HUD 视觉、ClickGUI 与聊天联动。
 
-> 当前版本：**v2.2.4** · 平台：Fabric · 游戏版本：Minecraft 26.1.2 · JDK 25 · 支持 Windows / Linux / macOS
+> 当前版本：**v2.2.5** · 平台：Fabric · 游戏版本：Minecraft 26.1.2 · JDK 25 · 支持 Windows / Linux / macOS
 
 ---
 
@@ -101,7 +101,7 @@ local holdRight = dioxidelite:isKeyHeld("mouse_right")
 
 1. 安装 **Fabric Loader ≥ 0.19.2**，游戏版本 **26.1.2**。
 2. 安装 **Fabric API**（26.1.2 对应版本）。
-3. 将 `DioxideLite-2.2.4.jar` 放入 `.minecraft/mods`。
+3. 将 `DioxideLite-2.2.5.jar` 放入 `.minecraft/mods`。
 4. 启动游戏。`右 Shift` 打开 ClickGUI，灵动岛默认开启。
 
 ## IRC 使用
@@ -126,7 +126,7 @@ local holdRight = dioxidelite:isKeyHeld("mouse_right")
 ./gradlew clean build -Pskija_platforms=skija-windows-x64 -Pwebrtc_platforms=windows-x86_64
 ```
 
-产物位于 `build/libs/DioxideLite-2.2.4.jar`。
+产物位于 `build/libs/DioxideLite-2.2.5.jar`。
 
 > 注意：构建依赖 `libs/nested/` 下的内嵌库与 `src/main/java/tritium`、`src/main/java/repackage`（音频 / JSyn 库），均已随仓库提供。
 
@@ -134,6 +134,7 @@ local holdRight = dioxidelite:isKeyHeld("mouse_right")
 
 | 版本 | Devlog |
 | --- | --- |
+| v2.2.5 | [devlog-2.2.5.md](devlog-2.2.5.md) — 补全 Animations / FogBlur / PostProcessing / Skybox 四模块真实实现 + 全平台原生库依赖 |
 | v2.2.4 | [devlog-2.2.4.md](devlog-2.2.4.md) — 静默旋转引擎重构（Vape PID）+ SilentAura 重构 + 新增 LegitScaffold/AttackEffects/BreakProgress/NoFOV/NoHurtCamera/PostProcessing/StreamerMode/TitleChanger + ESP 增强 + 移除装饰模块 |
 | v2.2.3 | [devlog-2.2.3.md](devlog-2.2.3.md) — Vape 移植（SilentAura + Clutch）+ MovementFix 三种模式 + Lua 内置脚本 + 网易云扫码登录修复 |
 | v2.2.2 | [devlog-2.2.2.md](devlog-2.2.2.md) — 多平台移植 + ClickGUI 双模式 + Render 模块重组 + 品牌清理 |
