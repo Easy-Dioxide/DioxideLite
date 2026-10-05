@@ -17,9 +17,15 @@
 ### 全平台依赖
 - 本次构建含 **Windows / macOS / Linux 全部 Skija 与 WebRTC 原生库**，Windows 用户可正常运行（修复 2.2.4 早期发布包仅含 Linux 原生库导致 Windows 无法启动的问题）。
 
+### 新增 BedDefender（Combat，修复空壳）
+- **BedDefender**（护床防御）此前仅有 4 个设置项、无任何执行逻辑（空壳），本次补全真实实现：
+  - 每 tick 定位最近一张床（优先复用 `BedTracker` 缓存，否则本地扫描），检测防御半径内靠近的敌人。
+  - 对威胁目标旋转瞄准并真实攻击（`RotationManager` 静默旋转 + `mc.gameMode.attack`，默认 8 CPS），每 tick 最多处理 `Targets Per Tick` 个目标。
+  - `Bedwars Only` 开启时仅在床战服务器生效（Hypixel 计分板标题含 "BED WARS" 或 IP 含床战关键词）；目标过滤排除自己 / 朋友 / 旁观者 / 不在射程者；`Debug Logs` 打印命中信息。
+
 ### 验证
 - 构建成功（JDK 25 + Gradle 9.2.1 + Fabric Loom 1.15.5），产物 `DioxideLite-2.2.5.jar`（约 94 MB，全平台原生库）。
-- 游戏启动正常（Minecraft 26.1.2 Fabric），窗口标题 `DioxideLite 2.2.5`，主菜单 / 欢迎界面正常渲染。
+- 游戏启动正常（Minecraft 26.1.2 Fabric），窗口标题 `DioxideLite 2.2.5`，主菜单 / 欢迎界面正常渲染；Combat 分类下 BedDefender 模块加载成功。
 
 ---
 

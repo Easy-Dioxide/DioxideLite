@@ -28,6 +28,13 @@ v2.2.4 中 `Animations / FogBlur / PostProcessing / Skybox` 四个渲染模块�
 - 本次构建含 **Windows / macOS / Linux 全部 Skija 与 WebRTC 原生库**（`-Pskija_platforms` + `-Pwebrtc_platforms` 全平台参数）。
 - 修复 v2.2.4 早期发布包仅含 Linux 原生库、导致 Windows 用户无法启动的问题；Windows 用户下载本版本可正常运行。
 
+### 新增 BedDefender（Combat，修复空壳）
+- **BedDefender**（护床防御）此前仅有 4 个设置项、无任何执行逻辑（空壳），本次补全真实实现：
+  - 每 tick 定位最近一张床（优先复用 `BedTracker.trackedBed()` 缓存，否则本地扫描），检测防御半径内靠近的敌人。
+  - 对威胁目标旋转瞄准并真实攻击（`RotationManager` 静默旋转 + `mc.gameMode.attack`，默认 8 CPS），每 tick 最多处理 `Targets Per Tick` 个目标。
+  - `Bedwars Only` 开启时仅在床战服务器生效（Hypixel 计分板侧边栏标题含 "BED WARS"，或服务器 IP 含 hypixel / bedwars / bed-wars）。
+  - 目标过滤排除自己 / 朋友 / 旁观者 / 不在射程者；`Debug Logs` 开启时打印命中信息。
+
 ---
 
 ## 验证
