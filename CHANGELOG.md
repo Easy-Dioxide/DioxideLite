@@ -4,6 +4,25 @@
 
 ---
 
+## v2.2.5（2026-10-05）
+
+### 补全渲染模块真实实现（修复 v2.2.4 空壳）
+此前 Animations / FogBlur / PostProcessing / Skybox 四个渲染模块仅有设置界面而无实际效果，本次全部接入 26.1.2 渲染管线，功能真实生效：
+
+- **Animations（渲染）**：接入 `ItemInHandRenderer`。Block 模式把剑举高并随挥动扫过；Swing 模式把物品晃动驱动从挥动进度改为装备进度（equip progress）。
+- **Skybox（渲染）**：接入 `SkyRenderer.renderSkyDisc`。按 Preset 驱动动画天空色——CLOUDS 亮度波动 / THUNDER 压暗 + 周期闪电 / PULSAR 脉动。
+- **PostProcessing（渲染）**：接入 `GameRenderer` 世界渲染后处理阶段，启用 Blur 应用原版 blur 后处理链（blurRadius 1..20 → 处理 1..3 次）；Bloom 叠加二次模糊得到柔和泛光。
+- **FogBlur（渲染）**：启用即对主渲染目标应用 blur 后处理链，实现整体雾状模糊（Distance/Fade 作为强度参考）。
+
+### 全平台依赖
+- 本次构建含 **Windows / macOS / Linux 全部 Skija 与 WebRTC 原生库**，Windows 用户可正常运行（修复 2.2.4 早期发布包仅含 Linux 原生库导致 Windows 无法启动的问题）。
+
+### 验证
+- 构建成功（JDK 25 + Gradle 9.2.1 + Fabric Loom 1.15.5），产物 `DioxideLite-2.2.5.jar`（约 94 MB，全平台原生库）。
+- 游戏启动正常（Minecraft 26.1.2 Fabric），窗口标题 `DioxideLite 2.2.5`，主菜单 / 欢迎界面正常渲染。
+
+---
+
 ## v2.2.4（2026-10-02）
 
 ### 静默旋转引擎重构（Vape PID）
