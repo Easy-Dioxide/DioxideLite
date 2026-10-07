@@ -45,24 +45,54 @@ public final class RotationManager {
 
     private static final Minecraft mc = Minecraft.getInstance();
 
+    /**
+     * 没有任何模块再请求旋转后，多久自动释放（纳秒）。
+     * <p>
+     * <b>这是"关闭模块后还会转头"的修复点。</b>以前 {@link #active} 只能靠
+     * {@link #onSendPosition} 里"旋转已经追上玩家视角"这个条件退出，而静默旋转的目标通常
+     * 和玩家视角差着几十度，那个条件永远不会成立 —— 于是模块关掉之后
+     * {@code active} 一直是 true，{@link #smooth()} 继续跑、{@code SendPositionEvent} 继续改包、
+     * {@code LivingEntityMixin} 继续把头/身强行拧到那个过期的目标上。
+     * 现在只要连续 250ms（5 tick）没有任何模块请求，就自动释放。
+     */
+    private static final long IDLE_RELEASE_NANOS = 250_000_000L;
+
+    /**
+     * yaw 目标在左右之间反复横跳时的步长折扣（典型的搭路"摇头"）。
+     * 检测到本 tick 的误差方向和上一 tick 相反时，把步长压到 35%，
+     * 让头部平缓地停在中间，而不是被甩来甩去。
+     */
+    private static final float REVERSAL_DAMPING = 0.35F;
+
     private final Rot2f offset = new Rot2f(0, 0);
     public Rot2f rotations = new Rot2f(0, 0);
     public Rot2f lastRotations = new Rot2f(0, 0);
+    /** The angle we are continuously smoothing toward; only changed by setRotations / s08-apply. */
     public Rot2f targetRotations;
     public Rot2f animationRotation;
     public Rot2f lastAnimationRotation;
 
     private boolean active;
-    private boolean smoothed;
     private double rotationSpeed;
     private Function<Rot2f, Boolean> raytrace;
+    /** Bounded random angle used only while a raytrace offset is active. */
     private float randomAngle;
+    /** True when a server correction packet arrived; the next tick will apply it. */
     private boolean s08;
     private boolean renderAnimation = true;
 
     private int priority;
     private Runnable callback;
     private Object transientOwner;
+
+    /** 最近一次收到旋转请求的时间戳；用于 {@link #IDLE_RELEASE_NANOS} 的自动释放。 */
+    private long lastRequestNanos;
+    /** 反抖状态：上一次统计误差方向时的 tick，保证同一 tick 内重复调用 smooth() 结果一致。 */
+    private int lastDampTick = -1;
+    /** 上一次的 yaw 误差方向（-1 / 0 / 1）。 */
+    private float lastYawErrorSign;
+    /** 本 tick 是否命中"目标反向"从而需要压低步长。 */
+    private boolean dampYawThisTick;
 
     private RotationManager() {
         EventBus.INSTANCE.subscribe(this);
@@ -96,29 +126,36 @@ public final class RotationManager {
         setRotations(rotations, rotationSpeed, raytrace, priority, callback, true);
     }
 
+    /** 记录一次请求：只要还有模块在请求，旋转就不会被自动释放。 */
+    private void markRequest() {
+        this.lastRequestNanos = System.nanoTime();
+    }
+
     /** Applies a rotation model's already-stepped result without smoothing it a second time. */
     public void setRotationsDirect(Rot2f rotations, Priority priority) {
         if (rotations == null || mc.player == null) return;
         if (this.active && priority.priority < this.priority) return;
 
+        markRequest();
+
         if (s08) {
-            this.rotations = this.lastRotations = this.targetRotations =
-                    new Rot2f(mc.player.getYRot(), mc.player.getXRot());
-            this.callback = null;
-            this.transientOwner = null;
+            // Server just corrected our position; align current view but keep target so
+            // subsequent smoother calls don't snap from a stale baseline.
+            float curYaw = mc.player.getYRot();
+            float curPitch = mc.player.getXRot();
+            this.rotations = new Rot2f(curYaw, curPitch);
+            this.lastRotations = new Rot2f(curYaw, curPitch);
             s08 = false;
-            return;
         }
 
         this.rotations = rotations;
-        this.targetRotations = rotations;
+        this.targetRotations = rotations.copy();
         this.raytrace = null;
         this.priority = priority.priority;
         this.callback = null;
         this.transientOwner = null;
         this.renderAnimation = true;
         this.active = true;
-        this.smoothed = true;
 
         MovementFix movementFix = MovementFix.INSTANCE;
         if (movementFix.isEnabled() && movementFix.shouldChangeLook()) {
@@ -141,24 +178,28 @@ public final class RotationManager {
             return false;
         }
 
+        markRequest();
+
         if (s08) {
-            this.rotations = this.lastRotations = this.targetRotations =
-                    new Rot2f(mc.player.getYRot(), mc.player.getXRot());
+            float curYaw = mc.player.getYRot();
+            float curPitch = mc.player.getXRot();
+            this.rotations = new Rot2f(curYaw, curPitch);
+            this.lastRotations = new Rot2f(curYaw, curPitch);
+            this.targetRotations = new Rot2f(curYaw, curPitch);
             this.callback = null;
             this.transientOwner = null;
             s08 = false;
             return false;
         }
 
-        this.rotations = rotations;
-        this.targetRotations = rotations;
+        this.rotations = rotations.copy();
+        this.targetRotations = rotations.copy();
         this.raytrace = null;
         this.priority = priority.priority;
         this.callback = null;
         this.transientOwner = owner;
         this.renderAnimation = false;
         this.active = true;
-        this.smoothed = true;
         return true;
     }
 
@@ -171,8 +212,11 @@ public final class RotationManager {
         this.callback = null;
         this.transientOwner = null;
         this.raytrace = null;
-        this.smoothed = false;
         this.renderAnimation = true;
+        this.lastRequestNanos = 0L;
+        this.lastDampTick = -1;
+        this.lastYawErrorSign = 0.0F;
+        this.dampYawThisTick = false;
         if (mc.player != null) {
             this.targetRotations = new Rot2f(mc.player.getYRot(), mc.player.getXRot());
         }
@@ -191,15 +235,21 @@ public final class RotationManager {
             return;
         }
 
+        markRequest();
+
+        // If a server correction just arrived, align current view to its position
+        // before applying our new target, so we don't snap from a stale baseline.
         if (s08) {
-            this.rotations = this.lastRotations = this.targetRotations = new Rot2f(mc.player.getYRot(), mc.player.getXRot());
-            this.callback = null;
-            this.transientOwner = null;
+            float curYaw = mc.player.getYRot();
+            float curPitch = mc.player.getXRot();
+            this.rotations = new Rot2f(curYaw, curPitch);
+            this.lastRotations = new Rot2f(curYaw, curPitch);
+            this.targetRotations = new Rot2f(curYaw, curPitch);
+            this.randomAngle = 0;
             s08 = false;
-            return;
         }
 
-        this.targetRotations = rotations;
+        this.targetRotations = rotations.copy();
         this.rotationSpeed = rotationSpeed * 18.0;
         this.raytrace = raytrace;
         this.priority = priority.priority;
@@ -211,56 +261,76 @@ public final class RotationManager {
         smooth();
     }
 
+    /**
+     * Step the rotation one tick toward {@link #targetRotations}.
+     * Must be called every active tick so the result stays in sync with both
+     * {@link #lastRotations} (updated in onSendPosition) and {@link #rotations}
+     * (read by other modules).
+     */
     private void smooth() {
         if (mc.player == null) {
             resetState();
             return;
         }
 
-        if (!smoothed) {
-            float targetYaw = targetRotations.getYaw();
-            float targetPitch = targetRotations.getPitch();
+        // Apply any pending server correction first.
+        if (s08) {
+            float curYaw = mc.player.getYRot();
+            float curPitch = mc.player.getXRot();
+            this.rotations = new Rot2f(curYaw, curPitch);
+            this.lastRotations = new Rot2f(curYaw, curPitch);
+            if (this.targetRotations == null) {
+                this.targetRotations = new Rot2f(curYaw, curPitch);
+            }
+            this.randomAngle = 0;
+            s08 = false;
+        }
 
-            if (raytrace != null && (Math.abs(targetYaw - rotations.getYaw()) > 5 || Math.abs(targetPitch - rotations.getPitch()) > 5)) {
-                final Rot2f trueTargetRotations = new Rot2f(targetRotations.getYaw(), targetRotations.getPitch());
-                double speed = (Math.random() * Math.random() * Math.random()) * 20;
-                randomAngle += (float) ((20 + (float) (Math.random() - 0.5) * (Math.random() * Math.random() * Math.random() * 360)) * (mc.player.tickCount / 10 % 2 == 0 ? -1 : 1));
+        float targetYaw = targetRotations.getYaw();
+        float targetPitch = targetRotations.getPitch();
 
+        // Raytrace offset: only computed once per setRotations call (when raytrace is non-null).
+        // Bounded randomAngle prevents long-term drift from unbounded accumulation.
+        if (raytrace != null && (Math.abs(targetYaw - rotations.getYaw()) > 5 || Math.abs(targetPitch - rotations.getPitch()) > 5)) {
+            final Rot2f trueTarget = new Rot2f(targetRotations.getYaw(), targetRotations.getPitch());
+            double speed = (Math.random() * Math.random() * Math.random()) * 20;
+
+            // Clamp randomAngle to [-360, 360] to prevent floating-point precision loss over time
+            randomAngle = ((randomAngle % 720f) + 720f) % 720f - 360f;
+            randomAngle += (float) ((20 + (float) (Math.random() - 0.5) * (Math.random() * Math.random() * Math.random() * 360))
+                    * (mc.player.tickCount / 10 % 2 == 0 ? -1 : 1));
+            randomAngle = ((randomAngle % 720f) + 720f) % 720f - 360f;
+
+            offset.set(
+                    (float) (offset.getYaw() + -Mth.sin((float) Math.toRadians(randomAngle)) * speed),
+                    (float) (offset.getPitch() + Mth.cos((float) Math.toRadians(randomAngle)) * speed)
+            );
+            targetYaw += offset.getYaw();
+            targetPitch += offset.getPitch();
+
+            if (!raytrace.apply(new Rot2f(targetYaw, targetPitch))) {
+                randomAngle = (float) Math.toDegrees(Math.atan2(trueTarget.getYaw() - targetYaw, targetPitch - trueTarget.getPitch())) - 180;
+                targetYaw -= offset.getYaw();
+                targetPitch -= offset.getPitch();
                 offset.set(
                         (float) (offset.getYaw() + -Mth.sin((float) Math.toRadians(randomAngle)) * speed),
                         (float) (offset.getPitch() + Mth.cos((float) Math.toRadians(randomAngle)) * speed)
                 );
                 targetYaw += offset.getYaw();
                 targetPitch += offset.getPitch();
-
-                if (!raytrace.apply(new Rot2f(targetYaw, targetPitch))) {
-                    randomAngle = (float) Math.toDegrees(Math.atan2(trueTargetRotations.getYaw() - targetYaw, targetPitch - trueTargetRotations.getPitch())) - 180;
-                    targetYaw -= offset.getYaw();
-                    targetPitch -= offset.getPitch();
-                    offset.set(
-                            (float) (offset.getYaw() + -Mth.sin((float) Math.toRadians(randomAngle)) * speed),
-                            (float) (offset.getPitch() + Mth.cos((float) Math.toRadians(randomAngle)) * speed)
-                    );
-                    targetYaw = targetYaw + offset.getYaw();
-                    targetPitch = targetPitch + offset.getPitch();
-                }
-
-                if (!raytrace.apply(new Rot2f(targetYaw, targetPitch))) {
-                    offset.set(0, 0);
-                    targetYaw = (float) (targetRotations.getYaw() + Math.random() * 2);
-                    targetPitch = (float) (targetRotations.getPitch() + Math.random() * 2);
-                }
             }
 
-            // Vape 风格 PID 加速步进（替换原 RotationUtils.smooth 的简单 lerp）
-            // - 步长基于鼠标灵敏度（getMouseScale），与真人手搓输入一致，绕过 Grim/Matrix/NCP 的
-            //   旋转速度/加速度检测
-            // - 加速度模式 angle-based：剩余角度越大步进越快，但不会超过每 tick 上限
-            // - 微抖动避免完美瞄准被检测
-            rotations = vapeSmooth(targetYaw, targetPitch);
+            if (!raytrace.apply(new Rot2f(targetYaw, targetPitch))) {
+                offset.set(0, 0);
+                targetYaw = (float) (trueTarget.getYaw() + Math.random() * 2);
+                targetPitch = (float) (trueTarget.getPitch() + Math.random() * 2);
+            }
+        } else {
+            // Raytrace done or not needed — reset offset so it doesn't bleed into next call.
+            offset.set(0, 0);
         }
 
-        smoothed = true;
+        rotations = vapeSmooth(targetYaw, targetPitch);
 
         MovementFix movementFix = MovementFix.INSTANCE;
         if (movementFix.isEnabled() && movementFix.shouldChangeLook()) {
@@ -302,16 +372,36 @@ public final class RotationManager {
             return new Rot2f(targetYaw, targetPitch);
         }
 
+        // [反抖] 目标在左右之间反复横跳时压低本 tick 步长。
+        // 搭路时目标 yaw 常在相邻档位之间来回切，若每 tick 都全力追，
+        // 头/身体就会被甩成"摇头"。这里只要发现误差方向与上一 tick 相反，
+        // 本 tick 就只走 REVERSAL_DAMPING，让头部停在中间平缓摆动。
+        // 用 tickCount 做闸门：smooth() 一个 tick 内可能被调用两次
+        // （setRotations 里一次 + onPlayerTick 里一次），必须保证两次结果一致。
+        int tick = mc.player == null ? -1 : mc.player.tickCount;
+        if (tick != lastDampTick) {
+            lastDampTick = tick;
+            float sign = (float) Math.signum(yawError);
+            dampYawThisTick = sign != 0.0F && lastYawErrorSign != 0.0F && sign != lastYawErrorSign;
+            if (sign != 0.0F) {
+                lastYawErrorSign = sign;
+            }
+        }
+        float damping = dampYawThisTick ? REVERSAL_DAMPING : 1.0F;
+
         // yaw 步进 + angle-based 加速度
         if (absYaw > tolerance) {
-            float yawStep = step;
+            float yawStep = step * damping;
             // 比例缩放：当 pitch 误差更大时，yaw 步进按比例减小
             if (absPitch > 0.001f) {
                 float ratio = absYaw / absPitch;
                 if (ratio < 1.0f) yawStep *= ratio;
             }
-            // angle-based acceleration：剩余角度越大，步进越大（有上限）
-            double accel = (225.0 + absYaw) / 180.0;
+            // angle-based acceleration：剩余角度越大，步进越大。
+            // 原公式 base 是 225/180 = 1.25，等于"已经贴近目标"时反而把步长放大 25%，
+            // 目标稍有晃动就会过冲 → 来回抖。改成从 1.0 起步，
+            // 小误差不再被放大，而大幅度甩枪的速度几乎不变。
+            double accel = 1.0 + Math.min(absYaw, 180.0F) / 180.0 * 0.8;
             yawStep *= (float) accel;
             // 限制单 tick 最大步数，避免被判定为 snap
             float maxSteps = absYaw / rotationPerStep;
@@ -326,7 +416,7 @@ public final class RotationManager {
                 float ratio = absPitch / absYaw;
                 if (ratio < 1.0f) pitchStep *= ratio;
             }
-            double accel = (135.0 + absPitch) / 90.0;
+            double accel = 1.0 + Math.min(absPitch, 90.0F) / 90.0 * 0.8;
             pitchStep *= (float) accel;
             float maxSteps = absPitch / rotationPerStep;
             pitchStep = Math.min(pitchStep, maxSteps);
@@ -374,23 +464,56 @@ public final class RotationManager {
     }
 
     public void setActive(boolean active) {
-        this.active = active;
-        if (!active) {
-            this.transientOwner = null;
+        if (active) {
+            markRequest();
+            this.active = true;
+            return;
+        }
+        stop();
+    }
+
+    /**
+     * 立即释放静默旋转。
+     * <p>
+     * <b>只清内部状态，绝不碰玩家自己的视角</b> —— 所以调用它（或等到空闲自动释放）之后，
+     * 头部/身体会立刻回到玩家自己的朝向，不会再"关闭模块还转头"。
+     *
+     * <p>与 {@link #resetState()} 的区别：{@code resetState()} 会把 rotations 归零（用于换世界 / 重生），
+     * 这里则把基准对齐到玩家当前视角，方便下一次请求从当前视角平滑起步。
+     */
+    public void stop() {
+        boolean wasActive = active;
+
+        active = false;
+        priority = 0;
+        callback = null;
+        transientOwner = null;
+        raytrace = null;
+        renderAnimation = true;
+        offset.set(0, 0);
+        randomAngle = 0;
+        s08 = false;
+        lastRequestNanos = 0L;
+        lastDampTick = -1;
+        lastYawErrorSign = 0.0F;
+        dampYawThisTick = false;
+
+        if (mc.player == null) {
+            return;
+        }
+
+        float yaw = mc.player.getYRot();
+        float pitch = mc.player.getXRot();
+        targetRotations = new Rot2f(yaw, pitch);
+        if (wasActive) {
+            rotations = new Rot2f(yaw, pitch);
+            lastRotations = new Rot2f(yaw, pitch);
         }
     }
 
     /** Whether silent rotations are intentionally mirrored to the third-person model. */
     public boolean isRenderAnimationEnabled() {
         return renderAnimation;
-    }
-
-    public boolean isSmoothed() {
-        return smoothed;
-    }
-
-    public void setSmoothed(boolean smoothed) {
-        this.smoothed = smoothed;
     }
 
     @Listen
@@ -409,11 +532,14 @@ public final class RotationManager {
         priority = 0;
         callback = null;
         transientOwner = null;
-        smoothed = false;
         raytrace = null;
         randomAngle = 0;
         s08 = false;
         renderAnimation = true;
+        lastRequestNanos = 0L;
+        lastDampTick = -1;
+        lastYawErrorSign = 0.0F;
+        dampYawThisTick = false;
     }
 
     @Listen
@@ -451,11 +577,19 @@ public final class RotationManager {
             return;
         }
 
-        if (!active || rotations == null || lastRotations == null || targetRotations == null) {
-            rotations = lastRotations = targetRotations = new Rot2f(mc.player.getYRot(), mc.player.getXRot());
-        }
+        // Initialise stale nulls without overwriting an active target.
+        if (rotations == null) rotations = new Rot2f(mc.player.getYRot(), mc.player.getXRot());
+        if (lastRotations == null) lastRotations = new Rot2f(mc.player.getYRot(), mc.player.getXRot());
+        if (targetRotations == null) targetRotations = new Rot2f(mc.player.getYRot(), mc.player.getXRot());
 
         if (active) {
+            // 没有任何模块再请求旋转（例如模块刚被关闭）→ 立刻释放，
+            // 否则 smooth() / 发包 / 头身同步会一直沿用过期目标，表现为"关了模块还在转头"。
+            if (lastRequestNanos != 0L && System.nanoTime() - lastRequestNanos > IDLE_RELEASE_NANOS) {
+                stop();
+                return;
+            }
+
             smooth();
             EventBus.INSTANCE.post(new AfterRotationEvent());
 
@@ -483,10 +617,9 @@ public final class RotationManager {
             }
 
             if (Math.abs((rotations.getYaw() - mc.player.getYRot()) % 360) < 1 && Math.abs((rotations.getPitch() - mc.player.getXRot())) < 1) {
-                active = false;
-                priority = 0;
-                callback = null;
-                transientOwner = null;
+                // 静默旋转已经追平玩家自己的视角：本次使命完成，直接释放，
+                // 停止继续改包 / 同步头身（走 stop() 以保证状态清理一致）。
+                stop();
                 this.correctDisabledRotations();
             }
 
@@ -497,9 +630,9 @@ public final class RotationManager {
 
         lastAnimationRotation = animationRotation;
         animationRotation = new Rot2f(event.getYaw(), event.getPitch());
-        targetRotations = new Rot2f(mc.player.getYRot(), mc.player.getXRot());
+        // Preserve targetRotations — do NOT reset it here; let setRotations or
+        // the tick null-guard decide what to aim for.
         raytrace = null;
-        smoothed = false;
     }
 
     @Listen(priority = com.dioxidelite.event.Priority.HIGH)

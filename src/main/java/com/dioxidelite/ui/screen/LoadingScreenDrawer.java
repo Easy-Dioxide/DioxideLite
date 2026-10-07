@@ -1,6 +1,7 @@
 package com.dioxidelite.ui.screen;
 
 import com.dioxidelite.render.SkijaUi;
+import com.dioxidelite.i18n.UiText;
 import com.dioxidelite.ui.UiTheme;
 import com.dioxidelite.render.SkijaRenderer;
 import net.minecraft.resources.Identifier;
@@ -37,7 +38,7 @@ public final class LoadingScreenDrawer {
         float logoY = height * 0.5F - logoSize - 28.0F;
         drawLogo(canvas, centerX, logoY + logoSize * 0.5F, logoSize);
 
-        String subtitle = "LOADING CLIENT RESOURCES";
+        String subtitle = UiText.tr("loading_client_resources", "LOADING CLIENT RESOURCES");
         float subtitleTracking = 2.4F;
         float subtitleWidth = UiControls.brandWidth(subtitle, 7.2F, subtitleTracking);
         UiControls.brand(canvas, subtitle, centerX - subtitleWidth * 0.5F,

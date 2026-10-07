@@ -4,6 +4,7 @@ import com.google.gson.JsonArray;
 import com.google.gson.JsonElement;
 import com.google.gson.JsonObject;
 import com.dioxidelite.module.modules.player.NetEaseMusicModule;
+import com.dioxidelite.i18n.UiText;
 import com.dioxidelite.render.SkijaRenderer;
 import com.dioxidelite.render.SkijaUi;
 import com.dioxidelite.ui.UiTheme;
@@ -331,10 +332,12 @@ public final class MusicScreen extends AbstractSkijaScreen {
         navHighlightY += (navTargetY - navHighlightY) * Math.min(1.0F, frameDelta * 10.0F);
         SkijaUi.rounded(canvas, layout.sidebar.x() + 5, navHighlightY,
                 layout.sidebar.width() - 10, 20, 3, setAlpha(accent(), 42));
-        drawNav(canvas, layout, MUSIC_HOME, "Home", Page.HOME, navY);
-        drawNav(canvas, layout, MUSIC_SEARCH, "Search", Page.SEARCH, navY + 24);
-        drawNav(canvas, layout, MUSIC_LIKE, "Like", Page.LIKED, navY + 48);
-        drawNav(canvas, layout, MUSIC_DAILY, provider == MusicProvider.QQ ? "Top" : "Daily",
+        drawNav(canvas, layout, MUSIC_HOME, UiText.tr("home", "Home"), Page.HOME, navY);
+        drawNav(canvas, layout, MUSIC_SEARCH, UiText.tr("search", "Search"), Page.SEARCH, navY + 24);
+        drawNav(canvas, layout, MUSIC_LIKE, UiText.tr("like", "Like"), Page.LIKED, navY + 48);
+        drawNav(canvas, layout, MUSIC_DAILY, provider == MusicProvider.QQ
+                ? UiText.tr("top", "Top")
+                : UiText.tr("daily", "Daily"),
                 Page.DAILY, navY + 72);
 
         drawSmallIconButton(canvas, layout.reload, CLIENT_REFRESH, SkijaUi.IconSet.CLIENT_ICONS,
@@ -370,7 +373,7 @@ public final class MusicScreen extends AbstractSkijaScreen {
         UiControls.Box content = layout.content;
         float panelWidth = Math.min(286, Math.max(120, content.width() - 30));
         float x = content.x() + (content.width() - panelWidth) * 0.5F;
-        SkijaUi.boldText(canvas, provider.displayName() + " QR Login", x,
+        SkijaUi.boldText(canvas, provider.displayName() + " " + UiText.tr("qr_login", "QR Login"), x,
                 layout.qrCode.y() - 23, 18, TEXT, 12);
 
         UiControls.Box qr = layout.qrCode;
@@ -384,7 +387,8 @@ public final class MusicScreen extends AbstractSkijaScreen {
         }
 
         drawMusicButton(canvas, layout.qrLogin,
-                accountBusy ? "Refresh QR code" : "Generate QR code", !playQueued, true);
+                accountBusy ? UiText.tr("refresh_qr", "Refresh QR code")
+                        : UiText.tr("generate_qr", "Generate QR code"), !playQueued, true);
         String loginStatus = qrLoginStatus();
         SkijaUi.text(canvas, UiControls.ellipsize(loginStatus, panelWidth), x,
                 layout.qrLogin.y() + 25, 12, statusError ? UiTheme.DANGER : TEXT_MUTED, 8);
@@ -429,7 +433,7 @@ public final class MusicScreen extends AbstractSkijaScreen {
                     0xFF121B1C, 0x00121B1C, false, 0);
             // [DioxideLite 修复] 原为硬编码 "SETSUNA SELECTION"，机械改名残留，
         // 会在音乐界面直接显示出来源品牌名。已改为本端品牌。
-        SkijaUi.text(canvas, "DIOXIDELITE SELECTION", hero.x() + 14, hero.y() + 12,
+        SkijaUi.text(canvas, UiText.tr("dioxidelite_selection", "DIOXIDELITE SELECTION"), hero.x() + 14, hero.y() + 12,
                     10, accent(), 6);
             SkijaUi.boldText(canvas, UiControls.ellipsize(featured.getName(), hero.width() * 0.5F),
                     hero.x() + 14, hero.y() + 28, 24, TEXT, 15);
@@ -437,18 +441,19 @@ public final class MusicScreen extends AbstractSkijaScreen {
                     hero.x() + 14, hero.y() + 51, 13, TEXT_MUTED, 7);
             UiControls.Box heroPlay = new UiControls.Box(hero.x() + 14,
                     hero.y() + hero.height() - 28, 58, 18);
-            drawMusicButton(canvas, heroPlay, "Play now", !playQueued, true);
+            drawMusicButton(canvas, heroPlay, UiText.tr("play_now", "Play now"), !playQueued, true);
             clickRegions.add(new ClickRegion(Action.PLAY_SONG, new SongClick(homeSongs, 0), heroPlay));
         } else {
-            SkijaUi.boldText(canvas, loadingHome ? "Loading your music" : "Your music, in one place",
+            SkijaUi.boldText(canvas, loadingHome ? UiText.tr("loading_your_music", "Loading your music")
+                    : UiText.tr("your_music_one_place", "Your music, in one place"),
                     hero.x() + 14, hero.y() + 25, 26, TEXT, 15);
             SkijaUi.text(canvas, UiControls.ellipsize(displayStatus(), hero.width() - 28), hero.x() + 14,
                     hero.y() + 55, 14, TEXT_MUTED, 7);
         }
 
         float recTitleY = y + heroHeight + 9;
-        SkijaUi.boldText(canvas, "For you", content.x() + padding, recTitleY, 18, TEXT, 11);
-        SkijaUi.text(canvas, "CURATED PLAYLISTS", content.x() + padding + 46, recTitleY + 4,
+        SkijaUi.boldText(canvas, UiText.tr("for_you", "For you"), content.x() + padding, recTitleY, 18, TEXT, 11);
+        SkijaUi.text(canvas, UiText.tr("curated_playlists", "CURATED PLAYLISTS"), content.x() + padding + 46, recTitleY + 4,
                 10, 0x58FFFFFF, 5.5F);
         float recY = recTitleY + 21;
         int recLimit = Math.min(playlists.size(), recCols);
@@ -472,7 +477,7 @@ public final class MusicScreen extends AbstractSkijaScreen {
         }
 
         float songsTitleY = recY + recSize * 0.72F + 24;
-        SkijaUi.boldText(canvas, "Recently queued", content.x() + padding, songsTitleY, 17, TEXT, 10);
+        SkijaUi.boldText(canvas, UiText.tr("recently_queued", "Recently queued"), content.x() + padding, songsTitleY, 17, TEXT, 10);
         drawSongs(canvas, content.x() + padding, songsTitleY + 20, content.width() - padding * 2,
                 homeSongs.subList(0, songCount), content);
     }
@@ -487,11 +492,12 @@ public final class MusicScreen extends AbstractSkijaScreen {
                 && !selectedPlaylist.musics.isEmpty()) {
             playlistSongs = safeCopy(selectedPlaylist.musics);
             loadingPage = false;
-            setStatus(playlistSongs.size() + " songs", false);
+            setStatus(fmt("songs_count", "%s songs", playlistSongs.size()), false);
         } else if (loadingPage && selectedPlaylist.musics != null && selectedPlaylist.musics.isEmpty()
                 && (selectedPlaylist.musicsLoaded || !selectedPlaylist.musicsQueried)) {
             loadingPage = false;
-            setStatus(selectedPlaylist.musicsLoaded ? "No songs" : "Playlist load failed",
+            setStatus(selectedPlaylist.musicsLoaded ? UiText.tr("no_songs", "No songs")
+                    : UiText.tr("playlist_load_failed", "Playlist load failed"),
                     !selectedPlaylist.musicsLoaded);
         }
         UiControls.Box content = layout.content;
@@ -507,8 +513,8 @@ public final class MusicScreen extends AbstractSkijaScreen {
         SkijaUi.text(canvas, playlistInfo(selectedPlaylist), textX, y + 40, 12, TEXT_MUTED, 8);
         UiControls.Box playAll = new UiControls.Box(textX, y + 62, 50, 20);
         UiControls.Box shuffle = new UiControls.Box(textX + 56, y + 62, 62, 20);
-        drawMusicButton(canvas, playAll, "Play", !playlistSongs.isEmpty() && !playQueued, true);
-        drawMusicButton(canvas, shuffle, "Shuffle", !playlistSongs.isEmpty() && !playQueued, false);
+        drawMusicButton(canvas, playAll, UiText.tr("play", "Play"), !playlistSongs.isEmpty() && !playQueued, true);
+        drawMusicButton(canvas, shuffle, UiText.tr("shuffle", "Shuffle"), !playlistSongs.isEmpty() && !playQueued, false);
         clickRegions.add(new ClickRegion(Action.PLAY_ALL, null, playAll));
         clickRegions.add(new ClickRegion(Action.SHUFFLE, null, shuffle));
         drawSongs(canvas, content.x() + 10, y + 98, content.width() - 20, playlistSongs, content);
@@ -521,7 +527,7 @@ public final class MusicScreen extends AbstractSkijaScreen {
         float y = content.y() + contentScroll;
         SkijaUi.boldText(canvas, pageTitle(), content.x() + 12, y + 10, 18, TEXT, 11);
         int statusColor = statusError ? UiTheme.DANGER : TEXT_MUTED;
-        SkijaUi.text(canvas, UiControls.ellipsize(loadingPage ? "Loading..." : displayStatus(),
+        SkijaUi.text(canvas, UiControls.ellipsize(loadingPage ? UiText.tr("loading", "Loading...") : displayStatus(),
                         content.width() - 24), content.x() + 12, y + 27, 12, statusColor, 7);
         drawSongs(canvas, content.x() + 10, y + 47, content.width() - 20, visibleSongs, content);
     }
@@ -529,7 +535,7 @@ public final class MusicScreen extends AbstractSkijaScreen {
     private void drawSongs(Canvas canvas, float x, float y, float width, List<Music> songs,
                            UiControls.Box viewport) {
         if (songs.isEmpty()) {
-            UiControls.centeredText(canvas, loadingPage ? "Loading..." : "No songs",
+            UiControls.centeredText(canvas, loadingPage ? UiText.tr("loading", "Loading...") : UiText.tr("no_songs", "No songs"),
                     new UiControls.Box(x, Math.max(y, viewport.y() + 48), width,
                             Math.max(24, viewport.y() + viewport.height() - Math.max(y, viewport.y() + 48))),
                     TEXT_MUTED, false);
@@ -603,10 +609,10 @@ public final class MusicScreen extends AbstractSkijaScreen {
                     new UiControls.Box(cover.x(), cover.y(), layout.trackTextWidth + cover.width() + 8,
                             cover.height())));
         }
-        SkijaUi.text(canvas, UiControls.ellipsize(current == null ? "Not Playing" : current.getName(),
+        SkijaUi.text(canvas, UiControls.ellipsize(current == null ? UiText.tr("not_playing", "Not Playing") : current.getName(),
                         layout.trackTextWidth), cover.x() + cover.width() + 6, playerBox.y() + 7,
                 12, TEXT, 7);
-        SkijaUi.text(canvas, UiControls.ellipsize(current == null ? "None" : current.getArtistsName(),
+        SkijaUi.text(canvas, UiControls.ellipsize(current == null ? UiText.tr("none", "None") : current.getArtistsName(),
                         layout.trackTextWidth), cover.x() + cover.width() + 6, playerBox.y() + 19,
                 11, TEXT_MUTED, 6);
 
@@ -682,14 +688,14 @@ public final class MusicScreen extends AbstractSkijaScreen {
         drawCover(canvas, "music-large:" + current.getId(), current.getCoverUrl(1024), cover, 2);
         SkijaUi.fill(canvas, cover.x(), cover.y() + cover.height() - 19, cover.width(), 19, 0xC4080D0E);
         // [DioxideLite 修复] 同上，原为硬编码 "SETSUNA RECORDS"。
-        SkijaUi.text(canvas, "DIOXIDELITE RECORDS", cover.x() + 6, cover.y() + cover.height() - 13,
+        SkijaUi.text(canvas, UiText.tr("dioxidelite_records", "DIOXIDELITE RECORDS"), cover.x() + 6, cover.y() + cover.height() - 13,
                 10, 0xBFFFFFFF, 5);
         String albumCode = String.format("ST - %02d", Math.max(1, CloudMusic.curIdx + 1));
         SkijaUi.text(canvas, albumCode,
                 cover.x() + cover.width() - SkijaUi.textWidth(albumCode, 5) - 6,
                 cover.y() + cover.height() - 13, 10, 0xBFFFFFFF, 5);
         if (current.getAlbum() != null) {
-            SkijaUi.text(canvas, "ALBUM", cover.x(), cover.y() + cover.height() + 9,
+            SkijaUi.text(canvas, UiText.tr("album", "ALBUM"), cover.x(), cover.y() + cover.height() + 9,
                     9, accent(), 5);
             SkijaUi.boldText(canvas, UiControls.ellipsize(current.getAlbum().getName(), cover.width()),
                     cover.x(), cover.y() + cover.height() + 20, 16, TEXT, 9);
@@ -709,7 +715,7 @@ public final class MusicScreen extends AbstractSkijaScreen {
     private void drawNowPlayingHeader(Canvas canvas, Layout layout, Music current) {
         UiControls.Box frame = layout.frame;
         drawDioxideLiteLogo(canvas, frame.x() + 12, frame.y() + 7, 20);
-        String now = "NOW PLAYING";
+        String now = UiText.tr("now_playing", "NOW PLAYING");
         SkijaUi.text(canvas, now, frame.x() + (frame.width() - SkijaUi.textWidth(now, 5)) * 0.5F,
                 frame.y() + 6, 9, 0x66FFFFFF, 5);
         String radio = UiControls.ellipsize(current.getName() + " / Radio", frame.width() * 0.28F);
@@ -742,7 +748,8 @@ public final class MusicScreen extends AbstractSkijaScreen {
         List<NcmLyrics.Line> lyrics = NcmLyrics.getLines();
         float lyricY = y + 74;
         if (lyrics.isEmpty()) {
-            SkijaUi.text(canvas, NcmLyrics.isLoading() ? "Loading lyrics..." : "Instrumental / No lyrics",
+            SkijaUi.text(canvas, NcmLyrics.isLoading() ? UiText.tr("loading_lyrics", "Loading lyrics...")
+                : UiText.tr("instrumental_no_lyrics", "Instrumental / No lyrics"),
                     x, lyricY + 15, 15, 0x58FFFFFF, 8);
         } else {
             int index = Math.max(0, Math.min(lyrics.size() - 1,
@@ -799,11 +806,11 @@ public final class MusicScreen extends AbstractSkijaScreen {
     private void drawQueue(Canvas canvas, Music current, UiControls.Box queue) {
         SkijaUi.fill(canvas, queue.x(), queue.y(), queue.width(), queue.height(), 0x80070B0C);
         SkijaUi.line(canvas, queue.x(), queue.y(), queue.x(), queue.y() + queue.height(), 0.6F, OUTLINE);
-        SkijaUi.text(canvas, "UP NEXT", queue.x() + 13, queue.y() + 16, 10, secondary(), 5);
-        SkijaUi.boldText(canvas, "Play queue", queue.x() + 13, queue.y() + 30, 22, TEXT, 13);
+        SkijaUi.text(canvas, UiText.tr("up_next", "UP NEXT"), queue.x() + 13, queue.y() + 16, 10, secondary(), 5);
+        SkijaUi.boldText(canvas, UiText.tr("play_queue", "Play queue"), queue.x() + 13, queue.y() + 30, 22, TEXT, 13);
         List<Music> songs = safeCopy(CloudMusic.playList);
         if (songs.isEmpty()) {
-            SkijaUi.text(canvas, "Queue is empty", queue.x() + 13, queue.y() + 60,
+            SkijaUi.text(canvas, UiText.tr("queue_empty", "Queue is empty"), queue.x() + 13, queue.y() + 60,
                     13, TEXT_MUTED, 7);
             return;
         }
@@ -1133,14 +1140,14 @@ public final class MusicScreen extends AbstractSkijaScreen {
             case PREVIOUS -> {
                 if (CloudMusic.player != null && !playQueued && !accountBusy) {
                     CloudMusic.prev();
-                    setStatus("Previous track", false);
+                    setStatus(UiText.tr("previous_track", "Previous track"), false);
                 }
             }
             case PAUSE -> togglePause();
             case NEXT -> {
                 if (CloudMusic.player != null && !playQueued && !accountBusy) {
                     CloudMusic.next();
-                    setStatus("Next track", false);
+                    setStatus(UiText.tr("next_track", "Next track"), false);
                 }
             }
             case LIKE -> toggleLike((Music) region.payload);
@@ -1178,14 +1185,14 @@ public final class MusicScreen extends AbstractSkijaScreen {
         contentScroll = 0;
         pageTransition = 0;
         loadingPage = true;
-        setStatus("Loading " + playlist.getName() + "...", false);
+        setStatus(fmt("loading_playlist", "Loading %s...", playlist.getName()), false);
         playlist.loadMusicsWithCallback(songs -> minecraft.execute(() -> {
             if (disposed || selectedPlaylist != playlist) {
                 return;
             }
             playlistSongs = safeCopy(songs);
             loadingPage = false;
-            setStatus(playlistSongs.size() + " songs", false);
+            setStatus(fmt("songs_count", "%s songs", playlistSongs.size()), false);
         }));
     }
 
@@ -1193,7 +1200,7 @@ public final class MusicScreen extends AbstractSkijaScreen {
         String query = search.text().trim();
         if (query.isEmpty() || searching || accountBusy) {
             if (query.isEmpty()) {
-                setStatus("Search text is empty", true);
+                setStatus(UiText.tr("search_text_empty", "Search text is empty"), true);
             }
             return;
         }
@@ -1205,7 +1212,7 @@ public final class MusicScreen extends AbstractSkijaScreen {
         selectedPlaylist = null;
         contentScroll = 0;
         pageTransition = 0;
-        setStatus("Searching " + query + "...", false);
+        setStatus(fmt("searching", "Searching %s...", query), false);
         MusicProvider requestedProvider = provider;
         CompletableFuture.supplyAsync(() -> requestedProvider == MusicProvider.QQ
                 ? QqMusic.search(query) : CloudMusic.search(query)).whenComplete((songs, error) ->
@@ -1217,7 +1224,7 @@ public final class MusicScreen extends AbstractSkijaScreen {
                     loadingPage = false;
                     if (error != null || songs == null) {
                         visibleSongs = List.of();
-                        setStatus("Search failed: " + errorMessage(error), true);
+                        setStatus(fmt("search_failed", "Search failed: %s", errorMessage(error)), true);
                         return;
                     }
                     visibleSongs = safeCopy(songs);
@@ -1229,18 +1236,18 @@ public final class MusicScreen extends AbstractSkijaScreen {
         if (provider == MusicProvider.QQ) {
             visibleSongs = List.of();
             loadingPage = false;
-            setStatus("QQ Music liked songs are not available", false);
+            setStatus(UiText.tr("qq_liked_not_available", "QQ Music liked songs are not available"), false);
             return;
         }
         if (CloudMusic.profile == null || CloudMusic.likeList == null || CloudMusic.likeList.isEmpty()) {
             visibleSongs = List.of();
             loadingPage = false;
-            setStatus("No liked songs", false);
+            setStatus(UiText.tr("no_liked_songs", "No liked songs"), false);
             return;
         }
         visibleSongs = List.of();
         loadingPage = true;
-        setStatus("Loading liked songs...", false);
+        setStatus(UiText.tr("loading_liked_songs", "Loading liked songs..."), false);
         List<Long> likedIds = List.copyOf(CloudMusic.likeList);
         CompletableFuture.supplyAsync(() -> loadSongDetails(likedIds))
                 .whenComplete((songs, error) -> minecraft.execute(() -> {
@@ -1250,7 +1257,7 @@ public final class MusicScreen extends AbstractSkijaScreen {
                     loadingPage = false;
                     if (error != null || songs == null) {
                         visibleSongs = List.of();
-                        setStatus("Liked songs failed: " + errorMessage(error), true);
+                        setStatus(fmt("liked_songs_failed", "Liked songs failed: %s", errorMessage(error)), true);
                         return;
                     }
                     visibleSongs = songs;
@@ -1261,7 +1268,9 @@ public final class MusicScreen extends AbstractSkijaScreen {
     private void loadDaily(int generation) {
         visibleSongs = List.of();
         loadingPage = true;
-        setStatus(provider == MusicProvider.QQ ? "Loading QQ Music toplist..." : "Loading daily songs...", false);
+        setStatus(provider == MusicProvider.QQ
+                ? UiText.tr("loading_qq_toplist", "Loading QQ Music toplist...")
+                : UiText.tr("loading_daily_songs", "Loading daily songs..."), false);
         if (provider == MusicProvider.QQ) {
             CompletableFuture.supplyAsync(QqMusic::toplist).whenComplete((songs, error) ->
                     minecraft.execute(() -> {
@@ -1269,8 +1278,10 @@ public final class MusicScreen extends AbstractSkijaScreen {
                                 || generation != pageRequestGeneration) return;
                         loadingPage = false;
                         visibleSongs = error == null && songs != null ? safeCopy(songs) : List.of();
-                        setStatus(error == null ? visibleSongs.size() + " songs"
-                                : "QQ Music toplist failed: " + errorMessage(error), error != null);
+                        setStatus(error == null
+                                ? fmt("songs_count", "%s songs", visibleSongs.size())
+                                : fmt("daily_songs_failed", "QQ Music toplist failed: %s",
+                                        errorMessage(error)), error != null);
                     }));
             return;
         }
@@ -1282,7 +1293,7 @@ public final class MusicScreen extends AbstractSkijaScreen {
                     loadingPage = false;
                     if (error != null || json == null) {
                         visibleSongs = List.of();
-                        setStatus("Daily songs failed: " + errorMessage(error), true);
+                        setStatus(fmt("daily_songs_failed", "Daily songs failed: %s", errorMessage(error)), true);
                         return;
                     }
                     JsonObject data = json.getAsJsonObject("data");
@@ -1296,7 +1307,7 @@ public final class MusicScreen extends AbstractSkijaScreen {
             return;
         }
         loadingHome = true;
-        setStatus("Loading recommendations...", false);
+        setStatus(UiText.tr("loading_recommendations", "Loading recommendations..."), false);
         if (provider == MusicProvider.QQ) {
             CompletableFuture.supplyAsync(() -> new QqHomeData(QqMusic.recommendations(), QqMusic.toplist()))
                     .whenComplete((data, error) -> minecraft.execute(() -> {
@@ -1305,7 +1316,7 @@ public final class MusicScreen extends AbstractSkijaScreen {
                         if (error != null || data == null) {
                             recommendations = safePlaylists(QqMusic.playLists);
                             homeSongs = List.of();
-                            setStatus("QQ Music recommendations failed: " + errorMessage(error), true);
+                            setStatus(fmt("recommendations_failed", "QQ Music recommendations failed: %s", errorMessage(error)), true);
                             return;
                         }
                         recommendations = safePlaylists(data.playlists());
@@ -1322,7 +1333,7 @@ public final class MusicScreen extends AbstractSkijaScreen {
                     loadingHome = false;
                     if (error != null || json == null) {
                         recommendations = safePlaylists(CloudMusic.playLists);
-                        setStatus("Using saved playlists", false);
+                        setStatus(UiText.tr("using_saved_playlists", "Using saved playlists"), false);
                         primeHomeSongs();
                         return;
                     }
@@ -1381,19 +1392,20 @@ public final class MusicScreen extends AbstractSkijaScreen {
             }
             if (accountBusy) return;
             accountBusy = true;
-            setStatus("Restoring QQ Music account...", false);
+            setStatus(UiText.tr("restoring_qq_account", "Restoring QQ Music account..."), false);
             CompletableFuture.runAsync(QqMusic::reloadAccount).whenComplete((ignored, error) ->
                     minecraft.execute(() -> {
                         if (disposed || provider != MusicProvider.QQ) return;
                         accountBusy = false;
                         if (error != null || !QqMusic.isLoggedIn()) {
                             setStatus(error == null ? QqMusic.status
-                                    : "Account restore failed: " + errorMessage(error), true);
+                                    : fmt("account_restore_failed", "Account restore failed: %s",
+                                            errorMessage(error)), true);
                             startQrLogin();
                             return;
                         }
                         resetProviderContent();
-                        setStatus("Logged in as " + profileName(), false);
+                        setStatus(fmt("logged_in_as", "Logged in as %s", profileName()), false);
                         loadHomeRecommendations();
                     }));
             return;
@@ -1407,7 +1419,7 @@ public final class MusicScreen extends AbstractSkijaScreen {
             return;
         }
         accountBusy = true;
-        setStatus("Restoring NetEase account...", false);
+        setStatus(UiText.tr("restoring_netease_account", "Restoring NetEase account..."), false);
         CompletableFuture.runAsync(() -> CloudMusic.loadNCM(value)).whenComplete((ignored, error) ->
                 minecraft.execute(() -> {
                     if (disposed || provider != MusicProvider.NETEASE) {
@@ -1416,13 +1428,14 @@ public final class MusicScreen extends AbstractSkijaScreen {
                     accountBusy = false;
                     if (error != null || CloudMusic.profile == null) {
                         setStatus(error == null ? CloudMusic.status
-                                : "Account restore failed: " + errorMessage(error), true);
+                                : fmt("account_restore_failed", "Account restore failed: %s",
+                                        errorMessage(error)), true);
                         startQrLogin();
                         return;
                     }
                     recommendations = List.of();
                     homeSongs = List.of();
-                    setStatus("Logged in as " + CloudMusic.profile.getName(), false);
+                    setStatus(fmt("logged_in_as", "Logged in as %s", CloudMusic.profile.getName()), false);
                     loadHomeRecommendations();
                 }));
     }
@@ -1437,7 +1450,7 @@ public final class MusicScreen extends AbstractSkijaScreen {
 
         accountBusy = true;
         qrLoginState = CloudMusic.QrLoginState.CREATING;
-        setStatus("Generating QR code...", false);
+        setStatus(UiText.tr("generating_qr", "Generating QR code..."), false);
 
         MusicProvider requestedProvider = provider;
 
@@ -1504,7 +1517,8 @@ public final class MusicScreen extends AbstractSkijaScreen {
                 QRCodeGenerator.clear();
             }
             statusError = qrLoginState == CloudMusic.QrLoginState.FAILED;
-            setStatus(error == null ? qrLoginStatus() : "QR login failed: " + errorMessage(error), statusError);
+            setStatus(error == null ? qrLoginStatus()
+                    : fmt("qr_login_failed", "QR login failed: %s", errorMessage(error)), statusError);
             return;
         }
 
@@ -1512,7 +1526,7 @@ public final class MusicScreen extends AbstractSkijaScreen {
         QRCodeGenerator.clear();
         recommendations = List.of();
         homeSongs = List.of();
-        setStatus("Logged in as " + profileName(), false);
+        setStatus(fmt("logged_in_as", "Logged in as %s", profileName()), false);
         loadHomeRecommendations();
     }
 
@@ -1521,7 +1535,7 @@ public final class MusicScreen extends AbstractSkijaScreen {
             return;
         }
         accountBusy = true;
-        setStatus("Logging out...", false);
+        setStatus(UiText.tr("logging_out", "Logging out..."), false);
         CompletableFuture.runAsync(() -> {
             if (provider == MusicProvider.QQ) {
                 QqMusic.clearLogin();
@@ -1542,7 +1556,7 @@ public final class MusicScreen extends AbstractSkijaScreen {
             }
             accountBusy = false;
             if (error != null) {
-                setStatus("Logout failed: " + errorMessage(error), true);
+                setStatus(fmt("logout_failed", "Logout failed: %s", errorMessage(error)), true);
                 return;
             }
             recommendations = List.of();
@@ -1551,7 +1565,7 @@ public final class MusicScreen extends AbstractSkijaScreen {
             playlistSongs = List.of();
             selectedPlaylist = null;
             page = Page.HOME;
-            setStatus("Logged out", false);
+            setStatus(UiText.tr("logged_out", "Logged out"), false);
             startQrLogin();
         }));
     }
@@ -1582,7 +1596,7 @@ public final class MusicScreen extends AbstractSkijaScreen {
         page = Page.HOME;
         contentScroll = 0;
         pageTransition = 0;
-        setStatus("Switching to " + provider.displayName() + "...", false);
+        setStatus(fmt("switching_provider", "Switching to %s...", provider.displayName()), false);
         initializeProvider();
     }
 
@@ -1603,9 +1617,9 @@ public final class MusicScreen extends AbstractSkijaScreen {
 
     private String profileName() {
         if (provider == MusicProvider.QQ) {
-            return QqMusic.profile == null ? "OFFLINE" : QqMusic.profile.getNickname();
+            return QqMusic.profile == null ? UiText.tr("offline", "OFFLINE") : QqMusic.profile.getNickname();
         }
-        return CloudMusic.profile == null ? "OFFLINE" : CloudMusic.profile.getName();
+        return CloudMusic.profile == null ? UiText.tr("offline", "OFFLINE") : CloudMusic.profile.getName();
     }
 
     private static CloudMusic.QrLoginState mapQqLoginState(QrLoginState state) {
@@ -1626,15 +1640,16 @@ public final class MusicScreen extends AbstractSkijaScreen {
         int safeIndex = Math.max(0, Math.min(index, queue.size() - 1));
         Music selected = queue.get(safeIndex);
         playQueued = true;
-        setStatus("Queueing " + selected.getName() + "...", false);
+        setStatus(fmt("queueing", "Queueing %s...", selected.getName()), false);
         CompletableFuture.runAsync(() -> CloudMusic.play(queue, safeIndex)).whenComplete((ignored, error) ->
                 minecraft.execute(() -> {
                     if (disposed) {
                         return;
                     }
                     playQueued = false;
-                    setStatus(error == null ? "Playing " + selected.getName()
-                            : "Playback failed: " + errorMessage(error), error != null);
+                    setStatus(error == null ? fmt("playing", "Playing %s", selected.getName())
+                            : fmt("playback_failed", "Playback failed: %s", errorMessage(error)),
+                            error != null);
                 }));
     }
 
@@ -1646,19 +1661,21 @@ public final class MusicScreen extends AbstractSkijaScreen {
         try {
             if (player.isPausing()) {
                 player.unpause();
-                setStatus("Playback resumed", false);
+                setStatus(UiText.tr("playback_resumed", "Playback resumed"), false);
             } else {
                 player.pause();
-                setStatus("Playback paused", false);
+                setStatus(UiText.tr("playback_paused", "Playback paused"), false);
             }
         } catch (RuntimeException error) {
-            setStatus("Playback control failed: " + errorMessage(error), true);
+            setStatus(fmt("playback_control_failed", "Playback control failed: %s",
+                    errorMessage(error)), true);
         }
     }
 
     private void toggleLike(Music music) {
         if (provider == MusicProvider.QQ || music != null && music.getProvider() == MusicProvider.QQ) {
-            setStatus("QQ Music liked-song updates are not available", false);
+            setStatus(UiText.tr("qq_liked_updates_unavailable",
+                    "QQ Music liked-song updates are not available"), false);
             return;
         }
         if (music == null || CloudMusic.likeList == null || CloudMusic.profile == null) {
@@ -1679,7 +1696,8 @@ public final class MusicScreen extends AbstractSkijaScreen {
             } else if (!liked) {
                 CloudMusic.likeList.remove(music.getId());
             }
-            minecraft.execute(() -> setStatus("Like update failed: " + errorMessage(error), true));
+            minecraft.execute(() -> setStatus(fmt("like_update_failed", "Like update failed: %s",
+                    errorMessage(error)), true));
         });
     }
 
@@ -1722,7 +1740,7 @@ public final class MusicScreen extends AbstractSkijaScreen {
             qrImage = decoded;
             qrImageAddress = address;
         } catch (RuntimeException error) {
-            setStatus("Unable to render QR code", true);
+            setStatus(UiText.tr("qr_render_failed", "Unable to render QR code"), true);
         }
     }
 
@@ -1750,12 +1768,16 @@ public final class MusicScreen extends AbstractSkijaScreen {
     private String qrLoginStatus() {
         return switch (qrLoginState) {
             case IDLE -> displayStatus();
-            case CREATING -> "Generating QR code...";
-            case WAITING_SCAN -> "Waiting for scan in " + provider.displayName();
-            case WAITING_CONFIRMATION -> "Scanned - confirm login on your phone";
-            case AUTHORIZED -> "Login confirmed, loading your library...";
-            case EXPIRED -> "QR code expired - generate a new one";
-            case FAILED -> "QR login request failed - try again";
+            case CREATING -> UiText.tr("qr_generating", "Generating QR code...");
+            case WAITING_SCAN ->
+                    String.format(java.util.Locale.ROOT,
+                            UiText.tr("qr_waiting_scan", "Waiting for scan in %s"),
+                            provider.displayName());
+            case WAITING_CONFIRMATION -> UiText.tr("qr_waiting_confirmation",
+                    "Scanned - confirm login on your phone");
+            case AUTHORIZED -> UiText.tr("qr_authorized", "Login confirmed, loading your library...");
+            case EXPIRED -> UiText.tr("qr_expired", "QR code expired - generate a new one");
+            case FAILED -> UiText.tr("qr_failed", "QR login request failed - try again");
         };
     }
 
@@ -2204,7 +2226,9 @@ public final class MusicScreen extends AbstractSkijaScreen {
 
     private static String playlistInfo(PlayList playlist) {
         int count = playlist.musicsLoaded && playlist.musics != null ? playlist.musics.size() : playlist.getCount();
-        return count + " songs / " + formatCount(playlist.getPlayCount()) + " plays";
+        return String.format(java.util.Locale.ROOT,
+                UiText.tr("playlist_info", "%s songs / %s plays"),
+                count, formatCount(playlist.getPlayCount()));
     }
 
     private static String formatCount(long count) {
@@ -2225,11 +2249,15 @@ public final class MusicScreen extends AbstractSkijaScreen {
         return "%d:%02d".formatted(seconds / 60, seconds % 60);
     }
 
+    private static String fmt(String suffix, String fallback, Object... args) {
+        return String.format(java.util.Locale.ROOT, UiText.tr(suffix, fallback), args);
+    }
+
     private static String qualityLabel(Music music) {
-        if (music.isHiRes()) return "HI-RES";
-        if (music.isDolbyAtmos()) return "DOLBY";
-        if (music.isInstrumental()) return "INST";
-        if (music.isDirty()) return "EXPLICIT";
+        if (music.isHiRes()) return UiText.tr("hi_res", "HI-RES");
+        if (music.isDolbyAtmos()) return UiText.tr("dolby", "DOLBY");
+        if (music.isInstrumental()) return UiText.tr("instrumental", "INST");
+        if (music.isDirty()) return UiText.tr("explicit", "EXPLICIT");
         return "NCM";
     }
 
@@ -2239,17 +2267,19 @@ public final class MusicScreen extends AbstractSkijaScreen {
 
     private String pageTitle() {
         return switch (page) {
-            case SEARCH -> "Search Results";
-            case LIKED -> "Liked Songs";
-            case DAILY -> "Daily Songs";
-            case PLAYLIST -> selectedPlaylist == null ? "Playlist" : selectedPlaylist.getName();
-            case HOME -> "Home";
+            case SEARCH -> UiText.tr("search_results", "Search Results");
+            case LIKED -> UiText.tr("liked_songs", "Liked Songs");
+            case DAILY -> UiText.tr("daily_songs", "Daily Songs");
+            case PLAYLIST -> selectedPlaylist == null
+                    ? UiText.tr("playlist", "Playlist")
+                    : selectedPlaylist.getName();
+            case HOME -> UiText.tr("home", "Home");
         };
     }
 
     private static String errorMessage(Throwable error) {
         if (error == null) {
-            return "Unknown error";
+            return UiText.tr("unknown_error", "Unknown error");
         }
         Throwable cause = error.getCause() == null ? error : error.getCause();
         String message = cause.getMessage();

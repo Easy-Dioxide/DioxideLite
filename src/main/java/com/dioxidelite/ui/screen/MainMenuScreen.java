@@ -1,6 +1,7 @@
 package com.dioxidelite.ui.screen;
 
 import com.dioxidelite.DioxideLite;
+import com.dioxidelite.i18n.UiText;
 import com.dioxidelite.render.SkijaUi;
 import com.dioxidelite.ui.UiTheme;
 import io.github.humbleui.skija.Canvas;
@@ -99,10 +100,17 @@ public final class MainMenuScreen extends AbstractSkijaScreen {
 
         canvas.drawColor(0xFF000000);
         if (entrance.background() > 0.0F) {
-            int save = canvas.saveLayerAlpha(null, Math.round(255.0F * entrance.background()));
-            ScreenBackdrop.drawMainMenu(canvas, width, height,
-                    now / 1_000_000_000.0F, mouseX, mouseY, 48);
-            canvas.restoreToCount(save);
+            // 仅入场动画期间才使用离屏层：background() 从 0 过渡到 1 后保持 1.0，
+            // 必须用 saveLayerAlpha 才能实现叠加淡入效果；之后直接绘制即可。
+            if (entrance.background() < 1.0F) {
+                int save = canvas.saveLayerAlpha(null, Math.round(255.0F * entrance.background()));
+                ScreenBackdrop.drawMainMenu(canvas, width, height,
+                        now / 1_000_000_000.0F, mouseX, mouseY, 48);
+                canvas.restoreToCount(save);
+            } else {
+                ScreenBackdrop.drawMainMenu(canvas, width, height,
+                        now / 1_000_000_000.0F, mouseX, mouseY, 48);
+            }
         }
         drawFields(canvas, layout, entrance.content());
         drawDivider(canvas, layout, entrance.lines());
@@ -160,9 +168,9 @@ public final class MainMenuScreen extends AbstractSkijaScreen {
 
     private void drawDestinations(Canvas canvas, Layout layout, float intro, float time) {
         float flash = 0.5F + 0.5F * (float) Math.sin(time * 6.0F);
-        drawDestination(canvas, "SINGLE PLAYER", layout.leftLabelX(), layout.centerY(),
+        drawDestination(canvas, UiText.tr("single_player", "SINGLE PLAYER"), layout.leftLabelX(), layout.centerY(),
                 -1.0F, singleHover, singlePress, UiTheme.accent(), intro, flash);
-        drawDestination(canvas, "MULTI PLAYER", layout.rightLabelX(), layout.centerY(),
+        drawDestination(canvas, UiText.tr("multi_player", "MULTI PLAYER"), layout.rightLabelX(), layout.centerY(),
                 1.0F, multiHover, multiPress, 0xFFF1A45D, intro, flash);
     }
 
@@ -222,11 +230,11 @@ public final class MainMenuScreen extends AbstractSkijaScreen {
 
             float utilityReveal = clamp((progress - 0.38F) / 0.62F, 0.0F, 1.0F);
             drawUtilityDividers(canvas, centerX, centerY, radius, utilityReveal);
-            drawUtility(canvas, "ALT", centerX, centerY - radius * 0.52F,
+            drawUtility(canvas, UiText.tr("alt", "ALT"), centerX, centerY - radius * 0.52F,
                     altHover, altPress, 0xFFD3B3FF, utilityReveal);
-            drawUtility(canvas, "QUIT", centerX - radius * 0.45F, centerY + radius * 0.28F,
+            drawUtility(canvas, UiText.tr("quit", "QUIT"), centerX - radius * 0.45F, centerY + radius * 0.28F,
                     quitHover, quitPress, 0xFFE26964, utilityReveal);
-            drawUtility(canvas, "SETTINGS", centerX + radius * 0.45F, centerY + radius * 0.28F,
+            drawUtility(canvas, UiText.tr("settings", "SETTINGS"), centerX + radius * 0.45F, centerY + radius * 0.28F,
                     settingsHover, settingsPress, UiTheme.accent(), utilityReveal);
             drawSwitchControl(canvas, centerX, centerY, utilityReveal);
         }

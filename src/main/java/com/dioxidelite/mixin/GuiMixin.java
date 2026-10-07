@@ -3,11 +3,15 @@ package com.dioxidelite.mixin;
 import com.dioxidelite.module.modules.render.advanced.NoRender;
 import com.dioxidelite.module.modules.render.advanced.Crosshair;
 import com.dioxidelite.module.modules.render.DeltaForceStyle;
+import com.dioxidelite.ui.SkijaScreen;
 import com.dioxidelite.ui.hud.ScoreboardHUD;
 import com.dioxidelite.ui.dioxide.DioxideDynamicIsland;
+import com.dioxidelite.ui.screen.VanillaScreenTheme;
 import net.minecraft.client.DeltaTracker;
+import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.Gui;
 import net.minecraft.client.gui.GuiGraphicsExtractor;
+import net.minecraft.client.gui.screens.Screen;
 import org.spongepowered.asm.mixin.Mixin;
 import org.spongepowered.asm.mixin.Unique;
 import org.spongepowered.asm.mixin.injection.At;
@@ -82,6 +86,14 @@ public class GuiMixin {
     private void DioxideLite$hideDeltaForceHotbar(GuiGraphicsExtractor graphics,
                                             DeltaTracker deltaTracker, CallbackInfo ci) {
         DioxideLite$deltaHotbarPosePushed = false;
+        // Themed screens replace vanilla's opaque screen background with their own Skija
+        // layer, and that layer is painted before the GUI layers are submitted — so the
+        // HUD ends up floating on top of the menu instead of being covered by it like it
+        // is in vanilla. Hide it explicitly while one of those screens is open.
+        if (DioxideLite$themedScreenOwnsHud(Minecraft.getInstance().screen)) {
+            ci.cancel();
+            return;
+        }
         DeltaForceStyle deltaForce = DeltaForceStyle.INSTANCE;
         if (!deltaForce.isEnabled()) return;
         float progress = deltaForce.transitionProgress();
@@ -92,6 +104,12 @@ public class GuiMixin {
         graphics.pose().pushMatrix();
         graphics.pose().translate(0.0F, deltaForce.vanillaHotbarOffset());
         DioxideLite$deltaHotbarPosePushed = true;
+    }
+
+    /** True for screens whose chrome the client paints itself, in a layer under the GUI. */
+    @Unique
+    private static boolean DioxideLite$themedScreenOwnsHud(Screen screen) {
+        return screen instanceof SkijaScreen || VanillaScreenTheme.applies(screen);
     }
 
     @Inject(method = "extractHotbarAndDecorations", at = @At("RETURN"))

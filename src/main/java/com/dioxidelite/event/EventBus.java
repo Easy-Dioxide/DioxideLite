@@ -129,7 +129,17 @@ public final class EventBus {
             try {
                 method.invoke(target, event);
             } catch (Throwable t) {
-                DioxideLite.LOGGER.error("Event handler {} threw while handling {}", method, event.getClass().getSimpleName(), t);
+                // 这里的 catch 绝不能再抛出去 —— 一个模块的 handler 出错不该把整个游戏带崩。
+                // 原实现用 event.getClass().getSimpleName()：对嵌套事件类（如 PlayerTickEvent$Pre）
+                // 求简单名会去加载外层类 PlayerTickEvent，一旦类加载失败就会从 catch 里抛出
+                // NoClassDefFoundError，把"某个 handler 报错"直接升级成 ReportedException 崩溃。
+                // getName() 不触发类加载；日志本身也兜一层。
+                try {
+                    DioxideLite.LOGGER.error("Event handler {} threw while handling {}",
+                            method, event.getClass().getName(), t);
+                } catch (Throwable ignored) {
+                    // 连日志都失败时也必须让事件分发继续下去
+                }
             }
         }
     }

@@ -157,5 +157,6 @@
   "bedrock_realms.dioxidelitevia.invite": "接受邀请码",
   "bedrock_realms.dioxidelitevia.expired": "Realm已过期",
   "bedrock_realms.dioxidelitevia.incompatible": "Realm的Minecraft版本太旧或太新",
-  "bedrock_realms.dioxidelitevia.unsupported_protocol": "不支持通过%s协议加入Realm。你不能加入这个Realm。"
+  "bedrock_realms.dioxidelitevia.unsupported_protocol": "不支持通过%s协议加入Realm。你不能加入这个Realm。",
+  "screen.dioxidelitevia.title": "DioxideLiteVia"
 }

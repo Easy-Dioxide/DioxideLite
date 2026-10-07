@@ -84,7 +84,7 @@
   "visual_settings.dioxidelitevia.hide_empty_bubble_icons": "Leere Wasserblasensymbole ausblenden",
   "visual_settings.dioxidelitevia.hide_villager_profession": "Dorfbewohner-Beruf verstecken",
   "visual_settings.dioxidelitevia.hide_download_terrain_screen_transition_effects": "Übergangseffekte des Download-Geländebildschirms ausblenden",
-  "visual_settings.dioxidelitevia.replace_petrified_oak_slab": "Versteinerte Eichenplattentextur durch die 'unbekannte' Textur ersetzen",
+  "visual_settings.dioxidelitevia.replace_petrified_oak_slab": "Versteinerte Eichenplattentextur durch die \u0027unbekannte\u0027 Textur ersetzen",
   "visual_settings.dioxidelitevia.always_render_crosshair": "Fadenkreuz immer anzeigen",
   "visual_settings.dioxidelitevia.replace_hurt_sound_with_oof_sound": "Verletzungsgeräusch durch OOF-Geräusch ersetzen",
   "visual_settings.dioxidelitevia.hide_modern_hud_elements": "Moderne HUD-Elemente ausblenden",
@@ -107,7 +107,7 @@
   "change_game_menu_screen_layout.dioxidelitevia.authentic": "Authentisch",
   "change_game_menu_screen_layout.dioxidelitevia.adjusted": "Angepasst",
   "change_game_menu_screen_layout.dioxidelitevia.authentic.tooltip": "Passt Schaltflächenpositionen und -überlagerungen basierend auf der ausgewählten Version an.",
-  "change_game_menu_screen_layout.dioxidelitevia.adjusted.tooltip": "Ersetzt in <= 1.18.2 den Bildschirm \"Spieler melden\" durch \"Soziale Interaktionen\".",
+  "change_game_menu_screen_layout.dioxidelitevia.adjusted.tooltip": "Ersetzt in \u003c= 1.18.2 den Bildschirm \"Spieler melden\" durch \"Soziale Interaktionen\".",
   "change_game_menu_screen_layout.dioxidelitevia.off.tooltip": "Ändert den Spielmenübildschirm überhaupt nicht.",
   "report.dioxidelitevia.button": "Probleme melden",
   "report.dioxidelitevia.bug_report": "Einen Fehler auf GitHub melden",
@@ -142,5 +142,6 @@
   "bedrock_realms.dioxidelitevia.leave": "Realm verlassen",
   "bedrock_realms.dioxidelitevia.invite": "Einladungscode akzeptieren",
   "bedrock_realms.dioxidelitevia.expired": "Der Realm ist abgelaufen",
-  "bedrock_realms.dioxidelitevia.incompatible": "Die Minecraft-Version des Realms ist entweder zu alt oder zu neu"
+  "bedrock_realms.dioxidelitevia.incompatible": "Die Minecraft-Version des Realms ist entweder zu alt oder zu neu",
+  "screen.dioxidelitevia.title": "DioxideLiteVia"
 }

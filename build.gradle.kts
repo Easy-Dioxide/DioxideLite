@@ -159,6 +159,12 @@ dependencies {
     implementation("org.jetbrains.kotlin:kotlin-stdlib:2.4.0")
     include("org.jetbrains.kotlin:kotlin-stdlib:2.4.0")
 
+    // 2.2.6 视频背景烘焙（VideoBackgroundBaker）依赖
+    implementation("org.jcodec:jcodec:0.2.5")
+    include("org.jcodec:jcodec:0.2.5")
+    implementation("org.jcodec:jcodec-javase:0.2.5")
+    include("org.jcodec:jcodec-javase:0.2.5")
+
     // mixin 相关：Xray 的 @WrapOperation 与 FabricMixinPlugin 的 ASM 依赖
     compileOnly("io.github.llamalad7:mixinextras-common:0.5.3")
     compileOnly("org.ow2.asm:asm:9.8")

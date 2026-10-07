@@ -9,6 +9,7 @@ import io.github.humbleui.skija.SamplingMode;
 import io.github.humbleui.skija.Shader;
 import io.github.humbleui.types.Rect;
 import net.minecraft.client.Minecraft;
+import net.minecraft.network.chat.Component;
 
 import javax.imageio.ImageIO;
 import javax.imageio.ImageReader;
@@ -21,6 +22,7 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.StandardCopyOption;
 import java.util.Iterator;
+import java.util.Locale;
 
 /** Full-screen animated architectural backdrop shared by standalone client screens. */
 final class ScreenBackdrop {
@@ -28,15 +30,69 @@ final class ScreenBackdrop {
     private static final Paint GRADIENT_PAINT = new Paint().setAntiAlias(true).setDither(true);
     private static final Paint LINE_PAINT = new Paint().setAntiAlias(true).setStrokeWidth(1.0F);
     private static final Paint IMAGE_PAINT = new Paint().setAntiAlias(true).setDither(true);
+    private static final Paint BLEND_PAINT = new Paint().setAntiAlias(true).setDither(true);
     private static final Image MAIN_MENU_BACKGROUND = loadImage(
             "/assets/dioxide-lite/textures/mainmenu/background.png");
     private static final long MAX_IMPORT_BYTES = 32L * 1024L * 1024L;
     private static final long MAX_IMPORT_PIXELS = 40_000_000L;
+    /** 背景模式切换时的交叉淡化时长（秒），避免生硬跳变。 */
+    private static final float SWITCH_FADE_SECONDS = 0.42F;
+    /** 烘焙出的帧宽与JPEG 质量：1080p 源在 960 宽时约 48KB/帧，整段约 51MB。 */
+    private static final int FRAME_WIDTH = 960;
+    private static final float FRAME_QUALITY = 0.82F;
+
     private static Image customMainMenuBackground;
     private static boolean backgroundStateLoaded;
-    private static boolean gridBackground;
+    private static volatile Mode mode = Mode.BUILTIN_IMAGE;
+    private static volatile VideoBackgroundPlayer videoPlayer;
+
+    /**
+     * 后台线程（视频烘焙）请求切换到的模式。
+     *
+     * <p>烘焙结束是在工作线程上，直接改 {@link #mode} / 开视频播放器会与渲染线程抢 Skija 状态，
+     * 所以后台只登记请求，真正的切换由渲染线程在 {@link #drawMainMenu} 里消费。
+     */
+    private static volatile Mode pendingMode;
+
+    /** 上一帧正在显示的背景，用于切换时的交叉淡化。 */
+    private static Image previousImage;
+    private static VideoBackgroundPlayer previousPlayer;
+    private static float previousBlend;
+    private static float switchStartedAt;
 
     private ScreenBackdrop() {
+    }
+
+    /** 菜单背景来源。 */
+    enum Mode {
+        BUILTIN_IMAGE("Default image"),
+        BUILTIN_VIDEO("Default video"),
+        CUSTOM_IMAGE("Custom image"),
+        CUSTOM_VIDEO("Custom video"),
+        GRID("Animated grid");
+
+        private final String label;
+
+        Mode(String label) {
+            this.label = label;
+        }
+
+        String label() {
+            return label;
+        }
+
+        /** 界面上显示的名字（走语言文件，缺键时回退英文）。 */
+        Component displayName() {
+            return Component.translatableWithFallback(
+                    "DioxideLite.options_screen.mode." + name().toLowerCase(Locale.ROOT), label);
+        }
+
+        static Mode byName(String name, Mode fallback) {
+            for (Mode candidate : values()) {
+                if (candidate.name().equalsIgnoreCase(name)) return candidate;
+            }
+            return fallback;
+        }
     }
 
     static void draw(Canvas canvas, float width, float height, int shadeAlpha) {
@@ -51,18 +107,86 @@ final class ScreenBackdrop {
     static void drawMainMenu(Canvas canvas, float width, float height, float time,
                              float pointerX, float pointerY, int shadeAlpha) {
         ensureBackgroundStateLoaded();
-        if (gridBackground) {
+        consumePendingMode();
+        if (mode == Mode.GRID) {
             draw(canvas, width, height, time, pointerX, pointerY, 18);
             return;
         }
-        Image background = mainMenuBackground();
-        if (background == null || width <= 0.0F || height <= 0.0F) {
-            draw(canvas, width, height, shadeAlpha);
+
+        float fade = switchProgress(time);
+        VideoBackgroundPlayer player = videoPlayer;
+        VideoBackgroundPlayer.Frame frame = player != null && player.isUsable()
+                ? player.current(time) : VideoBackgroundPlayer.Frame.EMPTY;
+
+        if (frame.isEmpty()) {
+            // 视频还没就绪：继续用上一帧画面顶着，不闪黑
+            Image still = currentStill();
+            if (still == null) {
+                draw(canvas, width, height, shadeAlpha);
+                return;
+            }
+            drawImageCover(canvas, still, null, 0.0F, width, height);
+            applyShade(canvas, width, height, shadeAlpha);
             return;
         }
 
-        float imageWidth = background.getWidth();
-        float imageHeight = background.getHeight();
+        // 过渡期间：旧背景在下，新背景（视频当前帧）按进度淡入
+        drawImageCover(canvas, previousImage, null, 0.0F, width, height);
+        drawImageCover(canvas, frame.image(), frame.hasBlend() ? frame.blendImage() : null,
+                frame.hasBlend() ? frame.blendWeight() : 1.0F - fade, width, height);
+        applyShade(canvas, width, height, shadeAlpha);
+
+        if (fade >= 1.0F) {
+            clearPrevious();
+        }
+    }
+
+    /** 当前应当显示的静态图（不含视频帧）。 */
+    private static Image currentStill() {
+        return switch (mode) {
+            case CUSTOM_IMAGE -> customMainMenuBackground != null
+                    ? customMainMenuBackground : MAIN_MENU_BACKGROUND;
+            default -> MAIN_MENU_BACKGROUND;
+        };
+    }
+
+    /** 切换淡化的进度：0=完全还是旧背景，1=过渡完成。 */
+    private static float switchProgress(float time) {
+        if (previousImage == null || switchStartedAt <= 0.0F) return 1.0F;
+        float elapsed = time - switchStartedAt;
+        if (elapsed >= SWITCH_FADE_SECONDS) return 1.0F;
+        if (elapsed <= 0.0F) return 0.0F;
+        return elapsed / SWITCH_FADE_SECONDS;
+    }
+
+    private static void clearPrevious() {
+        previousImage = null;
+        previousPlayer = null;
+        previousBlend = 0.0F;
+        switchStartedAt = 0.0F;
+    }
+
+    /**
+     * 把图片按 cover 方式铺满视口。
+     *
+     * @param blend  第二张图（非空时叠加在第一张之上）
+     * @param weight 第二张图的透明度
+     */
+    private static void drawImageCover(Canvas canvas, Image image, Image blend, float weight,
+                                       float width, float height) {
+        if (width <= 0.0F || height <= 0.0F) return;
+        if (image != null) drawCovered(canvas, image, width, height, IMAGE_PAINT, 1.0F);
+        if (blend != null) {
+            float alpha = Math.max(0.0F, Math.min(1.0F, weight));
+            if (alpha > 0.0F) drawCovered(canvas, blend, width, height, BLEND_PAINT, alpha);
+        }
+    }
+
+    private static void drawCovered(Canvas canvas, Image image, float width, float height,
+                                    Paint paint, float alpha) {
+        float imageWidth = image.getWidth();
+        float imageHeight = image.getHeight();
+        if (imageWidth <= 0.0F || imageHeight <= 0.0F) return;
         float viewportAspect = width / height;
         float imageAspect = imageWidth / imageHeight;
         float sourceWidth = imageWidth;
@@ -74,21 +198,89 @@ final class ScreenBackdrop {
         }
         float sourceX = (imageWidth - sourceWidth) * 0.5F;
         float sourceY = (imageHeight - sourceHeight) * 0.5F;
-        canvas.drawImageRect(background,
+        paint.setAlpha(Math.round(255.0F * Math.max(0.0F, Math.min(1.0F, alpha))));
+        canvas.drawImageRect(image,
                 Rect.makeXYWH(sourceX, sourceY, sourceWidth, sourceHeight),
                 Rect.makeXYWH(0.0F, 0.0F, width, height),
-                SamplingMode.MITCHELL, IMAGE_PAINT, true);
-        if (shadeAlpha > 0) {
-            canvas.drawColor(UiTheme.argb(Math.min(255, shadeAlpha), 3, 4, 7));
-        }
-        drawEdgeShade(canvas, width, height);
+                SamplingMode.LINEAR, paint, true);
     }
 
     static boolean canResetMainMenuBackground() {
         ensureBackgroundStateLoaded();
-        return !gridBackground;
+        return mode != Mode.BUILTIN_IMAGE;
     }
 
+    static Mode mode() {
+        ensureBackgroundStateLoaded();
+        // 后台刚请求但还没被渲染线程消费时，按「将要生效的模式」回答，
+        // 否则连点循环按钮会算出错误的下一档。
+        Mode requested = pendingMode;
+        return requested != null ? requested : mode;
+    }
+
+    /**
+     * 请求切换背景模式，任意线程可调。
+     *
+     * <p>真正的切换发生在此后的某个渲染帧里（见 {@link #consumePendingMode()}）。
+     */
+    static void requestMode(Mode next) {
+        if (next == null) return;
+        pendingMode = next;
+    }
+
+    /** 在渲染线程消费挂起的切换请求。 */
+    private static void consumePendingMode() {
+        Mode next = pendingMode;
+        if (next == null) return;
+        pendingMode = null;
+        applyMode(next);
+    }
+
+    /**
+     * 这一档现在切过去能不能看出变化。
+     *
+     * <p>「自定义图片 / 自定义视频」在没有导入素材时会回退成内置图，
+     * 界面上一模一样 —— 循环切换要跳过它们，否则用户点一下会觉得「没反应」。
+     */
+    static boolean isModeAvailable(Mode candidate) {
+        ensureBackgroundStateLoaded();
+        return switch (candidate) {
+            case CUSTOM_IMAGE -> customMainMenuBackground != null;
+            case CUSTOM_VIDEO -> hasCachedFrames(customVideoFrameDirectory());
+            // 内置视频首次需要烘焙，但切过去会自己触发，所以算可用。
+            default -> true;
+        };
+    }
+
+    /** 内置视频资源（打包在 jar 里，首次使用时烘焙成帧序列）。 */
+    static final String BUILTIN_VIDEO_RESOURCE =
+            "/assets/dioxide-lite/textures/mainmenu/dc2989d7904191e44e8408fe2e34e5be.mp4";
+
+    /** 切换背景模式；视频类模式在帧序列未就绪时会回退到静态图。 */
+    static void applyMode(Mode next) {
+        ensureBackgroundStateLoaded();
+        if (next == null) return;
+        // 先落盘：即使这一档和当前相同（比如从旧版 grid 标记迁移过来）也要记住选择。
+        saveMode(next);
+        if (next == mode) return;
+        Mode previous = mode;
+        beginSwitch();
+        mode = next;
+        if (next != Mode.CUSTOM_VIDEO) {
+            closeCustomVideo();
+        }
+        //注意：customMainMenuBackground 不在这里清理，来回切换时不必重新解码 PNG，
+        //currentStill() 会按当前 mode 决定用它还是内置图。
+        if (previous == Mode.GRID && next != Mode.GRID) {
+            previousImage = MAIN_MENU_BACKGROUND;
+        }
+        if (next == Mode.BUILTIN_VIDEO || next == Mode.CUSTOM_VIDEO) {
+            startVideoIfPossible();
+        }
+        backgroundStateLoaded = true;
+    }
+
+    /** 导入自定义图片背景。 */
     static void importMainMenuBackground(Path source) throws IOException {
         if (source == null || !Files.isRegularFile(source)) {
             throw new IOException("The selected image does not exist.");
@@ -111,29 +303,113 @@ final class ScreenBackdrop {
                 throw new IOException("The converted image could not be loaded.");
             }
             try {
-                Files.deleteIfExists(gridBackgroundMarker());
                 moveReplacing(temporary, target);
             } catch (IOException exception) {
                 replacement.close();
                 throw exception;
             }
             replaceCustomBackground(replacement);
-            gridBackground = false;
-            backgroundStateLoaded = true;
+            applyMode(Mode.CUSTOM_IMAGE);
         } finally {
             Files.deleteIfExists(temporary);
             decoded.flush();
         }
     }
 
-    static void resetMainMenuBackground() throws IOException {
-        Path marker = gridBackgroundMarker();
-        Files.createDirectories(marker.getParent());
-        Files.write(marker, new byte[0]);
-        Files.deleteIfExists(customBackgroundPath());
-        replaceCustomBackground(null);
-        gridBackground = true;
-        backgroundStateLoaded = true;
+    /** 导入自定义视频背景：复制到配置目录并烘焙成帧序列。 */
+    static VideoBackgroundBaker.Manifest importMainMenuVideo(Path source,
+                                                             VideoBackgroundBaker.Progress progress)
+            throws IOException {
+        if (source == null || !Files.isRegularFile(source)) {
+            throw new IOException("The selected video does not exist.");
+        }
+        long byteCount = Files.size(source);
+        if (byteCount <= 0L) {
+            throw new IOException("The selected video is empty.");
+        }
+
+        Path directory = backgroundDirectory();
+        Files.createDirectories(directory);
+        Path video = directory.resolve("menu-background.mp4");
+        Path temporary = video.resolveSibling(video.getFileName() + ".tmp");
+        Files.copy(source, temporary, StandardCopyOption.REPLACE_EXISTING);
+        moveReplacing(temporary, video);
+
+        Path frames = customVideoFrameDirectory();
+        VideoBackgroundBaker.discard(frames);
+        VideoBackgroundBaker.Manifest manifest =
+                VideoBackgroundBaker.bake(video, frames, FRAME_WIDTH, FRAME_QUALITY, progress);
+        // 这里跑在烘焙线程上：只登记请求，由渲染线程真正切过去。
+        requestMode(Mode.CUSTOM_VIDEO);
+        return manifest;
+    }
+
+    /** 恢复默认背景（内置图片）。自定义素材保留在磁盘上，方便再切回来。 */
+    static void resetMainMenuBackground() {
+        // 清掉旧版本用来记 grid 的标记文件，否则下次启动会把它又当成当前模式。
+        try {
+            Files.deleteIfExists(gridBackgroundMarker());
+        } catch (IOException exception) {
+            DioxideLite.LOGGER.warn("Unable to delete the legacy grid background marker", exception);
+        }
+        requestMode(Mode.BUILTIN_IMAGE);
+    }
+
+    /**
+ * 把打包在 jar 里的内置视频烘焙成帧序列（首次使用时触发）。
+ * 资源本身读不出 JCodec 需要的随机访问通道，所以先落到磁盘。
+ */
+static VideoBackgroundBaker.Manifest bakeBuiltinVideo(VideoBackgroundBaker.Progress progress)
+            throws IOException {
+        Path directory = backgroundDirectory();
+        Files.createDirectories(directory);
+        Path video = directory.resolve("builtin-video.mp4");
+        if (!Files.isRegularFile(video) || Files.size(video) <= 0L) {
+            try (InputStream stream = ScreenBackdrop.class.getResourceAsStream(
+                    BUILTIN_VIDEO_RESOURCE)) {
+                if (stream == null) {
+                    throw new IOException("The bundled background video is missing from the jar.");
+                }
+                Path temporary = video.resolveSibling(video.getFileName() + ".tmp");
+                Files.write(temporary, stream.readAllBytes());
+                moveReplacing(temporary, video);
+            }
+        }
+        Path frames = builtinVideoFrameDirectory();
+        VideoBackgroundBaker.Manifest manifest =
+                VideoBackgroundBaker.loadCached(frames, 0);
+        if (manifest == null) {
+            manifest = VideoBackgroundBaker.bake(video, frames, FRAME_WIDTH, FRAME_QUALITY,
+                    progress);
+        }
+        // 烘焙线程上只登记请求 —— 之前这里什么都不做，导致「切到内置视频」这一档永远不生效。
+        requestMode(Mode.BUILTIN_VIDEO);
+        return manifest;
+    }
+
+/** 记录切换开始时刻，并把当前画面留作淡出底图。 */
+    private static void beginSwitch() {
+        previousImage = currentStill();
+        previousBlend = 0.0F;
+        switchStartedAt = seconds();
+    }
+
+    private static void closeCustomVideo() {
+        if (videoPlayer != null) {
+            videoPlayer.close();
+            videoPlayer = null;
+        }
+    }
+
+    /** 打开当前模式对应的视频（缓存已烘焙时立即可用）。 */
+    private static void startVideoIfPossible() {
+        Path frames = mode == Mode.CUSTOM_VIDEO
+                ? customVideoFrameDirectory() : builtinVideoFrameDirectory();
+        VideoBackgroundBaker.Manifest manifest =
+                VideoBackgroundBaker.loadCached(frames, 0);
+        if (manifest == null) return;
+        closeCustomVideo();
+        videoPlayer = VideoBackgroundPlayer.open(frames, manifest);
     }
 
     static void draw(Canvas canvas, float width, float height, float time,
@@ -219,6 +495,13 @@ final class ScreenBackdrop {
         canvas.drawLine(0.0F, y, width, y, LINE_PAINT);
     }
 
+    /** 叠加整屏暗色遮罩，数值越大越暗。 */
+    private static void applyShade(Canvas canvas, float width, float height, int shadeAlpha) {
+        if (shadeAlpha > 0) {
+            canvas.drawColor(UiTheme.argb(Math.min(255, shadeAlpha), 4, 6, 9));
+        }
+    }
+
     private static void drawEdgeShade(Canvas canvas, float width, float height) {
         float edge = Math.min(150.0F, width * 0.24F);
         drawGradient(canvas, Rect.makeXYWH(0.0F, 0.0F, edge, height),
@@ -301,16 +584,72 @@ final class ScreenBackdrop {
 
     private static Image mainMenuBackground() {
         ensureBackgroundStateLoaded();
-        return customMainMenuBackground != null ? customMainMenuBackground : MAIN_MENU_BACKGROUND;
+        if (mode == Mode.CUSTOM_IMAGE && customMainMenuBackground != null) {
+            return customMainMenuBackground;
+        }
+        return MAIN_MENU_BACKGROUND;
     }
 
     private static void ensureBackgroundStateLoaded() {
         if (backgroundStateLoaded) {
             return;
         }
-        gridBackground = Files.isRegularFile(gridBackgroundMarker());
-        customMainMenuBackground = gridBackground ? null : loadImage(customBackgroundPath());
+        Mode requested = loadSavedMode();
+        if (requested == null) {
+            // 兼容旧版本：以前「reset」会写一个 grid 标记文件，没有存档记录时以它为准。
+            requested = Files.isRegularFile(gridBackgroundMarker())
+                    ? Mode.GRID : Mode.BUILTIN_IMAGE;
+        }
+        mode = requested;
+        customMainMenuBackground = loadImage(customBackgroundPath());
+        // 之前选的模式可能已经没有素材了（图删了 / 帧缓存没了），回退到默认图片，
+        // 否则开屏会是一片空白，看着就像「切了没反应」。
+        if (mode == Mode.CUSTOM_IMAGE && customMainMenuBackground == null) {
+            mode = Mode.BUILTIN_IMAGE;
+        }
+        if (mode == Mode.CUSTOM_VIDEO && !hasCachedFrames(customVideoFrameDirectory())) {
+            mode = customMainMenuBackground != null ? Mode.CUSTOM_IMAGE : Mode.BUILTIN_IMAGE;
+        }
+        if (mode == Mode.BUILTIN_VIDEO && !hasCachedFrames(builtinVideoFrameDirectory())) {
+            mode = Mode.BUILTIN_IMAGE;
+        }
+        if (mode != requested) {
+            DioxideLite.LOGGER.info("Menu background mode {} has no assets left, using {}",
+                    requested, mode);
+        }
+        DioxideLite.LOGGER.info("Menu background mode: {}", mode);
         backgroundStateLoaded = true;
+        if (mode == Mode.BUILTIN_VIDEO || mode == Mode.CUSTOM_VIDEO) {
+            startVideoIfPossible();
+        }
+    }
+
+    private static boolean hasCachedFrames(Path directory) {
+        return VideoBackgroundBaker.loadCached(directory, 0) != null;
+    }
+
+    /** 读取上次选择的模式；没有记录（首次使用 / 文件损坏）时返回 {@code null}。 */
+    private static Mode loadSavedMode() {
+        Path file = modeFilePath();
+        if (!Files.isRegularFile(file)) {
+            return null;
+        }
+        try {
+            return Mode.byName(Files.readString(file).trim(), null);
+        } catch (IOException exception) {
+            DioxideLite.LOGGER.warn("Unable to read the saved menu background mode", exception);
+            return null;
+        }
+    }
+
+    private static void saveMode(Mode selected) {
+        try {
+            Path file = modeFilePath();
+            Files.createDirectories(file.getParent());
+            Files.writeString(file, selected.name());
+        } catch (IOException | RuntimeException exception) {
+            DioxideLite.LOGGER.warn("Unable to save the menu background mode", exception);
+        }
     }
 
     private static void replaceCustomBackground(Image replacement) {
@@ -329,6 +668,20 @@ final class ScreenBackdrop {
     private static Path gridBackgroundMarker() {
         return backgroundDirectory()
                 .resolve("use-grid-background");
+    }
+
+    /** 上次选择的背景模式（明文枚举名）。 */
+    private static Path modeFilePath() {
+        return backgroundDirectory()
+                .resolve("menu-background-mode.txt");
+    }
+
+    private static Path customVideoFrameDirectory() {
+        return backgroundDirectory().resolve("menu-video-frames");
+    }
+
+    private static Path builtinVideoFrameDirectory() {
+        return backgroundDirectory().resolve("builtin-video-frames");
     }
 
     private static Path backgroundDirectory() {

@@ -54,8 +54,8 @@
   "authentication_settings.dioxidelitevia.set_session_name_to_classicube_name": "Session-Nimm op ClassiCube-Nimm sätzen, wann du dClassiCube-Serverlescht benotzt.",
   "visual_settings.dioxidelitevia.disable_secure_chat_warning": "Warnung fir secheren Chat deaktivieren",
   "visual_settings.dioxidelitevia.hide_signature_indicator": "Signaturanzeige verstoppen",
-  "visual_settings.dioxidelitevia.replace_petrified_oak_slab": "Versteinerter Eichenschwelle mat 'Unbekannt'-Textur ersätzen",
-  "visual_settings.dioxidelitevia.replace_hurt_sound_with_oof_sound": "Verletzungsgeräisch mat 'OOF'-Geräisch ersätzen",
+  "visual_settings.dioxidelitevia.replace_petrified_oak_slab": "Versteinerter Eichenschwelle mat \u0027Unbekannt\u0027-Textur ersätzen",
+  "visual_settings.dioxidelitevia.replace_hurt_sound_with_oof_sound": "Verletzungsgeräisch mat \u0027OOF\u0027-Geräisch ersätzen",
   "visual_settings.dioxidelitevia.hide_modern_hud_elements": "Nei HUD-Elementer entfernen",
   "visual_settings.dioxidelitevia.replace_creative_inventory_with_classic_inventory": "Kreativ-Inventar ersätzen",
   "visual_settings.dioxidelitevia.old_walking_animation": "Aal Laafanimatioun",
@@ -78,5 +78,6 @@
   "classic4j_library.dioxidelitevia.error.username": "Ungültigen Benotzernumm.",
   "classic4j_library.dioxidelitevia.error.password": "Ungültegt Passwuert.",
   "classic4j_library.dioxidelitevia.error.verification": "Benotzer huet seng E-Mail-Adress nach net verifizeiert.",
-  "classic4j_library.dioxidelitevia.error.logincode": "Mehrstufig Authentifizeierung ugefurdert. W.e.g. iwwerpreif deng E-Mails."
+  "classic4j_library.dioxidelitevia.error.logincode": "Mehrstufig Authentifizeierung ugefurdert. W.e.g. iwwerpreif deng E-Mails.",
+  "screen.dioxidelitevia.title": "DioxideLiteVia"
 }

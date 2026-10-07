@@ -11,6 +11,7 @@ package com.dioxidelite.ui.hud;
 
 
 import com.dioxidelite.event.events.Render2DEvent;
+import com.dioxidelite.i18n.UiText;
 import com.dioxidelite.module.modules.movement.Scaffold;
 import com.dioxidelite.render.SkijaRenderer;
 import com.dioxidelite.render.SkijaUi;
@@ -104,12 +105,13 @@ public final class ScaffoldBlockHUD extends EpsilonHudModule {
 
         float s = scale.get().floatValue();
         String value = Integer.toString(Math.max(0, Math.round(displayedCount)));
+        String label = UiText.tr("blocks", "BLOCKS");
         float valueFont = 9.0F * s;
         float labelFont = 6.8F * s;
         float contentHeight = 20.0F * s;
         float height = 22.0F * s;
         float width = 29.0F * s + SkijaUi.boldTextWidth(value, valueFont)
-                + SkijaUi.textWidth("BLOCKS", labelFont);
+                + SkijaUi.textWidth(label, labelFont);
         float x = renderX(event, width);
         float y = renderY(event, height);
         updateBounds(width, height);
@@ -140,7 +142,7 @@ public final class ScaffoldBlockHUD extends EpsilonHudModule {
         SkijaUi.boldText(event.canvas(), value, valueX, contentY, contentHeight,
                 UiTheme.withAlpha(UiTheme.TEXT, textAlpha), valueFont);
         float labelX = valueX + 3.0F * s + SkijaUi.boldTextWidth(value, valueFont);
-        SkijaUi.text(event.canvas(), "BLOCKS", labelX, contentY, contentHeight,
+        SkijaUi.text(event.canvas(), label, labelX, contentY, contentHeight,
                 UiTheme.withAlpha(UiTheme.TEXT_FAINT, textAlpha), labelFont);
 
     }

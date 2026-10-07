@@ -1,5 +1,6 @@
 package com.dioxidelite.ui.screen;
 
+import com.dioxidelite.i18n.UiText;
 import com.dioxidelite.manager.AltManager;
 import com.dioxidelite.render.SkijaUi;
 import com.dioxidelite.ui.UiTheme;
@@ -36,14 +37,14 @@ public final class AltManagerScreen extends AbstractSkijaScreen {
     private Alt selected;
     private int firstVisible;
     private boolean loginRunning;
-    private String status = "Select an account";
+    private String status = UiText.tr("select_an_account", "Select an account");
     private boolean statusError;
 
     public AltManagerScreen(Screen parent) {
-        super(Component.literal("Alt Manager"));
+        super(Component.literal(UiText.tr("alt_manager_title", "Alt Manager")));
         this.parent = parent;
-        offlineName.setPlaceholder("Offline username");
-        minecraftToken.setPlaceholder("Minecraft access token");
+        offlineName.setPlaceholder(UiText.tr("offline_username_ph", "Offline username"));
+        minecraftToken.setPlaceholder(UiText.tr("minecraft_token_ph", "Minecraft access token"));
     }
 
     @Override
@@ -68,13 +69,16 @@ public final class AltManagerScreen extends AbstractSkijaScreen {
 
     private void drawTopBar(Canvas canvas, Layout layout) {
         float titleX = layout.topBar.x() + 14.0F;
-        UiControls.brand(canvas, "ALT MANAGER", titleX, layout.topBar.y() + 8.0F, 20.0F,
+        String brand = UiText.tr("alt_manager", "ALT MANAGER");
+        UiControls.brand(canvas, brand, titleX, layout.topBar.y() + 8.0F, 20.0F,
                 UiControls.TEXT, 13.0F, 1.4F);
-        float titleWidth = UiControls.brandWidth("ALT MANAGER", 13.0F, 1.4F);
-        SkijaUi.text(canvas, accounts.size() + " accounts", titleX + titleWidth + 12.0F,
+        float titleWidth = UiControls.brandWidth(brand, 13.0F, 1.4F);
+        SkijaUi.text(canvas,
+                fmt("accounts_count", "%s accounts", accounts.size()),
+                titleX + titleWidth + 12.0F,
                 layout.topBar.y() + 12.0F, 12.0F, UiControls.TEXT_FAINT, 7.0F);
-        UiControls.button(canvas, layout.back, "Back", layout.back.contains(mouseX, mouseY), true,
-                UiControls.Tone.NORMAL);
+        UiControls.button(canvas, layout.back, UiText.tr("back", "Back"),
+                layout.back.contains(mouseX, mouseY), true, UiControls.Tone.NORMAL);
     }
 
     private void drawGrid(Canvas canvas, Layout layout) {
@@ -83,7 +87,7 @@ public final class AltManagerScreen extends AbstractSkijaScreen {
                 UiControls.RADIUS_SMALL, 0x33000000);
 
         if (accounts.isEmpty()) {
-            UiControls.centeredText(canvas, "No saved accounts",
+            UiControls.centeredText(canvas, UiText.tr("no_saved_accounts", "No saved accounts"),
                     new UiControls.Box(grid.x() + 8, grid.y(), grid.width() - 16, grid.height()),
                     UiTheme.TEXT_FAINT, false);
             return;
@@ -134,24 +138,29 @@ public final class AltManagerScreen extends AbstractSkijaScreen {
     }
 
     private void drawActionBar(Canvas canvas, Layout layout) {
-        SkijaUi.boldText(canvas, "ADD OFFLINE", layout.offlineName.x(), layout.offlineName.y() - 13,
+        SkijaUi.boldText(canvas, UiText.tr("add_offline", "ADD OFFLINE"),
+                layout.offlineName.x(), layout.offlineName.y() - 13,
                 11, UiControls.TEXT_FAINT, 7);
         offlineName.draw(canvas, mouseX, mouseY);
-        UiControls.button(canvas, layout.add, "Add", layout.add.contains(mouseX, mouseY), !loginRunning,
-                UiControls.Tone.NORMAL);
+        UiControls.button(canvas, layout.add, UiText.tr("add", "Add"),
+                layout.add.contains(mouseX, mouseY), !loginRunning, UiControls.Tone.NORMAL);
 
-        SkijaUi.boldText(canvas, "DIRECT TOKEN", layout.minecraftToken.x(), layout.minecraftToken.y() - 13,
+        SkijaUi.boldText(canvas, UiText.tr("direct_token", "DIRECT TOKEN"),
+                layout.minecraftToken.x(), layout.minecraftToken.y() - 13,
                 11, UiControls.TEXT_FAINT, 7);
         minecraftToken.draw(canvas, mouseX, mouseY);
-        UiControls.button(canvas, layout.tokenLogin, "Use", layout.tokenLogin.contains(mouseX, mouseY),
-                !loginRunning, UiControls.Tone.NORMAL);
+        UiControls.button(canvas, layout.tokenLogin, UiText.tr("use", "Use"),
+                layout.tokenLogin.contains(mouseX, mouseY), !loginRunning, UiControls.Tone.NORMAL);
 
         UiControls.button(canvas, layout.microsoft,
-                loginRunning ? "Microsoft login in progress..." : "Microsoft device login",
+                loginRunning ? UiText.tr("microsoft_login_progress", "Microsoft login in progress...")
+                        : UiText.tr("microsoft_device_login", "Microsoft device login"),
                 layout.microsoft.contains(mouseX, mouseY), !loginRunning, UiControls.Tone.PRIMARY);
-        UiControls.button(canvas, layout.login, "Use selected", layout.login.contains(mouseX, mouseY),
+        UiControls.button(canvas, layout.login, UiText.tr("use_selected", "Use selected"),
+                layout.login.contains(mouseX, mouseY),
                 selected != null && !loginRunning, UiControls.Tone.NORMAL);
-        UiControls.button(canvas, layout.remove, "Remove", layout.remove.contains(mouseX, mouseY),
+        UiControls.button(canvas, layout.remove, UiText.tr("remove", "Remove"),
+                layout.remove.contains(mouseX, mouseY),
                 selected != null && !loginRunning, UiControls.Tone.DANGER);
     }
 
@@ -163,7 +172,9 @@ public final class AltManagerScreen extends AbstractSkijaScreen {
         SkijaUi.text(canvas, UiControls.ellipsize(status, layout.statusBar.width() - 80),
                 layout.statusBar.x() + 21, layout.statusBar.y() + 4, layout.statusBar.height() - 4,
                 color, 8);
-        String mode = loginRunning ? "WORKING" : statusError ? "FAILED" : "READY";
+        String mode = loginRunning ? UiText.tr("status_working", "WORKING")
+                : statusError ? UiText.tr("status_failed", "FAILED")
+                : UiText.tr("status_ready", "READY");
         float modeWidth = SkijaUi.boldTextWidth(mode, 7);
         SkijaUi.boldText(canvas, mode, layout.statusBar.x() + layout.statusBar.width() - modeWidth - 10,
                 layout.statusBar.y() + 4, layout.statusBar.height() - 4, color, 7);
@@ -184,7 +195,7 @@ public final class AltManagerScreen extends AbstractSkijaScreen {
         Alt clicked = accountAt(layout, event.x(), event.y());
         if (clicked != null) {
             selected = clicked;
-            setStatus("Selected " + clicked.getUsername(), false);
+            setStatus(fmt("status_selected", "Selected %s", clicked.getUsername()), false);
             if (event.button() == GLFW.GLFW_MOUSE_BUTTON_RIGHT) {
                 removeSelected();
             } else if (event.button() == GLFW.GLFW_MOUSE_BUTTON_LEFT && doubleClick) {
@@ -270,19 +281,19 @@ public final class AltManagerScreen extends AbstractSkijaScreen {
         }
         String name = offlineName.text().trim();
         if (!AltManager.INSTANCE.addOfflineAlt(name)) {
-            setStatus("Invalid or duplicate offline username", true);
+            setStatus(UiText.tr("status_invalid_offline", "Invalid or duplicate offline username"), true);
             return;
         }
         offlineName.clear();
         refreshAccounts();
         selected = accounts.stream().filter(alt -> alt.getUsername().equalsIgnoreCase(name)).findFirst().orElse(selected);
-        setStatus("Added " + name, false);
+        setStatus(fmt("status_added", "Added %s", name), false);
     }
 
     private void startMicrosoftLogin() {
         loginRunning = true;
-        setStatus("Requesting a Microsoft device code...", false);
-        AltManager.INSTANCE.startMicrosoftDeviceLogin(new LoginCallback("Microsoft login"), false);
+        setStatus(UiText.tr("status_requesting_device_code", "Requesting a Microsoft device code..."), false);
+        AltManager.INSTANCE.startMicrosoftDeviceLogin(new LoginCallback(UiText.tr("microsoft_login", "Microsoft login")), false);
     }
 
     private void startTokenLogin() {
@@ -291,12 +302,12 @@ public final class AltManagerScreen extends AbstractSkijaScreen {
         }
         String token = minecraftToken.text().trim();
         if (token.isEmpty()) {
-            setStatus("Minecraft access token is empty", true);
+            setStatus(UiText.tr("status_token_empty", "Minecraft access token is empty"), true);
             return;
         }
         loginRunning = true;
-        setStatus("Checking Minecraft access token...", false);
-        AltManager.INSTANCE.loginWithMinecraftToken(token, new LoginCallback("Token login"), false);
+        setStatus(UiText.tr("status_checking_token", "Checking Minecraft access token..."), false);
+        AltManager.INSTANCE.loginWithMinecraftToken(token, new LoginCallback(UiText.tr("token_login", "Token login")), false);
     }
 
     private void loginSelected() {
@@ -306,13 +317,13 @@ public final class AltManagerScreen extends AbstractSkijaScreen {
         }
         if (!alt.isMicrosoft()) {
             AltManager.INSTANCE.login(alt);
-            setStatus("Logged in as " + alt.getUsername(), false);
+            setStatus(fmt("status_logged_in_as", "Logged in as %s", alt.getUsername()), false);
             return;
         }
 
         loginRunning = true;
-        setStatus("Refreshing " + alt.getUsername() + "...", false);
-        AltManager.INSTANCE.loginWithRefresh(alt, new LoginCallback("Logged in"), false);
+        setStatus(fmt("status_refreshing", "Refreshing %s...", alt.getUsername()), false);
+        AltManager.INSTANCE.loginWithRefresh(alt, new LoginCallback(UiText.tr("logged_in", "Logged in")), false);
     }
 
     private void removeSelected() {
@@ -323,7 +334,7 @@ public final class AltManagerScreen extends AbstractSkijaScreen {
         AltManager.INSTANCE.removeAlt(removed);
         selected = null;
         refreshAccounts();
-        setStatus("Removed " + removed.getUsername(), false);
+        setStatus(fmt("status_removed", "Removed %s", removed.getUsername()), false);
     }
 
     private void refreshAccounts() {
@@ -448,13 +459,21 @@ public final class AltManagerScreen extends AbstractSkijaScreen {
 
     private static String accountType(Alt alt) {
         if (!alt.isMicrosoft()) {
-            return "Offline account";
+            return UiText.tr("offline_account", "Offline account");
         }
         if (alt.isExpired()) {
-            return alt.canRefresh() ? "Microsoft - refresh required" : "Minecraft token expired";
+            return alt.canRefresh()
+                    ? UiText.tr("ms_refresh_required", "Microsoft - refresh required")
+                    : UiText.tr("mc_token_expired", "Minecraft token expired");
         }
         long hours = Duration.ofSeconds(alt.getLeftExpiringTime()).toHours();
-        return (alt.canRefresh() ? "Microsoft" : "Minecraft token") + " - " + hours + "h left";
+        return fmt("hours_left", "%s - %sh left",
+                alt.canRefresh() ? UiText.tr("microsoft", "Microsoft")
+                        : UiText.tr("minecraft_token", "Minecraft token"), hours);
+    }
+
+    private static String fmt(String suffix, String fallback, Object... args) {
+        return String.format(java.util.Locale.ROOT, UiText.tr(suffix, fallback), args);
     }
 
     private record Layout(
@@ -505,8 +524,8 @@ public final class AltManagerScreen extends AbstractSkijaScreen {
         public void onFailed(Exception error) {
             minecraft.execute(() -> {
                 loginRunning = false;
-                String message = error == null ? "Unknown error" : error.getMessage();
-                AltManagerScreen.this.setStatus("Microsoft login failed: " + message, true);
+                String message = error == null ? UiText.tr("unknown_error", "Unknown error") : error.getMessage();
+                AltManagerScreen.this.setStatus(fmt("status_login_failed", "Microsoft login failed: %s", message), true);
             });
         }
     }

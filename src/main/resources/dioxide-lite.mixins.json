@@ -4,6 +4,7 @@
   "compatibilityLevel": "JAVA_25",
   "client": [
     "MinecraftMixin",
+    "MinecraftAccessor",
     "KeyMappingAccessor",
     "WindowMixin",
     "ChatScreenMixin",
@@ -12,6 +13,10 @@
     "GuiRendererMixin",
     "VanillaScreenThemeMixin",
     "ThemedButtonMixin",
+    "ThemedSliderMixin",
+    "ThemedEditBoxMixin",
+    "AbstractSliderButtonAccessor",
+    "PauseScreenMixin",
     "OptionsScreenMixin",
     "TitleScreenMixin",
     "LoadingOverlayAccessor",
@@ -59,8 +64,7 @@
     "EquipmentLayerRendererMixin",
     "AbstractRecipeBookScreenMixin",
     "AbstractClientPlayerMixin",
-    "LevelMixin",
-    "SkyRendererMixin"
+    "LevelMixin"
   ],
   "injectors": {
     "defaultRequire": 1

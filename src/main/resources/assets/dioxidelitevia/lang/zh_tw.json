@@ -39,7 +39,7 @@
   "screen.dioxidelitevia.report_issues": "回報問題",
   "screen.dioxidelitevia.server_list": "伺服器清單",
   "screen.dioxidelitevia.classicube_login": "Classicube 登入",
-  "screen.dioxidelitevia.classicube_mfa": "Classicube MFA",
+  "screen.dioxidelitevia.classicube_mfa": "ClassiCube 多重驗證",
   "screen.dioxidelitevia.settings": "設定",
   "screen.dioxidelitevia.bedrock_realms": "基岩版 Realms",
   "screen.dioxidelitevia.accept_invite": "接受邀請",
@@ -155,5 +155,8 @@
   "bedrock_realms.dioxidelitevia.invite": "接受邀請碼",
   "bedrock_realms.dioxidelitevia.expired": "Realm 已過期",
   "bedrock_realms.dioxidelitevia.incompatible": "Realms 的 Minecraft 版本太舊或太新",
-  "bedrock_realms.dioxidelitevia.unsupported_protocol": "不支援透過 %s 協定連線 Realms。你無法加入此 Realm。"
+  "bedrock_realms.dioxidelitevia.unsupported_protocol": "不支援透過 %s 協定連線 Realms。你無法加入此 Realm。",
+  "debug_settings.dioxidelitevia.remove_server_description_sanitize": "移除伺服器描述淨化",
+  "debug_settings.dioxidelitevia.serverside_place_sounds": "伺服器端方塊／物品放置音效",
+  "screen.dioxidelitevia.title": "DioxideLiteVia"
 }

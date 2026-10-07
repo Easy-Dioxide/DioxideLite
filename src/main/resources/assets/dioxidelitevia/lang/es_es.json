@@ -66,5 +66,6 @@
   "classic4j_library.dioxidelitevia.error.username": "Nombre de usuario incorrecto.",
   "classic4j_library.dioxidelitevia.error.password": "Contraseña incorrecta.",
   "classic4j_library.dioxidelitevia.error.verification": "El usuario aún no ha verificado su e-mail.",
-  "classic4j_library.dioxidelitevia.error.logincode": "Verificación en varios pasos solicitado. Por favor revise su E-mail."
+  "classic4j_library.dioxidelitevia.error.logincode": "Verificación en varios pasos solicitado. Por favor revise su E-mail.",
+  "screen.dioxidelitevia.title": "DioxideLiteVia"
 }

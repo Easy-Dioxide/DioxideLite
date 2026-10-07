@@ -141,5 +141,6 @@
   "bedrock_realms.dioxidelitevia.leave": "Покинуть реалм",
   "bedrock_realms.dioxidelitevia.invite": "Добавить код реалма",
   "bedrock_realms.dioxidelitevia.expired": "Реалм просрочен",
-  "bedrock_realms.dioxidelitevia.incompatible": "Версия вашего клиента не совпадает с версией Realms"
+  "bedrock_realms.dioxidelitevia.incompatible": "Версия вашего клиента не совпадает с версией Realms",
+  "screen.dioxidelitevia.title": "DioxideLiteVia"
 }

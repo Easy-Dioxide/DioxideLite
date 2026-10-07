@@ -32,6 +32,6 @@ public interface MultiPlayerGameModeAccessor {
     @Accessor("destroyProgress")
     void dioxidelite$setDestroyProgress(float value);
 
-    @Accessor("destroyPos")
+    @Accessor("destroyBlockPos")
     BlockPos dioxidelite$getDestroyPos();
 }

@@ -3,6 +3,7 @@ package com.dioxidelite.ui.hud;
 import com.dioxidelite.config.ConfigManager;
 import com.dioxidelite.event.EventBus;
 import com.dioxidelite.event.events.Render2DEvent;
+import com.dioxidelite.i18n.UiText;
 import com.dioxidelite.module.Module;
 import com.dioxidelite.module.ModuleManager;
 import com.dioxidelite.notification.NotificationManager;
@@ -513,9 +514,9 @@ public final class HudEditorScreen extends Screen implements SkijaScreen {
         float doneX = width - 8.0F - BUTTON_WIDTH;
         float resetX = doneX - 5.0F - BUTTON_WIDTH;
         float y = height - 8.0F - BUTTON_HEIGHT;
-        drawButton(canvas, resetX, y, "RESET", false,
+        drawButton(canvas, resetX, y, UiText.tr("reset", "RESET"), false,
                 contains(mouseX, mouseY, resetX, y, BUTTON_WIDTH, BUTTON_HEIGHT));
-        drawButton(canvas, doneX, y, "DONE", true,
+        drawButton(canvas, doneX, y, UiText.tr("done", "DONE"), true,
                 contains(mouseX, mouseY, doneX, y, BUTTON_WIDTH, BUTTON_HEIGHT));
     }
 

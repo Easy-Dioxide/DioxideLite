@@ -44,8 +44,11 @@ public final class InvMoveEngine {
         }
         return switch (context.screen()) {
             case NONE -> true;
-            case INVENTORY -> key != InvMoveKey.SNEAK;
-            case CHAT, HANDLED_OTHER, OTHER -> false;
+            case INVENTORY -> context.allowSneak() || key != InvMoveKey.SNEAK;
+            // 箱子 / 工作台等容器界面：由 Allow Containers 决定。
+            case HANDLED_OTHER -> context.allowContainers()
+                    && (context.allowSneak() || key != InvMoveKey.SNEAK);
+            case CHAT, OTHER -> false;
         };
     }
 
@@ -79,7 +82,9 @@ public final class InvMoveEngine {
                 || effectivePressed(InvMoveKey.LEFT, false)
                 || effectivePressed(InvMoveKey.RIGHT, false);
         boolean sneak = effectivePressed(InvMoveKey.SNEAK, false);
-        if (context.screen() == InvMoveScreen.INVENTORY && moving && !sneak) {
+        if (context.autoSprint()
+                && context.screen() == InvMoveScreen.INVENTORY
+                && moving && !sneak) {
             context.setLogicalKeyPressed(InvMoveKey.SPRINT, true);
             sprintWasForced = true;
         } else if (sprintWasForced) {

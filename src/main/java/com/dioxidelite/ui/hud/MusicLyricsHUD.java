@@ -1,6 +1,7 @@
 package com.dioxidelite.ui.hud;
 
 import com.dioxidelite.event.events.Render2DEvent;
+import com.dioxidelite.i18n.UiText;
 import com.dioxidelite.module.modules.player.NetEaseMusicModule;
 import com.dioxidelite.render.SkijaUi;
 import com.dioxidelite.setting.settings.BooleanSetting;
@@ -277,7 +278,7 @@ public final class MusicLyricsHUD extends EpsilonHudModule {
 
     @Override
     public String getInfo() {
-        return musicPlayer.get() ? "PLAYER" : align.get().name();
+        return musicPlayer.get() ? UiText.tr("player", "PLAYER") : align.get().name();
     }
 
     private void drawCover(Canvas canvas, String key, String url, Box box, float radius) {

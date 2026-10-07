@@ -107,7 +107,7 @@
   "change_game_menu_screen_layout.dioxidelitevia.authentic": "Autentyczne",
   "change_game_menu_screen_layout.dioxidelitevia.adjusted": "Dostosowane",
   "change_game_menu_screen_layout.dioxidelitevia.authentic.tooltip": "Dostosowywuje pozycje przycisków i nakładek na podstawie wybranej wersji.",
-  "change_game_menu_screen_layout.dioxidelitevia.adjusted.tooltip": "Zamienia zgłaszanie graczy i interakcje społeczne w wersjach <= 1.18.2.",
+  "change_game_menu_screen_layout.dioxidelitevia.adjusted.tooltip": "Zamienia zgłaszanie graczy i interakcje społeczne w wersjach \u003c= 1.18.2.",
   "change_game_menu_screen_layout.dioxidelitevia.off.tooltip": "W ogóle nie zmienia menu gry.",
   "report.dioxidelitevia.button": "Zgłoś problem",
   "report.dioxidelitevia.bug_report": "Zgłoś problem na GitHub",
@@ -141,5 +141,6 @@
   "bedrock_realms.dioxidelitevia.leave": "Opuść realm",
   "bedrock_realms.dioxidelitevia.invite": "Zaakceptuj kod zaproszenia",
   "bedrock_realms.dioxidelitevia.expired": "Realm jest przeterminowany",
-  "bedrock_realms.dioxidelitevia.incompatible": "Wersja minecraft realms jest zbyt stara albo zbyt nowa"
+  "bedrock_realms.dioxidelitevia.incompatible": "Wersja minecraft realms jest zbyt stara albo zbyt nowa",
+  "screen.dioxidelitevia.title": "DioxideLiteVia"
 }

@@ -7,7 +7,6 @@ import com.dioxidelite.setting.settings.DoubleSetting;
 import com.dioxidelite.setting.settings.EnumSetting;
 
 import java.awt.Color;
-import net.minecraft.util.Mth;
 
 /**
  * 移植自 来源客户端 {@code features/render/Skybox.java}（"Animated sky with a fixed custom color"）。
@@ -26,8 +25,10 @@ import net.minecraft.util.Mth;
  * 来源 里这些值全部交给 {@code custom_sky} 着色器在天空阶段绘制（{@code RenderSupport_105}），
  * 暴露的 getter 与 来源原类一致，方便后续在天空 hook 里直接取用。
  */
-// [v2.2.5 补全] 已通过 SkyRendererMixin 接入 SkyRenderer.renderSkyDisc：
-// 启用时把天空圆盘颜色替换为 animatedSkyColor()（CLOUDS 波动 / THUNDER 压暗+闪电 / PULSAR 脉动）。
+// PORT-NOTE: 需要天空绘制阶段的 mixin/vanilla hook（LevelRenderer/SkyRenderer 的天空 pass，来源 为
+// RenderSupport_105：绑定 custom_sky / custom_sky_blit 着色器、以 24x48 球带网格绘制，并按 Resolution
+// 决定是否降分辨率 blit）以及自定义着色器管线；本端口只实现了完整的设置面、预设/画质枚举值的
+// 1:1 映射（Preset ordinal、Quality 层数 3/4/6）、动画时间基准与全部着色器参数 getter。
 public final class Skybox extends Module {
 
     public static final Skybox INSTANCE = new Skybox();
@@ -143,49 +144,5 @@ public final class Skybox extends Module {
     /** 来源的常量 {@code Skybox.l()}。 */
     public float fixedDarkness() {
         return 0.85F;
-    }
-
-    /**
-     * [v2.2.5 补全] 基于预设与时间驱动的动画天空色（ARGB）。模块启用时由
-     * SkyRendererMixin 把 renderSkyDisc 的天空颜色替换为该方法返回值。
-     * <ul>
-     *   <li>CLOUDS：在基底色上做轻微亮度波动（云流动感）；</li>
-     *   <li>THUNDER：整体压暗，并按 Strike Interval 周期性闪电闪亮（Strike Glow 控制强度）；</li>
-     *   <li>PULSAR：亮度随 Animation Speed 脉动。</li>
-     * </ul>
-     */
-    public int animatedSkyColor() {
-        float t = animationTime() * Math.max(animationSpeed(), 0.01F);
-        int argb = color.argb();
-        float r = (float) ((argb >> 16) & 0xFF);
-        float g = (float) ((argb >> 8) & 0xFF);
-        float b = (float) (argb & 0xFF);
-        float intensity = 1.0F;
-        switch (preset.get()) {
-            case CLOUDS:
-                intensity = 1.0F + 0.06F * Mth.sin(t * 1.5F);
-                break;
-            case THUNDER:
-                intensity = 0.55F + strikeFlash();
-                break;
-            case PULSAR:
-                intensity = 0.78F + 0.25F * (0.5F + 0.5F * Mth.sin(t * 2.0F));
-                break;
-        }
-        intensity = Mth.clamp(intensity, 0.0F, 3.0F);
-        r = Mth.clamp(r * intensity, 0.0F, 255.0F);
-        g = Mth.clamp(g * intensity, 0.0F, 255.0F);
-        b = Mth.clamp(b * intensity, 0.0F, 255.0F);
-        return (0xFF << 24) | ((int) r << 16) | ((int) g << 8) | (int) b;
-    }
-
-    /** 雷暴预设的闪电闪亮：按 Strike Interval 周期性点亮一次，Strike Glow 控制强度。 */
-    private float strikeFlash() {
-        float interval = Math.max(strikeInterval(), 0.1F);
-        float cycle = (animationTime() % interval) / interval;
-        if (cycle > 0.55F && cycle < 0.65F) {
-            return 0.6F * Math.max(strikeGlow(), 0.0F);
-        }
-        return 0.0F;
     }
 }

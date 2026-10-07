@@ -26,8 +26,8 @@
   "general_settings.dioxidelitevia.save_selected_protocol_version": "Guardar versión de protocolo",
   "general_settings.dioxidelitevia.show_classic_loading_progress": "Mostrar progreso de carga clásico en la pantalla multijugador",
   "general_settings.dioxidelitevia.multiplayer_screen_button_orientation": "Orientación de los botones de la pantalla multijugador",
-  "general_settings.dioxidelitevia.add_server_screen_button_orientation": "Orientación del botón 'Añadir servidor'",
-  "general_settings.dioxidelitevia.direct_connect_screen_button_orientation": "Orientación del botón 'Conexión directa'",
+  "general_settings.dioxidelitevia.add_server_screen_button_orientation": "Orientación del botón \u0027Añadir servidor\u0027",
+  "general_settings.dioxidelitevia.direct_connect_screen_button_orientation": "Orientación del botón \u0027Conexión directa\u0027",
   "general_settings.dioxidelitevia.filter_creative_tabs": "Eliminar ítems no disponibles de la pestaña del creativo",
   "general_settings.dioxidelitevia.show_advertised_server_version": "Mostrar versión anunciada del servidor en multijugador",
   "general_settings.dioxidelitevia.ignore_packet_translation_errors": "Ignorar errores de traducción de paquetes",
@@ -47,7 +47,7 @@
   "visual_settings.dioxidelitevia.disable_secure_chat_warning": "Desactivar advertencia de chat seguro",
   "visual_settings.dioxidelitevia.hide_signature_indicator": "Ocultar el indicador de firmas",
   "visual_settings.dioxidelitevia.replace_petrified_oak_slab": "Reemplazar losa de roble petrificada con textura desconocida",
-  "visual_settings.dioxidelitevia.replace_hurt_sound_with_oof_sound": "Reemplazar sonido de daño con el sonido 'OOF'",
+  "visual_settings.dioxidelitevia.replace_hurt_sound_with_oof_sound": "Reemplazar sonido de daño con el sonido \u0027OOF\u0027",
   "visual_settings.dioxidelitevia.hide_modern_hud_elements": "Ocultar elementos modernos del HUD",
   "visual_settings.dioxidelitevia.replace_creative_inventory_with_classic_inventory": "Reemplazar inventario creativo por el clásico",
   "visual_settings.dioxidelitevia.old_walking_animation": "Animación antigua de caminar",
@@ -66,5 +66,6 @@
   "classic4j_library.dioxidelitevia.error.username": "Nombre de usuario incorrecto.",
   "classic4j_library.dioxidelitevia.error.password": "Contraseña incorrecta.",
   "classic4j_library.dioxidelitevia.error.verification": "El usuario aún no ha verificado su e-mail.",
-  "classic4j_library.dioxidelitevia.error.logincode": "Se solicitó verificación en dos pasos. Por favor revisá tu e-mail."
+  "classic4j_library.dioxidelitevia.error.logincode": "Se solicitó verificación en dos pasos. Por favor revisá tu e-mail.",
+  "screen.dioxidelitevia.title": "DioxideLiteVia"
 }

@@ -1,6 +1,7 @@
 package com.dioxidelite.ui.dioxide;
 
 import com.dioxidelite.module.modules.player.IrcModule;
+import com.dioxidelite.i18n.UiText;
 import com.dioxidelite.command.CommandManager;
 import com.dioxidelite.event.Listen;
 import com.dioxidelite.event.Priority;
@@ -422,8 +423,8 @@ public final class DioxideDynamicIsland {
                 ircStatusColor(), 7.5f);
 
         if (players.isEmpty()) {
-            SkijaUi.text(canvas, "NO PLAYERS LISTED", x + 43f, y + 56f, 9f,
-                    0xFF69788A, 7.5f);
+            SkijaUi.text(canvas, UiText.tr("no_players_listed", "NO PLAYERS LISTED"),
+                    x + 43f, y + 56f, 9f, 0xFF69788A, 7.5f);
             return;
         }
 

@@ -4,7 +4,18 @@ import com.dioxidelite.render.SkijaRenderer;
 import io.github.humbleui.skija.Canvas;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.GuiGraphicsExtractor;
+import net.minecraft.client.gui.screens.CreditsAndAttributionScreen;
+import net.minecraft.client.gui.screens.ConnectScreen;
+import net.minecraft.client.gui.screens.CreateBuffetWorldScreen;
+import net.minecraft.client.gui.screens.CreateFlatWorldScreen;
+import net.minecraft.client.gui.screens.DirectJoinServerScreen;
+import net.minecraft.client.gui.screens.DisconnectedScreen;
+import net.minecraft.client.gui.screens.ManageServerScreen;
+import net.minecraft.client.gui.screens.PauseScreen;
+import net.minecraft.client.gui.screens.PresetFlatWorldScreen;
 import net.minecraft.client.gui.screens.Screen;
+import net.minecraft.client.gui.screens.ShareToLanScreen;
+import net.minecraft.client.gui.screens.WinScreen;
 
 /** Visual skin for the real vanilla world, server, and options screens. */
 public final class VanillaScreenTheme {
@@ -21,10 +32,36 @@ public final class VanillaScreenTheme {
         if (screen == null) {
             return false;
         }
+        // The in-game pause menu and the surrounding client-menu navigation
+        // screens live in the base "screens" package, so they are matched by
+        // class rather than by package prefix.
+        if (screen instanceof PauseScreen
+                || screen instanceof ShareToLanScreen
+                || screen instanceof DirectJoinServerScreen
+                || screen instanceof ManageServerScreen
+                || screen instanceof ConnectScreen
+                || screen instanceof DisconnectedScreen
+                || screen instanceof WinScreen
+                || screen instanceof CreditsAndAttributionScreen
+                || screen instanceof CreateFlatWorldScreen
+                || screen instanceof CreateBuffetWorldScreen
+                || screen instanceof PresetFlatWorldScreen
+                || isFeedbackSubScreen(screen)) {
+            return true;
+        }
         String packageName = screen.getClass().getPackageName();
         return packageName.startsWith("net.minecraft.client.gui.screens.worldselection")
                 || packageName.startsWith("net.minecraft.client.gui.screens.multiplayer")
-                || packageName.startsWith("net.minecraft.client.gui.screens.options");
+                || packageName.startsWith("net.minecraft.client.gui.screens.options")
+                || packageName.startsWith("net.minecraft.client.gui.screens.packs")
+                || packageName.startsWith("net.minecraft.client.gui.screens.social")
+                || packageName.startsWith("net.minecraft.client.gui.screens.advancements")
+                || packageName.startsWith("net.minecraft.client.gui.screens.achievement");
+    }
+
+    /** Feedback/bug-report submenu reachable from the pause menu. */
+    public static boolean isFeedbackSubScreen(Screen screen) {
+        return screen != null && screen.getClass().getSimpleName().equals("FeedbackSubScreen");
     }
 
     public static void beginFrame(Screen screen) {

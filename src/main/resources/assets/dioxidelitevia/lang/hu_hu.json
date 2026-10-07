@@ -156,5 +156,6 @@
   "bedrock_realms.dioxidelitevia.invite": "Meghívási kód elfogadása",
   "bedrock_realms.dioxidelitevia.expired": "A Realm lejárt",
   "bedrock_realms.dioxidelitevia.incompatible": "A Realms Minecraft verziója túl régi vagy túl új",
-  "bedrock_realms.dioxidelitevia.unsupported_protocol": "Realms a %s protokoll segítségével nem támogatott. Nem tudsz csatlakozni ehhez a realm-hez."
+  "bedrock_realms.dioxidelitevia.unsupported_protocol": "Realms a %s protokoll segítségével nem támogatott. Nem tudsz csatlakozni ehhez a realm-hez.",
+  "screen.dioxidelitevia.title": "DioxideLiteVia"
 }
