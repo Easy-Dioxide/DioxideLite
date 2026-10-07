@@ -34,5 +34,6 @@
   "classic4j_library.dioxidelitevia.error.username": "Neplatné uživatelské jméno.",
   "classic4j_library.dioxidelitevia.error.password": "Neplatné heslo.",
   "classic4j_library.dioxidelitevia.error.verification": "Uživatel si ještě neverifikoval svoji E-mailovou adresu.",
-  "classic4j_library.dioxidelitevia.error.logincode": "Je požadováno více-fázové ověření. Prosím zkontrolujte si svůj E-mail."
+  "classic4j_library.dioxidelitevia.error.logincode": "Je požadováno více-fázové ověření. Prosím zkontrolujte si svůj E-mail.",
+  "screen.dioxidelitevia.title": "DioxideLiteVia"
 }

@@ -38,5 +38,6 @@
   "classic4j_library.dioxidelitevia.error.password": "Väärä salasana.",
   "classic4j_library.dioxidelitevia.error.verification": "Käyttäjä ei ole vielä vahvistanut sähköpostiaan.",
   "classic4j_library.dioxidelitevia.error.logincode": "Monivaiheinen todennus pyydetty. Katso sähköpostiisi.",
-  "minecraftauth_library.dioxidelitevia.xblusertoken": "Saatu Xbox Live -käyttäjätunnus"
+  "minecraftauth_library.dioxidelitevia.xblusertoken": "Saatu Xbox Live -käyttäjätunnus",
+  "screen.dioxidelitevia.title": "DioxideLiteVia"
 }

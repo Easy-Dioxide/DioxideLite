@@ -8,10 +8,6 @@ import com.dioxidelite.setting.settings.IntSetting;
 /**
  * 移植自 OpenOpal PostProcessingModule。
  * 后处理设置：模糊与泛光的开关和半径，供渲染管线查询使用。
- *
- * <p>[v2.2.5 补全] 实际效果已通过 GameRendererMixin.DioxideLite$applyPostProcessing 接入：
- * 启用 Blur 时对主渲染目标应用原版 blur 后处理链（blurRadius 1..20 → 处理 1..3 次，越大越糊），
- * 启用 Bloom 时在 Blur 基础上再叠加一次模糊得到柔和泛光感。两个效果均真实生效。</p>
  */
 public final class PostProcessing extends Module {
 

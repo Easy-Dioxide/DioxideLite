@@ -20,6 +20,7 @@ import com.dioxidelite.setting.settings.IntSetting;
 import com.dioxidelite.setting.settings.KeybindSetting;
 import com.dioxidelite.setting.settings.StringSetting;
 import com.dioxidelite.ui.CategoryGlyphs;
+import com.dioxidelite.i18n.UiText;
 import com.dioxidelite.ui.SkijaScreen;
 import com.dioxidelite.ui.hud.WatermarkHUD;
 import com.dioxidelite.util.KeyBindText;
@@ -733,7 +734,7 @@ public final class PopClickGuiScreen extends Screen implements SkijaScreen {
             renderColor(canvas, colorSetting, x, y, width, alpha);
         } else if (setting instanceof KeybindSetting keybindSetting) {
             String value = capturingKeybind == keybindSetting ? "..." : KeyBindText.of(keybindSetting.get());
-            drawRight(canvas, value == null || value.isBlank() ? "NONE" : value,
+            drawRight(canvas, value == null || value.isBlank() ? UiText.tr("none", "NONE") : value,
                     x + width - 13.0F, y, SETTING_ROW_HEIGHT, valueColor, 7.0F);
         } else if (setting instanceof StringSetting stringSetting) {
             String value = editingString == stringSetting ? textWithCursor() : stringSetting.get();

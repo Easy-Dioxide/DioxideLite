@@ -2,7 +2,7 @@
 
 **DioxideLite** 是一个基于 Skija 渲染的 Minecraft 视觉客户端（Fabric），为 Minecraft **26.1.2** 打造，专注流畅的 HUD 视觉、ClickGUI 与聊天联动。
 
-> 当前版本：**v2.2.5** · 平台：Fabric · 游戏版本：Minecraft 26.1.2 · JDK 25 · 支持 Windows / Linux / macOS
+> 当前版本：**v2.2.6** · 平台：Fabric · 游戏版本：Minecraft 26.1.2 · JDK 25 · 支持 Windows / Linux / macOS
 
 ---
 
@@ -134,6 +134,7 @@ local holdRight = dioxidelite:isKeyHeld("mouse_right")
 
 | 版本 | Devlog |
 | --- | --- |
+| v2.2.6 | [devlog-2.2.6.md](devlog-2.2.6.md) — 新增主菜单视频背景（VideoBackgroundBaker/Player + 烘焙进度）+ 游戏菜单 GameMenuScreen + 主题化控件（EditBox/Slider）+ UiText 本地化 + Skybox 重构 + 全平台原生库依赖 |
 | v2.2.5 | [devlog-2.2.5.md](devlog-2.2.5.md) — 补全 Animations / FogBlur / PostProcessing / Skybox 四模块真实实现 + 新增 BedDefender（Combat）+ 全平台原生库依赖 |
 | v2.2.4 | [devlog-2.2.4.md](devlog-2.2.4.md) — 静默旋转引擎重构（Vape PID）+ SilentAura 重构 + 新增 LegitScaffold/AttackEffects/BreakProgress/NoFOV/NoHurtCamera/PostProcessing/StreamerMode/TitleChanger + ESP 增强 + 移除装饰模块 |
 | v2.2.3 | [devlog-2.2.3.md](devlog-2.2.3.md) — Vape 移植（SilentAura + Clutch）+ MovementFix 三种模式 + Lua 内置脚本 + 网易云扫码登录修复 |

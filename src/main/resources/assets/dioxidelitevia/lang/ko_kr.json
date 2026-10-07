@@ -88,7 +88,7 @@
   "visual_settings.dioxidelitevia.hide_empty_bubble_icons": "빈 거품 아이콘 숨기기",
   "visual_settings.dioxidelitevia.hide_villager_profession": "주민 직업 숨기기",
   "visual_settings.dioxidelitevia.hide_download_terrain_screen_transition_effects": "지형 다운로드 화면 전환 효과 숨기기",
-  "visual_settings.dioxidelitevia.replace_petrified_oak_slab": "규화한 참나무 반 블록 텍스처를 'unknown' 으로 바꾸기",
+  "visual_settings.dioxidelitevia.replace_petrified_oak_slab": "규화한 참나무 반 블록 텍스처를 \u0027unknown\u0027 으로 바꾸기",
   "visual_settings.dioxidelitevia.always_render_crosshair": "조준점 항상 보이기",
   "visual_settings.dioxidelitevia.replace_hurt_sound_with_oof_sound": "다칠 떄 나는 소리를 OOF 소리로 변경",
   "visual_settings.dioxidelitevia.hide_modern_hud_elements": "새로운 HUD 요소 숨기기",
@@ -157,5 +157,6 @@
   "bedrock_realms.dioxidelitevia.invite": "초대 코드 수락",
   "bedrock_realms.dioxidelitevia.expired": "Realms 만료됨",
   "bedrock_realms.dioxidelitevia.incompatible": "Realms 버전이 이 버전과 호환되지 않습니다.",
-  "bedrock_realms.dioxidelitevia.unsupported_protocol": "%s 프로토콜을 통한 Realms는 지원되지 않습니다. 이 Realms에 참여할 수 없습니다."
+  "bedrock_realms.dioxidelitevia.unsupported_protocol": "%s 프로토콜을 통한 Realms는 지원되지 않습니다. 이 Realms에 참여할 수 없습니다.",
+  "screen.dioxidelitevia.title": "DioxideLiteVia"
 }

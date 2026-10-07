@@ -1775,7 +1775,10 @@ public final class WindowClickGuiScreen extends Screen implements SkijaScreen {
     }
 
     private static String tr(String suffix, String fallback) {
-        return TranslationKey.of(DioxideLite.MOD_ID + ".gui." + suffix, fallback).get();
+        // [DioxideLite 修复] 键前缀由 MOD_ID("dioxide-lite") 改为 NAME("DioxideLite")。
+        // 语言文件的 gui 词条以 "DioxideLite.gui." 开头，用 MOD_ID 会让全部 44 个
+        // gui 键静默失配、中文环境下永远回退成英文。
+        return TranslationKey.of(DioxideLite.NAME + ".gui." + suffix, fallback).get();
     }
 
     private static boolean inside(double mouseX, double mouseY,

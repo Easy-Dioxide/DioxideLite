@@ -15,4 +15,8 @@ public interface LivingEntityAccessor {
 
     @Accessor("noJumpDelay")
     int dioxidelite$getNoJumpDelay();
+
+    /** 受伤动画计时：清零即可隐藏模型受伤闪白。 */
+    @Accessor("hurtTime")
+    void dioxidelite$setHurtTime(int value);
 }

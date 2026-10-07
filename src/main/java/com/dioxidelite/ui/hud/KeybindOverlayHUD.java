@@ -1,6 +1,7 @@
 package com.dioxidelite.ui.hud;
 
 import com.dioxidelite.event.events.Render2DEvent;
+import com.dioxidelite.i18n.UiText;
 import com.dioxidelite.module.Module;
 import com.dioxidelite.module.ModuleManager;
 import com.dioxidelite.render.SkijaUi;
@@ -119,7 +120,7 @@ public final class KeybindOverlayHUD extends EpsilonHudModule {
         }
 
         float contentY = y + verticalPadding;
-        SkijaUi.boldText(event.canvas(), "KEYBINDS", x + PADDING * s, contentY,
+        SkijaUi.boldText(event.canvas(), UiText.tr("keybinds", "KEYBINDS"), x + PADDING * s, contentY,
                 headerHeight, UiTheme.TEXT, 7.4F * s);
         SkijaUi.fill(event.canvas(), x + PADDING * s,
                 contentY + headerHeight - 1.0F * s,

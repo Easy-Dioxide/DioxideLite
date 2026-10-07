@@ -1,5 +1,6 @@
 package com.dioxidelite.mixin;
 
+import com.dioxidelite.ui.screen.BakeProgressWatcher;
 import com.dioxidelite.ui.screen.VanillaScreenTheme;
 import com.dioxidelite.ui.screen.VanillaButtonOverlay;
 import com.dioxidelite.render.SkijaRenderer;
@@ -19,6 +20,20 @@ public abstract class VanillaScreenThemeMixin {
         if (VanillaScreenTheme.applies((Screen) (Object) this)) {
             VanillaButtonOverlay.beginFrame();
             VanillaScreenTheme.beginFrame((Screen) (Object) this);
+        }
+    }
+
+    /**
+     * 屏幕每帧渲染完成后转发一次轮询。
+     *
+     * <p>{@code Screen} 是渲染入口的声明类，挂在这里才能覆盖所有界面；
+     * 具体界面自己声明的方法（如 {@code OptionsScreen.init}）在父类里是找不到的。
+     */
+    @Inject(method = "extractRenderStateWithTooltipAndSubtitles", at = @At("TAIL"))
+    private void DioxideLite$pollBakeableScreen(GuiGraphicsExtractor graphics, int mouseX, int mouseY,
+                                          float partialTick, CallbackInfo ci) {
+        if ((Object) this instanceof BakeProgressWatcher watcher) {
+            watcher.dioxideLite$pollBake();
         }
     }
 

@@ -23,5 +23,6 @@
   "visual_settings.dioxidelitevia.hide_modern_hud_elements": "ลบองค์ประกอบ HUD ที่ใหม่กว่า",
   "visual_settings.dioxidelitevia.replace_creative_inventory_with_classic_inventory": "แทนที่ creative inventory",
   "visual_settings.dioxidelitevia.old_walking_animation": "ท่าทางการเดินแบบเก่า",
-  "visual_settings.dioxidelitevia.sneak_instantly": "ย่องทันที"
+  "visual_settings.dioxidelitevia.sneak_instantly": "ย่องทันที",
+  "screen.dioxidelitevia.title": "DioxideLiteVia"
 }

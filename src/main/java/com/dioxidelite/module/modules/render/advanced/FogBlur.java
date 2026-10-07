@@ -16,13 +16,11 @@ import com.dioxidelite.setting.settings.DoubleSetting;
  * 并在 Zoom 有效时按缩放量让强度从 1 淡出到 0）。</p>
  *
  * <p>MC 26.1.2 的 Dioxide 端没有暴露世界后处理 pass 的注册/绘制入口，
- * 因此本端口保留 1:1 的设置面 + 与来源 传参顺序一致的 {@link #fogUniforms()}。</p>
- *
- * <p>[v2.2.5 补全] 实际效果已通过 GameRendererMixin 接入：启用时对主渲染目标应用
- * 原版 blur 后处理链，实现整体雾状模糊（Distance/Fade 作为强度参考，默认至少 1 次）。
- * 来源端精确的"按深度距离衰减 + 自定义 shader 合成"在 26.1.2 无对应 hook，故以整体雾化近似。</p>
+ * 因此本端口保留 1:1 的设置面 + 与来源 传参顺序一致的 {@link #fogUniforms()}，
+ * 供以后接入 world post-effect hook 时直接读取。</p>
  */
-// [v2.2.5 补全] 已在 GameRendererMixin.DioxideLite$applyPostProcessing 接入：启用时应用原版 blur 后处理链，模糊真实生效。
+// PORT-NOTE: 需要 GameRenderer/Framebuffer 后处理 hook（world post-effect + 两级 blur shader + 深度纹理）；本端口只实现了设置项、fogUniforms() 参数打包与 shouldBlur() 状态查询。
+// 说明：屏幕后处理模糊本身没有实现 —— Dioxide 端没有暴露世界后处理 pass 的注册/绘制入口。
 public final class FogBlur extends Module {
 
     public static final FogBlur INSTANCE = new FogBlur();

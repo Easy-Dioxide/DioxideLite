@@ -4,7 +4,27 @@
 
 ---
 
-## v2.2.5（2026-10-05）
+## v2.2.6（2026-10-07）
+
+### 新增：主菜单视频背景
+- 新增 **VideoBackgroundBaker**（视频帧烘焙器）：将随包附带的 `mainmenu.mp4` 逐帧解码/缩放/编码为 PNG 帧序列缓存，供主菜单背景渲染。
+- 新增 **VideoBackgroundPlayer** 与 **BakeProgressWatcher**：播放视频帧序列，并展示烘焙进度（首次启动时）。
+- 依赖新增 `org.jcodec:jcodec-javase:0.2.5`（AWTUtil 帧解码），与既有 jcodec 一起嵌套入包。
+
+### 新增：游戏菜单与主题化控件
+- 新增 **GameMenuScreen**（游戏内菜单界面）与 PauseScreenMixin 接入。
+- 主题化控件扩展：`ThemedEditBoxMixin` / `ThemedSliderMixin` / `AbstractSliderButtonAccessor`，输入框与滑块走统一 Skija 主题。
+- 新增 `MinecraftAccessor` / `AbstractSliderButtonAccessor` 等访问器，`UiText` 本地化文本层。
+
+### 重构：Skybox
+- 删除原 `SkyRendererMixin`（v2.2.5 的 Skybox 注入实现），Skybox 模块改走新实现，mixin 配置同步清理（无残留引用）。
+
+### 其他
+- 大量 mixin 与模块同步更新（RotationManager / EventBus / 渲染与移动模块等，共 89 个文件）。
+- 全平台依赖：本次构建含 **Windows x64 / macOS / Linux 全部 Skija 与 WebRTC 原生库**，单 jar 通用包。
+- 验证：构建成功（JDK 25 + Gradle + Fabric Loom 1.15.5），产物 `DioxideLite-2.2.6.jar`（约 103 MB，全平台原生库）。
+
+---
 
 ### 补全渲染模块真实实现（修复 v2.2.4 空壳）
 此前 Animations / FogBlur / PostProcessing / Skybox 四个渲染模块仅有设置界面而无实际效果，本次全部接入 26.1.2 渲染管线，功能真实生效：

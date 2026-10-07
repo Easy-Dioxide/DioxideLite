@@ -88,7 +88,7 @@
   "visual_settings.dioxidelitevia.hide_empty_bubble_icons": "Приховувати порожні значки бульбашок",
   "visual_settings.dioxidelitevia.hide_villager_profession": "Приховувати професію селянина",
   "visual_settings.dioxidelitevia.hide_download_terrain_screen_transition_effects": "Приховати ефекти переходу екрана рельєфу завантаження",
-  "visual_settings.dioxidelitevia.replace_petrified_oak_slab": "Замінити текстуру скам'янілої дубової плити на «невідому» текстуру",
+  "visual_settings.dioxidelitevia.replace_petrified_oak_slab": "Замінити текстуру скам\u0027янілої дубової плити на «невідому» текстуру",
   "visual_settings.dioxidelitevia.always_render_crosshair": "Завжди показувати перехрестя",
   "visual_settings.dioxidelitevia.replace_hurt_sound_with_oof_sound": "Замінити звук болю на звук OOF",
   "visual_settings.dioxidelitevia.hide_modern_hud_elements": "Приховувати сучасні елементи HUD",
@@ -111,7 +111,7 @@
   "change_game_menu_screen_layout.dioxidelitevia.authentic": "Автентичний",
   "change_game_menu_screen_layout.dioxidelitevia.adjusted": "Скоригований",
   "change_game_menu_screen_layout.dioxidelitevia.authentic.tooltip": "Коригує положення кнопок і накладання на основі вибраної версії.",
-  "change_game_menu_screen_layout.dioxidelitevia.adjusted.tooltip": "Замінює «Скарги на гравців» екраном «Соціальні взаємодії» у <= 1.18.2.",
+  "change_game_menu_screen_layout.dioxidelitevia.adjusted.tooltip": "Замінює «Скарги на гравців» екраном «Соціальні взаємодії» у \u003c= 1.18.2.",
   "change_game_menu_screen_layout.dioxidelitevia.off.tooltip": "Зовсім не змінює екран меню гри.",
   "report.dioxidelitevia.button": "Повідомити про проблеми",
   "report.dioxidelitevia.bug_report": "Повідомити про помилку на GitHub",
@@ -132,7 +132,7 @@
   "betacraft.dioxidelitevia.warning": "Натискання цієї кнопки надсилатиме запити API на «betacraft.uk/serverlist».",
   "translation.dioxidelitevia.packet_error": "Під час перекладу пакета сталася помилка! Дивіться детальнішу інформацію в журналах!",
   "classic4j_library.dioxidelitevia.error.token": "Неправильний маркер. Ваш DioxideLiteVia застарів?",
-  "classic4j_library.dioxidelitevia.error.username": "Недійсне ім'я користувача.",
+  "classic4j_library.dioxidelitevia.error.username": "Недійсне ім\u0027я користувача.",
   "classic4j_library.dioxidelitevia.error.password": "Невірний пароль.",
   "classic4j_library.dioxidelitevia.error.verification": "Користувач ще не підтвердив свою електронну адресу.",
   "classic4j_library.dioxidelitevia.error.logincode": "Потрібна багатофакторна автентифікація. Перевірте свою електронну пошту.",
@@ -157,5 +157,6 @@
   "bedrock_realms.dioxidelitevia.invite": "Прийняти код запрошення",
   "bedrock_realms.dioxidelitevia.expired": "Термін дії Realm закінчився",
   "bedrock_realms.dioxidelitevia.incompatible": "Версія Realms Minecraft або занадто стара, або занадто нова",
-  "bedrock_realms.dioxidelitevia.unsupported_protocol": "Realms через протокол %s не підтримується. Ви не можете приєднатися до цього Realm."
+  "bedrock_realms.dioxidelitevia.unsupported_protocol": "Realms через протокол %s не підтримується. Ви не можете приєднатися до цього Realm.",
+  "screen.dioxidelitevia.title": "DioxideLiteVia"
 }

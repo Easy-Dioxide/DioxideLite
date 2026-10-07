@@ -821,7 +821,8 @@ public final class BuiltInCommands {
                     Module module = findModule(input);
                     return module != null && predicate.test(module)
                             ? new Parameter.Ok<>(module)
-                            : new Parameter.Error<>("Module '" + input + "' not found");
+                            : new Parameter.Error<>("Module '" + input + "' not found"
+                                    + didYouMean(input));
                 })
                 .autocompletedWith((begin, ignored) -> ModuleManager.INSTANCE.modules().stream()
                         .filter(predicate)
@@ -842,7 +843,8 @@ public final class BuiltInCommands {
                         if (module != null && predicate.test(module)) modules.add(module);
                     }
                     return modules.isEmpty()
-                            ? new Parameter.Error<>("'" + input + "' contains no valid Module")
+                            ? new Parameter.Error<>("'" + input + "' contains no valid Module"
+                                    + didYouMean(input))
                             : new Parameter.Ok<>(modules);
                 })
                 .autocompletedWith((begin, ignored) -> {
@@ -957,6 +959,56 @@ public final class BuiltInCommands {
                         || StringUtil.slug(module.name()).replace("_", "").equals(normalized))
                 .findFirst()
                 .orElse(null);
+    }
+
+    /**
+     * 模块名打错时给一个"你是不是想输入…"的尾巴。
+     * <p>
+     * 客户端里有好几个长得很像的模块 id（{@code invmove} / {@code inv_manager} /
+     * {@code inventory_manager}），少打一个字母就会得到一句干巴巴的 "not found"，
+     * 很容易被误判成"模块没注册"。这里按编辑距离给出最接近的候选。
+     */
+    private static String didYouMean(String input) {
+        if (input == null || input.isBlank()) {
+            return "";
+        }
+        String normalized = StringUtil.slug(input).replace("_", "");
+        if (normalized.isEmpty()) {
+            return "";
+        }
+        List<String> candidates = ModuleManager.INSTANCE.modules().stream()
+                .map(Module::id)
+                .distinct()
+                .map(id -> new String[]{id, id.replace("_", "")})
+                .filter(pair -> pair[1].contains(normalized) || normalized.contains(pair[1])
+                        || editDistance(pair[1], normalized) <= 2)
+                .sorted(Comparator.comparingInt((String[] pair) -> editDistance(pair[1], normalized)))
+                .map(pair -> pair[0])
+                .limit(3)
+                .toList();
+        return candidates.isEmpty() ? "" : " Did you mean: " + String.join(", ", candidates) + "?";
+    }
+
+    /** Levenshtein 距离，只服务于上面那句拼写提示。 */
+    private static int editDistance(String a, String b) {
+        int[] previous = new int[b.length() + 1];
+        int[] current = new int[b.length() + 1];
+        for (int j = 0; j <= b.length(); j++) {
+            previous[j] = j;
+        }
+        for (int i = 1; i <= a.length(); i++) {
+            current[0] = i;
+            char ac = a.charAt(i - 1);
+            for (int j = 1; j <= b.length(); j++) {
+                int cost = ac == b.charAt(j - 1) ? 0 : 1;
+                current[j] = Math.min(Math.min(current[j - 1] + 1, previous[j] + 1),
+                        previous[j - 1] + cost);
+            }
+            int[] swap = previous;
+            previous = current;
+            current = swap;
+        }
+        return previous[b.length()];
     }
 
     private static List<String> allSettingPaths() {

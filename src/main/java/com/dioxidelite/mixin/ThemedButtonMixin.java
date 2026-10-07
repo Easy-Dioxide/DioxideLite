@@ -6,6 +6,8 @@ import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.GuiGraphicsExtractor;
 import net.minecraft.client.gui.components.AbstractButton;
 import net.minecraft.client.gui.components.AbstractWidget;
+import net.minecraft.client.gui.components.Checkbox;
+import net.minecraft.client.gui.components.CycleButton;
 import net.minecraft.network.chat.Component;
 import org.spongepowered.asm.mixin.Mixin;
 import org.spongepowered.asm.mixin.injection.At;
@@ -25,8 +27,23 @@ public abstract class ThemedButtonMixin extends AbstractWidget {
         if (!VanillaScreenTheme.canReplaceVanillaButtons(Minecraft.getInstance().screen)) {
             return;
         }
-        VanillaButtonOverlay.add(getX(), getY(), width, height, getMessage().getString(),
-                isHoveredOrFocused(), active, getAlpha());
+        // Checkboxes are buttons too, but the tick box is drawn from inside
+        // extractWidgetRenderState, so cancelling the chrome cancels the tick as well.
+        // Handing the state to the overlay is what keeps on/off readable.
+        if ((Object) this instanceof Checkbox checkbox) {
+            VanillaButtonOverlay.addCheckbox(getX(), getY(), width, height,
+                    getMessage().getString(), isHoveredOrFocused(), active, getAlpha(),
+                    checkbox.selected());
+        } else if ((Object) this instanceof CycleButton<?> cycle
+                && cycle.getValue() instanceof Boolean on) {
+            // Boolean option buttons carry their state in the message text; drawing it
+            // as a switch instead makes a column of them scannable at a glance.
+            VanillaButtonOverlay.addSwitch(getX(), getY(), width, height,
+                    getMessage().getString(), isHoveredOrFocused(), active, getAlpha(), on);
+        } else {
+            VanillaButtonOverlay.add(getX(), getY(), width, height, getMessage().getString(),
+                    isHoveredOrFocused(), active, getAlpha());
+        }
         handleCursor(graphics);
         ci.cancel();
     }

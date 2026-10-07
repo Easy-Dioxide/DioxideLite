@@ -26,6 +26,7 @@ import com.dioxidelite.util.player.InvUtils;
 import com.dioxidelite.util.player.MoveUtils;
 import com.dioxidelite.util.render.Render3DUtils;
 import com.dioxidelite.util.render.animation.Easing;
+import com.dioxidelite.util.rotation.Priority;
 import com.dioxidelite.util.rotation.RaytraceUtils;
 import com.dioxidelite.util.rotation.Rot2f;
 import com.dioxidelite.util.rotation.RotationUtils;
@@ -143,6 +144,16 @@ final class LegacyScaffoldEngine {
     private final IntSetting rotateSpeed;
     private final IntSetting rotateBackSpeed;
     private final IntSetting tellyTicks;
+    /**
+     * 是否把静默转向映射到第三人称模型的头 / 身体。
+     * <p>
+     * 默认<b>关闭</b>：这个引擎用的是 {@code setRotations(rot, speed)} 两参重载，
+     * 它默认 {@code renderAnimation = true}，于是每 tick 都会把 {@code yHeadRot} / {@code yBodyRot}
+     * 强行拧到静默目标角上 —— 目标稍有不稳，人物就会摇头。
+     * Hypixel 那条实现（{@code Rotations/ShowModel}）默认就是不映射的，这里对齐成同样的默认值，
+     * 想要老观感（身体跟着瞄准方向）再手动打开。
+     */
+    private final BooleanSetting showModel;
     private final BooleanSetting keepY;
     private final BooleanSetting multiPlace;
     private final BooleanSetting swingHand;
@@ -180,6 +191,7 @@ final class LegacyScaffoldEngine {
                 .visibleWhen(parent::isLegacyTellyBridge));
         tellyTicks = setting(new IntSetting("Telly Ticks", 1, 0, 6, 1)
                 .visibleWhen(parent::isLegacyTellyBridge));
+        showModel = setting(new BooleanSetting("Show Model", false));
         keepY = setting(new BooleanSetting("Keep Y", false).visibleWhen(parent::isLegacyGodBridge));
         multiPlace = setting(new BooleanSetting("Multi Place", true));
         swingHand = setting(new BooleanSetting("Swing Hand", true));
@@ -372,12 +384,12 @@ final class LegacyScaffoldEngine {
             hypixelRotateTick = 0;
             RotationManager.INSTANCE.setRotations(new Rot2f(
                     mc.player.getYRot(), rotation == null ? mc.player.getXRot() : rotation.getPitch()),
-                    rotateBackSpeed.get());
+                    rotateBackSpeed.get(), Priority.Medium, showModel.get());
             return;
         }
 
         rotation = getRotation(blockPos, direction);
-        RotationManager.INSTANCE.setRotations(rotation, currentRotationSpeed());
+        RotationManager.INSTANCE.setRotations(rotation, currentRotationSpeed(), Priority.Medium, showModel.get());
         if (airTicks > tellyTicks.get()) {
             place();
         }
@@ -386,7 +398,7 @@ final class LegacyScaffoldEngine {
     private void handleGodBridge() {
         if (onAir() || !snap.get()) {
             rotation = getRotation(blockPos, direction);
-            RotationManager.INSTANCE.setRotations(rotation, currentRotationSpeed());
+            RotationManager.INSTANCE.setRotations(rotation, currentRotationSpeed(), Priority.Medium, showModel.get());
         }
         place();
     }
@@ -528,6 +540,19 @@ final class LegacyScaffoldEngine {
             return new Rot2f(Mth.wrapDegrees(mc.player.getYRot() - 135.0F), 82.0F);
         }
         if (!onAir() || pos == null || face == null) {
+            return rotation;
+        }
+
+        // [反抖 · 关键] 上一 tick 选中的角度如果对当前目标仍然射得到，就直接沿用。
+        //
+        // 下面那张候选表是 45° 一档的粗粒度角度（-135/-90/-45/0/45/90/135/180），
+        // 排序依据是"离玩家朝向有多近"，也就是**每 tick 都会按玩家当前视角重排**；
+        // 而候选本身还带 ±0.3° 随机抖动，raytrace（Normal 模式）判定又比较宽松。
+        // 结果：只要有两个以上候选都能射到同一个方块，目标角就会在它们之间来回跳，
+        // 一跳就是 45°/90° —— 这正是 "搭路时人物剧烈摇头" 的直接来源。
+        //
+        // 加一层滞后：旧角度仍然成立就不再重新搜索，只在它彻底射不到目标（方块/面变了）时才换档。
+        if (matchesRaytrace(rotation, pos, face)) {
             return rotation;
         }
 

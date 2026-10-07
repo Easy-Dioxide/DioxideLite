@@ -84,7 +84,7 @@
   "visual_settings.dioxidelitevia.hide_empty_bubble_icons": "Ocultar ícones de bolhas vazias",
   "visual_settings.dioxidelitevia.hide_villager_profession": "Ocultar profissão de aldeões",
   "visual_settings.dioxidelitevia.hide_download_terrain_screen_transition_effects": "Ocultar efeitos de transição da tela de download do terreno",
-  "visual_settings.dioxidelitevia.replace_petrified_oak_slab": "Substitua a textura da tábuas de carvalho petrificado pela textura 'desconhecida'",
+  "visual_settings.dioxidelitevia.replace_petrified_oak_slab": "Substitua a textura da tábuas de carvalho petrificado pela textura \u0027desconhecida\u0027",
   "visual_settings.dioxidelitevia.always_render_crosshair": "Sempre renderizar mira",
   "visual_settings.dioxidelitevia.replace_hurt_sound_with_oof_sound": "Substitua o som de dor pelo som OOF",
   "visual_settings.dioxidelitevia.hide_modern_hud_elements": "Ocultar elementos da HUD moderna",
@@ -107,7 +107,7 @@
   "change_game_menu_screen_layout.dioxidelitevia.authentic": "Autêntico",
   "change_game_menu_screen_layout.dioxidelitevia.adjusted": "Ajustado",
   "change_game_menu_screen_layout.dioxidelitevia.authentic.tooltip": "Ajusta as posições dos botões e sobreposições com base na versão selecionada.",
-  "change_game_menu_screen_layout.dioxidelitevia.adjusted.tooltip": "Substitui a tela \"Relatório do Jogador\" com \"Interações Sociais\" na <= 1.18.2.",
+  "change_game_menu_screen_layout.dioxidelitevia.adjusted.tooltip": "Substitui a tela \"Relatório do Jogador\" com \"Interações Sociais\" na \u003c= 1.18.2.",
   "change_game_menu_screen_layout.dioxidelitevia.off.tooltip": "Não modifica a tela do menu do jogo de forma alguma.",
   "report.dioxidelitevia.button": "Relatar bug",
   "report.dioxidelitevia.bug_report": "Relate um bug no GitHub",
@@ -152,5 +152,6 @@
   "bedrock_realms.dioxidelitevia.leave": "Sair do Realms",
   "bedrock_realms.dioxidelitevia.invite": "Aceitar código de convite",
   "bedrock_realms.dioxidelitevia.expired": "O Realms expirou",
-  "bedrock_realms.dioxidelitevia.incompatible": "A versão do Minecraft Realms é muito antiga ou muito recente."
+  "bedrock_realms.dioxidelitevia.incompatible": "A versão do Minecraft Realms é muito antiga ou muito recente.",
+  "screen.dioxidelitevia.title": "DioxideLiteVia"
 }

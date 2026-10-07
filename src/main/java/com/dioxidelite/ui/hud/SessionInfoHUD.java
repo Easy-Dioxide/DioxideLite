@@ -81,9 +81,10 @@ public final class SessionInfoHUD extends EpsilonHudModule {
         float titleSize = 6.8F * s;
         String elapsed = elapsedText();
         String server = serverText();
+        String title = displayName().toUpperCase(java.util.Locale.ROOT);
         boolean showServer = showServerIp.get();
         float textWidth = Math.max(SkijaUi.boldTextWidth(elapsed, timeSize),
-                SkijaUi.boldTextWidth("SESSION INFO", titleSize));
+                SkijaUi.boldTextWidth(title, titleSize));
         if (showServer) textWidth = Math.max(textWidth, SkijaUi.textWidth(server, serverSize));
         textWidth = Math.min(textWidth, 142.0F * s);
         float width = padding * 2.0F + avatarSize + gap + textWidth;
@@ -109,7 +110,7 @@ public final class SessionInfoHUD extends EpsilonHudModule {
         }
 
         float headerHeight = 17.0F * s;
-        SkijaUi.boldText(event.canvas(), "SESSION INFO", x + padding, y,
+        SkijaUi.boldText(event.canvas(), title, x + padding, y,
                 headerHeight, UiTheme.TEXT, titleSize);
         SkijaUi.fill(event.canvas(), x + padding, y + headerHeight - 1.0F * s,
                 width - padding * 2.0F, 1.0F * s,

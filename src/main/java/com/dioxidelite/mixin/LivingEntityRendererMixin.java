@@ -5,7 +5,6 @@ import com.dioxidelite.module.modules.render.Chams;
 import com.dioxidelite.module.modules.render.ESP;
 import com.dioxidelite.module.modules.render.NameTags;
 import com.llamalad7.mixinextras.injector.ModifyReturnValue;
-import com.mojang.blaze3d.vertex.PoseStack;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.renderer.entity.LivingEntityRenderer;
 import net.minecraft.client.renderer.entity.state.LivingEntityRenderState;
@@ -57,14 +56,7 @@ public abstract class LivingEntityRendererMixin<T extends LivingEntity, S extend
             state.outlineColor = ESP.INSTANCE.getPlayerColor(player);
         }
 
-        // NoHurtCamera 的 "No Player Model Hurt"：清除本地玩家受伤红光覆盖
-        // （受 MC 26.1.2 渲染状态字段命名差异影响，模型红光隐藏待进一步适配；
-        //  镜头倾斜取消已在 GameRendererMixin 中生效）
-        if (entity == Minecraft.getInstance().player
-                && com.dioxidelite.module.modules.render.advanced.NoHurtCamera.INSTANCE.isEnabled()
-                && com.dioxidelite.module.modules.render.advanced.NoHurtCamera.INSTANCE.hideModelDamage.get()) {
-            // state.hurtOverlay = 0.0F; // 字段名待适配
-        }
+        // NoHurtCamera：hurtTime 由 TickEvent.Pre 监听器清零，此处保留说明
     }
 
     @Inject(method = "shouldShowName", at = @At("HEAD"), cancellable = true)

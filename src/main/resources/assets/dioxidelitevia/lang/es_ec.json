@@ -26,7 +26,7 @@
   "general_settings.dioxidelitevia.save_selected_protocol_version": "Guardar versión de protocolo",
   "general_settings.dioxidelitevia.show_classic_loading_progress": "Mostrar el progreso de carga clásico en la pantalla de conexión",
   "general_settings.dioxidelitevia.multiplayer_screen_button_orientation": "Orientación de los botones de la pantalla multijugador",
-  "general_settings.dioxidelitevia.add_server_screen_button_orientation": "Orientación del botón 'Añadir servidor'",
+  "general_settings.dioxidelitevia.add_server_screen_button_orientation": "Orientación del botón \u0027Añadir servidor\u0027",
   "general_settings.dioxidelitevia.direct_connect_screen_button_orientation": "Orientación del botón de conexión directa",
   "general_settings.dioxidelitevia.filter_creative_tabs": "Eliminar ítems no disponibles de la pestaña de creativo",
   "general_settings.dioxidelitevia.show_advertised_server_version": "Mostrar versión anunciada del servidor en multijugador",
@@ -66,5 +66,6 @@
   "classic4j_library.dioxidelitevia.error.username": "Nombre de usuario incorrecto.",
   "classic4j_library.dioxidelitevia.error.password": "Contraseña incorrecta.",
   "classic4j_library.dioxidelitevia.error.verification": "El usuario aún no ha verificado su correo electrónico.",
-  "classic4j_library.dioxidelitevia.error.logincode": "Se requiere verificación en dos pasos. Por favor, revisa tu correo electrónico."
+  "classic4j_library.dioxidelitevia.error.logincode": "Se requiere verificación en dos pasos. Por favor, revisa tu correo electrónico.",
+  "screen.dioxidelitevia.title": "DioxideLiteVia"
 }

@@ -81,7 +81,7 @@ public final class SkijaUi {
             "/assets/dioxide-lite/tritium/fonts/pf_normal.ttf", FontStyle.NORMAL);
     private static final Typeface BOLD_TYPEFACE = loadTypeface(
             "/assets/dioxide-lite/tritium/fonts/pf_middleblack.ttf", FontStyle.BOLD);
-    private static final Typeface TEXT_FALLBACK_TYPEFACE = findTypeface(FontStyle.NORMAL);
+    private static final Typeface TEXT_FALLBACK_TYPEFACE = findCjkFallbackTypeface();
     private static final Typeface TRITIUM_CONTROLS_TYPEFACE = loadTypeface(
             "/assets/dioxide-lite/tritium/fonts/icomoon.ttf", FontStyle.NORMAL);
     private static final Typeface TRITIUM_MUSIC_TYPEFACE = loadTypeface(
@@ -141,11 +141,16 @@ public final class SkijaUi {
     }
 
     public static void fill(Canvas canvas, float x, float y, float width, float height, int color) {
+        // 退化尺寸直接跳过：Skia 的 Rect.makeXYWH 对负宽高会抛 IllegalArgumentException，
+        // 一旦抛出来整帧的 Skija 通道都要重来（日志里的 "Recovering Skija renderer"）。
+        // 动画起步阶段尺寸从 0 长起来、或者调用方做 x+0.5 / w-1 的 1px 内缩时很容易算出微负值。
+        if (width <= 0.0F || height <= 0.0F) return;
         SHAPE_PAINT.setAntiAlias(false).setColor(color);
         canvas.drawRect(Rect.makeXYWH(x, y, width, height), SHAPE_PAINT);
     }
 
     public static void rounded(Canvas canvas, float x, float y, float width, float height, float radius, int color) {
+        if (width <= 0.0F || height <= 0.0F) return;
         SHAPE_PAINT.setAntiAlias(true).setColor(color);
         canvas.drawRRect(RRect.makeXYWH(x, y, width, height, radius), SHAPE_PAINT);
     }
@@ -212,6 +217,7 @@ public final class SkijaUi {
 
     public static void outline(Canvas canvas, float x, float y, float width, float height,
                                float radius, float thickness, int color) {
+        if (width <= 0.0F || height <= 0.0F) return;
         try {
             SHAPE_PAINT.setAntiAlias(true).setMode(PaintMode.STROKE)
                     .setStrokeWidth(Math.max(0.1F, thickness)).setColor(color);
@@ -861,6 +867,48 @@ public final class SkijaUi {
             return manager.matchFamilyStyle(null, style);
         } catch (RuntimeException ignored) {
             return null;
+        }
+    }
+
+    /**
+     * Resolves the system font used for glyphs the packaged typeface lacks, which in practice
+     * means CJK text. A non-null typeface is not enough here: {@link FontMgr#matchFamilyStyle}
+     * answers {@code null} for every family when the platform font manager cannot enumerate
+     * installed fonts, and the {@code null}-family query that {@link #findTypeface} treats as its
+     * last resort also returns {@code null} rather than throwing. Silently degrading to Skija's
+     * default typeface then drops every CJK glyph and renders those labels blank, so each
+     * candidate is probed for real coverage and the failure is logged rather than swallowed.
+     */
+    private static Typeface findCjkFallbackTypeface() {
+        Typeface firstResolvable = findTypeface(FontStyle.NORMAL);
+        if (hasCjkCoverage(firstResolvable)) {
+            return firstResolvable;
+        }
+        for (String family : FONT_FAMILIES) {
+            Typeface candidate;
+            try {
+                candidate = FontMgr.getDefault().matchFamilyStyle(family, FontStyle.NORMAL);
+            } catch (RuntimeException ignored) {
+                continue;
+            }
+            if (hasCjkCoverage(candidate)) {
+                return candidate;
+            }
+        }
+        DioxideLite.LOGGER.warn(
+                "No installed font provides CJK glyphs; Chinese text may render blank. "
+                        + "Install Microsoft YaHei (Windows), PingFang SC (macOS) "
+                        + "or Noto Sans CJK (Linux), or import a CJK font via the Font setting.");
+        return firstResolvable;
+    }
+
+    /** Probes a representative Simplified-Chinese glyph rather than trusting the family name. */
+    private static boolean hasCjkCoverage(Typeface typeface) {
+        if (typeface == null) {
+            return false;
+        }
+        try (Font probe = new Font(typeface, FONT_SIZE)) {
+            return probe.getUTF32Glyph(0x4E16) != 0 && probe.getUTF32Glyph(0x6218) != 0;
         }
     }
 
