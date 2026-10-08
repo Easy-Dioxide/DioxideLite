@@ -1,0 +1,42 @@
+package com.dioxideliteng.ui.clickgui.neverlose;
+
+import com.dioxideliteng.config.ModuleConfigCodec;
+import com.dioxideliteng.module.visual.ClickGui;
+import java.util.List;
+import org.junit.jupiter.api.Test;
+
+import static org.junit.jupiter.api.Assertions.*;
+
+class NeverloseSettingsTest {
+   @Test
+   void styleChoiceExposesOnlyItsApplicableControls() {
+      ClickGui gui = new ClickGui();
+      assertEquals("Opai", gui.style.getDefaultValue());
+      gui.style.setValue("Neverlose");
+      assertFalse(gui.renderMode.isVisible());
+      assertFalse(gui.opaiColor.isVisible());
+      gui.style.setValue("Modern");
+      assertTrue(gui.renderMode.isVisible());
+      assertFalse(gui.opaiColor.isVisible());
+      gui.style.setValue("Opai");
+      assertFalse(gui.renderMode.isVisible());
+      assertTrue(gui.opaiColor.isVisible());
+   }
+
+   @Test
+   void automaticStateKeepsStyleWhileGameplayPresetsOnlyKeepKeybind() {
+      ClickGui gui = new ClickGui();
+      gui.style.setValue("Neverlose");
+      var state = ModuleConfigCodec.snapshot(List.of(gui), ModuleConfigCodec.Scope.ALL, false);
+      ClickGui restored = new ClickGui();
+      ModuleConfigCodec.prepare(List.of(restored), state, ModuleConfigCodec.Scope.ALL).run();
+      assertEquals("Neverlose", restored.style.getValue());
+      assertEquals(state, ModuleConfigCodec.snapshot(List.of(restored), ModuleConfigCodec.Scope.ALL, false));
+      var gameplay = ModuleConfigCodec.snapshot(List.of(gui), ModuleConfigCodec.Scope.GAMEPLAY, false);
+      assertFalse(gameplay.getAsJsonObject(gui.getName()).has("settings"));
+      assertEquals(gui.getKey(), gameplay.getAsJsonObject(gui.getName()).get("key").getAsInt());
+      var defaults = ModuleConfigCodec.snapshot(List.of(new ClickGui()), ModuleConfigCodec.Scope.GAMEPLAY, true);
+      ModuleConfigCodec.prepare(List.of(restored), defaults, ModuleConfigCodec.Scope.GAMEPLAY).run();
+      assertEquals("Neverlose", restored.style.getValue());
+   }
+}
