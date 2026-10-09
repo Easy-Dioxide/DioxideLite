@@ -19,7 +19,7 @@ final class LaunchIntro {
 
    void prepare() { sphere.load(launchRenderer.resources()); }
 
-   void draw(float width, float height, double timeSeconds, boolean reduced) {
+   void draw(float width, float height, double timeSeconds, boolean reduced, String user) {
       launchRenderer.rect(0, 0, width, height, 0xFF000000);
       var layout = LaunchLayout.of(width, height);
       nvgSave(vg);
@@ -31,12 +31,12 @@ final class LaunchIntro {
          if (timeSeconds < LaunchTimeline.LOGIN_START) boot(timeSeconds, reduced);
          else if (timeSeconds < LaunchTimeline.CONNECTION_START) {
             paleBackground(timeSeconds);
-            login(timeSeconds, reduced);
+            login(timeSeconds, reduced, user);
          } else if (timeSeconds < LaunchTimeline.EMBLEM_START) {
             connection(timeSeconds, reduced);
             if (timeSeconds < 10.9) {
                nvgGlobalAlpha(vg, 1 - ramp(timeSeconds, LaunchTimeline.CONNECTION_START, 10.9));
-               login(timeSeconds, reduced);
+               login(timeSeconds, reduced, user);
             }
          } else emblemScene(timeSeconds, reduced);
       } finally { nvgRestore(vg); }
@@ -95,7 +95,7 @@ final class LaunchIntro {
       launchRenderer.outline(-90, -67, 180, 134, 12, ColorUtility.multiplyOpacityRounded(LIME, out(timeSeconds, 1.54, 2.1)));
       launchRenderer.outline(-72, -49, 144, 98, 1.2f, WHITE);
       nvgRestore(vg);
-      shadowText("轮回", 0, 5, 39, WHITE, "serif", NVG_ALIGN_CENTER, 5);
+      shadowText("Arknights", 0, 5, 39, WHITE, "serif", NVG_ALIGN_CENTER, 5);
       shadowText("DioxideLiteNG", 0, 31, 19, WHITE, "intro-regular", NVG_ALIGN_CENTER, 5);
       nvgSave(vg);
       nvgGlobalAlpha(vg, light * out(timeSeconds, 1.2, 2.2));
@@ -109,9 +109,9 @@ final class LaunchIntro {
       nvgGlobalAlpha(vg, light * badge);
       launchRenderer.outline(-109, -104, 218, 208, 2.5f, WHITE);
       launchRenderer.outline(-102, -97, 204, 194, 1, 0x44787C86);
-      shadowText("S A", 0, -40, 48, WHITE, "intro-regular", NVG_ALIGN_CENTER, 3);
-      shadowText("M S", 0, 22, 48, WHITE, "intro-regular", NVG_ALIGN_CENTER, 3);
-      shadowText("A R A", 0, 80, 40, WHITE, "intro-bold", NVG_ALIGN_CENTER, 3);
+      shadowText("Ark", 0, -40, 48, WHITE, "intro-regular", NVG_ALIGN_CENTER, 3);
+      shadowText("nig", 0, 22, 48, WHITE, "intro-regular", NVG_ALIGN_CENTER, 3);
+      shadowText("hts", 0, 80, 40, WHITE, "intro-bold", NVG_ALIGN_CENTER, 3);
       nvgRestore(vg);
       for (int i = 0; i < 16 * ramp(timeSeconds, 2.04, 2.9); i++)
          launchRenderer.line(480 + i * 11, 54, 501 + i * 11, -14, 6, WHITE);
@@ -132,14 +132,14 @@ final class LaunchIntro {
       grain(.10f);
    }
 
-   private void login(double timeSeconds, boolean reduced) {
+   private void login(double timeSeconds, boolean reduced, String user) {
       IntroCamera camera = new IntroCamera(timeSeconds, reduced);
       fiducials(camera, timeSeconds, reduced);
       float vanish = 1 - out(timeSeconds, 9.14, 9.39);
       if (vanish > 0) {
          nvgSave(vg); nvgGlobalAlpha(vg, vanish);
          terminalMark(camera, timeSeconds, reduced);
-         inputs(camera, timeSeconds, reduced);
+         inputs(camera, timeSeconds, reduced, user);
          nvgRestore(vg);
       }
       if (timeSeconds >= 8.78) identityCard(camera, timeSeconds, reduced);
@@ -192,7 +192,7 @@ final class LaunchIntro {
       stretchText("DioxideLiteNG", 0, -9, 154, 500, INK, "intro-italic");
    }
 
-   private void inputs(IntroCamera camera, double timeSeconds, boolean reduced) {
+   private void inputs(IntroCamera camera, double timeSeconds, boolean reduced, String user) {
       camera.begin(vg, 830, 280);
       float line = out(timeSeconds, 5.13, 5.7);
       shadowLine(0, 0, 0, 390 * line, 3);
@@ -212,7 +212,7 @@ final class LaunchIntro {
          shadowText(type(title, timeSeconds, 5.6 + row * .12, .043), 0, 0, 32, INK, "intro-regular", 0, 5);
          IntroCamera.end(vg);
          camera.begin(vg, 905, y + 53);
-         shadowText(row == 0 ? type("Dioxide", timeSeconds, 6.57, .22) : type("*************", timeSeconds, 7.75, .077),
+         shadowText(row == 0 ? type(user, timeSeconds, 6.57, .22) : type("*************", timeSeconds, 7.75, .077),
             0, 0, 33, INK, "intro-bold", 0, 5);
          IntroCamera.end(vg);
       }

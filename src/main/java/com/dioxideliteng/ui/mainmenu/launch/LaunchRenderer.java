@@ -80,7 +80,7 @@ public final class LaunchRenderer implements AutoCloseable {
             nvgRestore(vg);
             intro.menuMask(width, height, seconds);
          } else {
-            intro.draw(width, height, seconds, reduceMotion);
+            intro.draw(width, height, seconds, reduceMotion, user);
          }
       } finally { nvgRestore(vg); }
    }
@@ -102,9 +102,9 @@ public final class LaunchRenderer implements AutoCloseable {
       glyph("calendar", 308, 48, 25, WHITE);
       menuIcon("quit", 1550, 48, 19, hovered, focused);
       text(date, 972, 41, 19, WHITE, "regular", 0);
-      badge(950, 87, 0xFF00B3DA, "2595381");
-      badge(1193, 87, 0xFFD95C72, "9376");
-      badge(1400, 87, 0xFFEBC545, "2");
+      badge(950, 87, 0xFF00B3DA, "5201314");
+      badge(1193, 87, 0xFFD95C72, "32500");
+      badge(1400, 87, 0xFFEBC545, "33");
       nvgSave(vg);
       nvgTranslate(vg, reducedMotion ? 0 : -265 * (1 - entry), 0);
       nvgGlobalAlpha(vg, reducedMotion ? entry : 1);
@@ -112,9 +112,9 @@ public final class LaunchRenderer implements AutoCloseable {
       if (!reducedMotion && entry < 1) nvgIntersectScissor(vg, 940, 118, 650, 230 * (.2f + .8f * entry));
       rect(948, 125, 628, 210, 0xF5FFFFFF);
       rect(970, 149, 181, 112, 0xFFB8B8BA);
-      text("744", 986, 246, 95, INK, "regular", 0);
+      text("325", 986, 246, 95, INK, "regular", 0);
       rect(970, 269, 181, 45, 0xFF333337);
-      text("理智 /130", 1061, 302, 27, WHITE, "serif", NVG_ALIGN_CENTER);
+      text("理智 /210", 1061, 302, 27, WHITE, "serif", NVG_ALIGN_CENTER);
       text("终端", 1172, 217, 58, INK, "serif", 0);
       rect(1178, 243, 61, 29, 0xFF333337);
       text("当前", 1208, 266, 20, WHITE, "serif", NVG_ALIGN_CENTER);
@@ -166,10 +166,10 @@ public final class LaunchRenderer implements AutoCloseable {
       nvgRestore(vg);
       rect(0, 390, 182, 150, 0xBE303034);
       circle(101, 426, 64, 3, 0xFF919498);
-      text("91", 102, 444, 77, WHITE, "regular", NVG_ALIGN_CENTER);
+      text("120", 102, 444, 77, WHITE, "regular", NVG_ALIGN_CENTER);
       text("LV", 102, 475, 22, WHITE, "regular", NVG_ALIGN_CENTER);
       fitText(user, 32, 570, 30, 260, WHITE, "regular");
-      text("ID:139330622", 30, 594, 16, WHITE, "regular", 0);
+      text("ID:81622964", 30, 594, 16, WHITE, "regular", 0);
       menuIcon("visibility", 304, 510, 17, hovered, focused);
       menuIcon("replay", 369, 510, 17, hovered, focused);
       rect(26, 615, 481, 111, 0xCA242529);
