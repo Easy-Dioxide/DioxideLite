@@ -1,0 +1,30 @@
+{
+  "schemaVersion": 1,
+  "id": "dioxideliteng",
+  "version": "${version}",
+  "name": "DioxideLiteNG",
+  "description": "DioxideLiteNG client",
+  "authors": [
+    "Dioxide"
+  ],
+  "contact": {
+    "sources": "https://github.com/Dioxide/DioxideLiteNG",
+    "issues": "https://github.com/Dioxide/DioxideLiteNG/issues"
+  },
+  "license": "GPL-3.0-only",
+  "icon": "assets/dioxideliteng/icon.png",
+  "environment": "*",
+  "entrypoints": {
+    "main": [
+      "com.dioxideliteng.DioxideLiteNGClient"
+    ]
+  },
+  "mixins": [
+    "dioxideliteng.mixins.json"
+  ],
+  "depends": {
+    "fabricloader": ">=0.19.5",
+    "minecraft": "~26.3",
+    "java": ">=25"
+  }
+}
