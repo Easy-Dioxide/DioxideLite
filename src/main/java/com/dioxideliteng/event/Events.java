@@ -1,0 +1,57 @@
+package com.dioxideliteng.event;
+
+import com.dioxideliteng.event.impl.EventEntityOutline;
+import com.dioxideliteng.event.impl.EventHurtCamera;
+import com.dioxideliteng.event.impl.EventMouseButton;
+import com.dioxideliteng.event.impl.EventMoveInput;
+import com.dioxideliteng.event.impl.EventPacketReceive;
+import com.dioxideliteng.event.impl.EventPacketSend;
+import com.dioxideliteng.event.impl.EventPostMotion;
+import com.dioxideliteng.event.impl.EventPostMoveInput;
+import com.dioxideliteng.event.impl.EventPreMotion;
+import com.dioxideliteng.event.impl.EventRender2D;
+import com.dioxideliteng.event.impl.EventRenderNameTag;
+import com.dioxideliteng.event.impl.EventRotation;
+import com.dioxideliteng.event.impl.EventSlowdown;
+import com.dioxideliteng.event.impl.EventSound;
+import com.dioxideliteng.event.impl.EventSprint;
+import com.dioxideliteng.event.impl.EventTick;
+import com.dioxideliteng.module.FeatureManager;
+import java.util.List;
+import net.minecraft.client.Minecraft;
+
+public class Events {
+   public static final EventPreMotion PRE_MOTION = new EventPreMotion();
+   public static final EventSprint SPRINT = new EventSprint();
+   public static final EventMouseButton MOUSE_BUTTON = new EventMouseButton();
+   public static final EventTick TICK = new EventTick();
+   public static final EventPostMoveInput POST_MOVE_INPUT = new EventPostMoveInput();
+   public static final EventSound SOUND = new EventSound();
+   public static final EventPostMotion POST_MOTION = new EventPostMotion();
+   public static final EventHurtCamera HURT_CAMERA = new EventHurtCamera();
+   public static final EventRender2D RENDER_2D = new EventRender2D();
+   public static final EventSlowdown SLOWDOWN = new EventSlowdown();
+   public static final EventMoveInput MOVE_INPUT = new EventMoveInput();
+   public static final EventRotation ROTATION = new EventRotation();
+   public static final EventRenderNameTag RENDER_NAME_TAG = new EventRenderNameTag();
+   public static final EventEntityOutline ENTITY_OUTLINE = new EventEntityOutline();
+   // Packet prototypes only select listener priorities; dispatch creates a separate payload for each packet.
+   private static final List<Event> EVENT_TYPES = List.of(PRE_MOTION, POST_MOTION, ROTATION, TICK, RENDER_2D, HURT_CAMERA,
+      MOVE_INPUT, POST_MOVE_INPUT, SLOWDOWN, new EventPacketSend(), new EventPacketReceive(), SPRINT,
+      RENDER_NAME_TAG, ENTITY_OUTLINE, MOUSE_BUTTON, SOUND);
+   private static final EventBus BUS = new EventBus(EVENT_TYPES);
+
+   static void dispatch(Event event) {
+      BUS.dispatch(event);
+   }
+
+   public static void initializeListeners() {
+      BUS.refresh(FeatureManager.getModules());
+   }
+
+   public static void refreshListeners() {
+      if (Minecraft.getInstance().player != null) {
+         initializeListeners();
+      }
+   }
+}

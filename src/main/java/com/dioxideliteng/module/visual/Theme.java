@@ -1,0 +1,30 @@
+package com.dioxideliteng.module.visual;
+
+import com.dioxideliteng.module.Category;
+import com.dioxideliteng.module.Feature;
+import com.dioxideliteng.setting.ModeSetting;
+import com.dioxideliteng.setting.NumberSetting;
+
+public class Theme extends Feature {
+   private static final String SAKURA_LABEL = "Sakura";
+   private static final String NOVA_LABEL = "Nova";
+   private static final String INFERNO_LABEL = "Inferno";
+   private static final String RAINBOW_LABEL = "Rainbow";
+   private static final String THEME_LABEL = "Theme";
+   private static final String OCEAN_LABEL = "Ocean";
+   private static final String CHERRY_LABEL = "Cherry";
+   private static final String DEFAULT_LABEL = "Default";
+   private static final String FLOWER_LABEL = "Flower";
+   private static final String SPEED_LABEL = "Speed";
+   private static final String GOLD_LABEL = "Gold";
+   private static final String EMERALD_LABEL = "Emerald";
+
+   public final ModeSetting theme;
+   public final NumberSetting speed;
+
+   public Theme() {
+      super(THEME_LABEL, Category.VISUAL);
+      this.theme = new ModeSetting(THEME_LABEL, this, DEFAULT_LABEL, new String[]{DEFAULT_LABEL, CHERRY_LABEL, EMERALD_LABEL, FLOWER_LABEL, GOLD_LABEL, INFERNO_LABEL, NOVA_LABEL, OCEAN_LABEL, RAINBOW_LABEL, SAKURA_LABEL});
+      this.speed = new NumberSetting(SPEED_LABEL, this, 1.0, 0.5, 5.0, 0.25);
+   }
+}
