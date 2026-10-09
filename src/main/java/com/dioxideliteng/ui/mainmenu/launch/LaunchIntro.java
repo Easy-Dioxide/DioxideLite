@@ -95,7 +95,7 @@ final class LaunchIntro {
       launchRenderer.outline(-90, -67, 180, 134, 12, ColorUtility.multiplyOpacityRounded(LIME, out(timeSeconds, 1.54, 2.1)));
       launchRenderer.outline(-72, -49, 144, 98, 1.2f, WHITE);
       nvgRestore(vg);
-      shadowText("Arknights", 0, 5, 39, WHITE, "serif", NVG_ALIGN_CENTER, 5);
+      shadowText("轮回", 0, 5, 39, WHITE, "serif", NVG_ALIGN_CENTER, 5);
       shadowText("DioxideLiteNG", 0, 31, 19, WHITE, "intro-regular", NVG_ALIGN_CENTER, 5);
       nvgSave(vg);
       nvgGlobalAlpha(vg, light * out(timeSeconds, 1.2, 2.2));
