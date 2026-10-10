@@ -19,8 +19,7 @@ public record LaunchLayout(float scale, float left, float top) {
       new Tile("settings", "选项", 28, 22, 52, 52),
       new Tile("quit", "退出游戏", 1522, 20, 56, 56),
       new Tile("visibility", "立绘", 278, 484, 52, 52),
-      new Tile("replay", "重播", 343, 484, 52, 52),
-      new Tile("stronghold", "卫戍协议", 994, 520, 570, 128)
+      new Tile("replay", "重播", 343, 484, 52, 52)
    );
 
    public static LaunchLayout of(float width, float height) {
