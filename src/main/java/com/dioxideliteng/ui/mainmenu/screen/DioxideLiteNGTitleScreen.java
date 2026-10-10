@@ -6,7 +6,6 @@ import com.dioxideliteng.ui.mainmenu.launch.LaunchTimeline;
 import com.dioxideliteng.ui.NanoGui;
 import com.dioxideliteng.ui.account.AccountManagerScreen;
 import com.dioxideliteng.ui.account.AccountSessions;
-import com.dioxideliteng.ui.stronghold.StrongholdProtocolWindow;
 import com.dioxideliteng.util.render.NVGRenderer;
 import com.mojang.blaze3d.platform.InputConstants;
 import java.time.LocalDateTime;
@@ -115,7 +114,6 @@ public final class DioxideLiteNGTitleScreen extends Screen implements NanoGui {
          case "mods" -> minecraft.gui.setScreen(new InstalledModsScreen(this));
          case "visibility" -> showOperator = !showOperator;
          case "replay" -> { introSeen = false; minecraft.gui.setScreen(new DioxideLiteNGTitleScreen()); }
-         case "stronghold" -> StrongholdProtocolWindow.open();
          case "quit" -> minecraft.stop();
          default -> { }
       }
