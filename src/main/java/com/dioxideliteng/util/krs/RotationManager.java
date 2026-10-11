@@ -20,6 +20,13 @@ import net.minecraft.world.phys.shapes.VoxelShape;
 import java.util.Optional;
 
 public class RotationManager {
+    /**
+     * 全局单例：所有 Krs 移植模块共享同一旋转状态，确保 outgoing packet
+     * 归一化与服务器旋转记录一致。由 PacketUtil 与 MixinClientPacketListener
+     * 在 send 链路上自动调用。
+     */
+    public static final RotationManager INSTANCE = new RotationManager();
+
     private final Minecraft mc = Minecraft.getInstance();
 
     private float clientYaw;

@@ -60,11 +60,12 @@ public class PacketUtil {
     }
 
     /**
-     * Client.rotationManager dependency removed: rotation normalization is handled
-     * directly by {@link RotationManager} when modules need it.
+     * 调用全局 RotationManager.INSTANCE 归一化 outgoing packet 的旋转字段，
+     * 让服务器看到的旋转与 RotationManager 维护的服务器旋转状态一致。
+     * 这是 Krs 反作弊绕过的核心：所有携带旋转的包都会被自动归一化。
      */
     private static Packet<?> normalizeRotationPacket(Packet<?> packet) {
-        return packet;
+        return RotationManager.INSTANCE.normalizeOutgoingPacket(packet);
     }
 
     @SuppressWarnings("unchecked")

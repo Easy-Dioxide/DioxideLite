@@ -106,7 +106,7 @@ public class KillAura2 extends Feature {
     // Krs TextValue has no client equivalent; keep as a plain preference string.
     private final String preferTargetId = "1zun4";
 
-    private final RotationManager rotationManager = new RotationManager();
+    private final RotationManager rotationManager = RotationManager.INSTANCE;
 
     public Entity closestEntity = null;
     public final List<Entity> multiTargets = new ArrayList<>();
