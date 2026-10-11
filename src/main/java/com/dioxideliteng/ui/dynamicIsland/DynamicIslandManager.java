@@ -74,7 +74,7 @@ public final class DynamicIslandManager {
       if (module == null) {
          return;
       }
-      if (module == FeatureManager.scaffold) {
+      if (module == FeatureManager.scaffold || module == FeatureManager.scaffold2) {
          SCAFFOLD_BPS.reset();
          if (!module.isEnabled()) {
             STATE.remove("scaffold");
@@ -275,7 +275,9 @@ public final class DynamicIslandManager {
    }
 
    private static void updateScaffold(long now) {
-      if (FeatureManager.scaffold == null || !FeatureManager.scaffold.isEnabled() || MC.player == null || MC.level == null) {
+      boolean scaffoldOn = FeatureManager.scaffold != null && FeatureManager.scaffold.isEnabled();
+      boolean scaffold2On = FeatureManager.scaffold2 != null && FeatureManager.scaffold2.isEnabled();
+      if ((!scaffoldOn && !scaffold2On) || MC.player == null || MC.level == null) {
          STATE.remove("scaffold");
          SCAFFOLD_BPS.reset();
          return;
