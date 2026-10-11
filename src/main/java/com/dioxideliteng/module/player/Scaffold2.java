@@ -164,7 +164,7 @@ public class Scaffold2 extends Feature {
     private static boolean startedScaffold = false;
     private static boolean autoSneaking = false;
 
-    private final RotationManager rotationManager = new RotationManager();
+    private final RotationManager rotationManager = RotationManager.INSTANCE;
 
     private boolean once = false;
     private double jumpGround = 0.0;
