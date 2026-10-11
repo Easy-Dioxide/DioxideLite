@@ -50,6 +50,26 @@ public class MixinMinecraft {
       Events.TICK.call();
    }
 
+   // Krs parity: fire HANDLE_INPUT at the same point Krs does (Minecraft#tick, at the
+   // Gui.overlay() call that gates vanilla input handling). Cancelling the event skips
+   // the rest of tick(), matching Krs's HandleInputEvent semantics.
+   @Inject(
+      method = {"tick"},
+      at = {@At(
+         value = "INVOKE",
+         target = "Lnet/minecraft/client/gui/Gui;overlay()Lnet/minecraft/client/gui/screens/Overlay;",
+         ordinal = 0
+      )},
+      cancellable = true
+   )
+   private void dioxideliteng$dispatchHandleInput(CallbackInfo callback) {
+      if (((Minecraft)(Object)this).player == null) return;
+      Events.HANDLE_INPUT.call();
+      if (Events.HANDLE_INPUT.isCancelled()) {
+         callback.cancel();
+      }
+   }
+
    @Inject(method = "tick", at = @At("TAIL"))
    private void dioxideliteng$trackSessionAndSave(CallbackInfo callback) {
       FeatureManager.clientTickEnd();
