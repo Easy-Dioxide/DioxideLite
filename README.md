@@ -6,7 +6,7 @@
 
 **DioxideLite** 是一个基于 Mixin 运行时注入的开源 Minecraft 视觉客户端（Fabric），为 Minecraft **26.3** 打造，专注流畅的 HUD 视觉、ClickGUI 与启动体验。
 
-> 当前版本：**B4** · 平台：Fabric · 游戏版本：Minecraft 26.3 · Java 25 · 支持 Windows / Linux / macOS
+> 当前版本：**B5** · 平台：Fabric · 游戏版本：Minecraft 26.3 · Java 25 · 支持 Windows / Linux / macOS
 
 ---
 
@@ -19,10 +19,10 @@
 - **HUD 编辑器**：ClickGUI 右下角铅笔按钮进入，自由拖拽排版（RESET / DONE）。
 - **DynamicIsland 灵动岛**：顶部胶囊信息面板，实时显示客户端版本 / FPS / 延迟。
 - **账户管理**：微软登录（内嵌 WebView）、Altening 会话、账户保存与切换。
-- **模块体系（115 个）**：
-  - **Combat（24）**：KillAura、AimAssist、AutoClicker、AutoRod、Criticals、TriggerBot、Velocity、AntiBot、SprintReset、TargetSettings、AntiBot2、AutoPot、AutoTotem、Backtrack2、Criticals2、CrossbowExploit、FastBow、FastEat、MaceExploit、NoCombatDelay、Reach、Teams、Velocity2、WTap
+- **模块体系（117 个）**：
+  - **Combat（25）**：KillAura、KillAura2、AimAssist、AutoClicker、AutoRod、Criticals、TriggerBot、Velocity、AntiBot、SprintReset、TargetSettings、AntiBot2、AutoPot、AutoTotem、Backtrack2、Criticals2、CrossbowExploit、FastBow、FastEat、MaceExploit、NoCombatDelay、Reach、Teams、Velocity2、WTap
   - **Movement（25）**：Speed、Flight、LongJump、Blink、Timer、Stasis、Sprint、KeepSprint、InventoryMove、NoSlow、AntiSwim、AutoWalk、MovementCorrection、AutoWalk2、FastFall、AntiLevitation、AutoRocket、AutoSneak、Jesus、NoJumpCooldown、NoWeb、Parkour、SafeWalk、Spider、WaterSpeed
-  - **Player（33）**：Scaffold、BedAura、ChestStealer、Backtrack、Eagle、AutoHead、AutoTool、FastMine、FastPlace、InventoryManager、LagRange、NoFall、NoJumpDelay、AirPlace、AntiAFK、AutoBypass、AutoFish、AutoLeave、AutoRespawn、AutoTool2、ChestStealer2、DurabilityAlert、FastBreak、FastLadder、HackerDetector、InvManager2、MiddleClick、MurdererDetector、NoBreakCooldown、NoFall2、SneakSpam、SpinBot、Timer2
+  - **Player（34）**：Scaffold、Scaffold2、BedAura、ChestStealer、Backtrack、Eagle、AutoHead、AutoTool、FastMine、FastPlace、InventoryManager、LagRange、NoFall、NoJumpDelay、AirPlace、AntiAFK、AutoBypass、AutoFish、AutoLeave、AutoRespawn、AutoTool2、ChestStealer2、DurabilityAlert、FastBreak、FastLadder、HackerDetector、InvManager2、MiddleClick、MurdererDetector、NoBreakCooldown、NoFall2、SneakSpam、SpinBot、Timer2
   - **Visual（13）**：ClickGui、Hud、NameTags、PlayerEsp、Scoreboard、Ambience、Animations、AntiFire、BedPlates、Cape、FullBright、NoHurtCamera、Theme
   - **Misc（17）**：Disabler、Disabler2、Whitelist、WindCharge、BrandSpoofer、ConsoleSpammer、EntityDesync、ExploitPatcher、FakePinger、LongThrow、NoBreakReset、PackSpoofer、PacketDuper、PluginsDetector、PortalGodMode、ServerCrasher、XCarry
 - **工程与安全**：分布式事件总线（EventBus）、模块生命周期管理（FeatureManager）、原子化配置持久化（AtomicFiles / ClientStateStore）、`.config save/load` 预设、Mixin 注入覆盖渲染 / 输入 / 网络 / 菜单多个切面。
@@ -39,7 +39,7 @@
 
 ## 使用方式
 
-1. 按 `./gradlew build` 构建得到 `build/libs/dioxideliteng-b4.jar`。
+1. 按 `./gradlew build` 构建得到 `build/libs/dioxideliteng-b5.jar`。
 2. 为 Minecraft 26.3 安装 Fabric Loader 0.19.5+。
 3. 将 jar 放入 `mods` 目录，用 Java 25 启动 Fabric 档位。
 4. **Right Shift** 打开 ClickGUI；聊天输入 `.help` 查看指令；`.config save/load <name>` 管理预设。
@@ -55,8 +55,8 @@
 
 产物位于 `build/libs/`：
 
-- `dioxideliteng-b4.jar`（含内嵌依赖与各平台 JavaFX / LWJGL native）
-- `dioxideliteng-b4-sources.jar`
+- `dioxideliteng-b5.jar`（含内嵌依赖与各平台 JavaFX / LWJGL native）
+- `dioxideliteng-b5-sources.jar`
 
 测试：**246 项**（JUnit 5 / Jupiter），skipped 0，failures 0，errors 0。
 
@@ -69,6 +69,7 @@
 | B2 | [devlog-b2.md](devlog-b2.md) — 视觉改版：启动动画与主菜单视觉升级 + ClickGUI / HUD 视觉调整 + 全平台构建验证 |
 | B3 | [devlog-b3.md](devlog-b3.md) — 主菜单立绘更换为维什戴尔「绝对主角」+ 版本号升级至 B3 |
 | B4 | [devlog-b4.md](devlog-b4.md) — Krs Hacks 整合：60 模块移植 + 8 新事件类 + Disabler2 七模式 + 模块总数升至 115 |
+| B5 | [devlog-b5.md](devlog-b5.md) — KillAura2 + Scaffold2 重依赖模块移植 + 14 类 Krs utils 工具层 + 反作弊绕过链路修复（RotationManager 全局单例 + Mixin send 钩子）+ 模块总数升至 117 |
 
 详细更新记录见 [CHANGELOG.md](CHANGELOG.md)。
 
