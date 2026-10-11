@@ -16,47 +16,6 @@ import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
 
 @Mixin(ClientPacketListener.class)
 public class MixinClientPacketListener implements DynamicIslandLatency.Source {
-   /**
-    * Krs 反作弊绕过核心：在 ClientPacketListener.send(Packet) 链路上拦截每个
-    * outgoing packet，对携带旋转的包（ServerboundMovePlayerPacket /
-    * ServerboundUseItemPacket）调用 RotationManager.INSTANCE 归一化旋转字段，
-    * 使服务器看到的旋转与 RotationManager 维护的服务器旋转状态一致。
-    * 同时跳过被 PacketUtil 标记为 silent 的包（已在 PacketUtil 内归一化）。
-    */
-   @Unique
-   private static final ThreadLocal<Boolean> REENTRY_GUARD = ThreadLocal.withInitial(() -> Boolean.FALSE);
-
-   @Inject(method = "send(Lnet/minecraft/network/protocol/Packet;)V", at = @At("HEAD"), cancellable = true)
-   private void dioxideliteng$normalizeOutgoingRotation(Packet<?> packet, CallbackInfo callback) {
-      if (packet == null || REENTRY_GUARD.get()) return;
-
-      // PacketUtil 已标记为 silent 的包：记录旋转后放行（不重复归一化）
-      if (PacketUtil.consumeSilentPacket(packet)) {
-         RotationManager.INSTANCE.recordOutgoingRotation(packet);
-         return;
-      }
-
-      Packet<?> normalized = RotationManager.INSTANCE.normalizeOutgoingPacket(packet);
-      if (normalized == packet) {
-         // 无需替换（非旋转包或未初始化）：只记录旋转状态
-         RotationManager.INSTANCE.recordOutgoingRotation(packet);
-         return;
-      }
-
-      // 替换为归一化后的包：取消原发送，通过 Connection 直接发送（避免递归）
-      callback.cancel();
-      REENTRY_GUARD.set(Boolean.TRUE);
-      try {
-         var conn = Minecraft.getInstance().getConnection();
-         if (conn != null) {
-            conn.getConnection().send(normalized);
-            RotationManager.INSTANCE.recordOutgoingRotation(normalized);
-         }
-      } finally {
-         REENTRY_GUARD.remove();
-      }
-   }
-
    @Inject(method = "handleMoveEntity", at = @At("TAIL"))
    private void dioxideliteng$predictMovedPlayer(net.minecraft.network.protocol.game.ClientboundMoveEntityPacket packet, CallbackInfo callback) {
       var mc = Minecraft.getInstance();
