@@ -27,7 +27,21 @@ public class RotationManager {
      */
     public static final RotationManager INSTANCE = new RotationManager();
 
-    private final Minecraft mc = Minecraft.getInstance();
+    // 非 final：INSTANCE 在类加载时初始化，此时 Minecraft 可能尚未创建。
+    // 关键方法会在使用前调用 ensureMc() 重新获取，避免 null。
+    private Minecraft mc;
+
+    /**
+     * 确保 mc 字段不为 null。INSTANCE 在类加载时初始化，此时
+     * Minecraft.getInstance() 可能返回 null（游戏尚未启动）。
+     * 每个使用 mc 的关键方法都应先调用此方法。
+     */
+    private boolean ensureMc() {
+        if (mc == null) {
+            mc = Minecraft.getInstance();
+        }
+        return mc != null;
+    }
 
     private float clientYaw;
     private float clientPitch;
@@ -615,7 +629,7 @@ public class RotationManager {
     }
 
     public Packet<?> normalizeOutgoingPacket(Packet<?> packet) {
-        if (!ensureServerRotationInitialized()) {
+        if (!ensureMc() || !ensureServerRotationInitialized()) {
             return packet;
         }
 
@@ -666,6 +680,7 @@ public class RotationManager {
     }
 
     public void recordOutgoingRotation(Packet<?> packet) {
+        if (!ensureMc()) return;
         if (packet instanceof ServerboundMovePlayerPacket movePacket && movePacket.hasRotation()) {
             ensureServerRotationInitialized();
             recordServerRotation(movePacket.getYRot(serverYaw), movePacket.getXRot(serverPitch));
