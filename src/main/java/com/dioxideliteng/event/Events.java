@@ -1,9 +1,16 @@
 package com.dioxideliteng.event;
 
+import com.dioxideliteng.event.impl.EventAttack;
+import com.dioxideliteng.event.impl.EventBlock;
+import com.dioxideliteng.event.impl.EventBlockEdge;
+import com.dioxideliteng.event.impl.EventCancelBlockBreaking;
 import com.dioxideliteng.event.impl.EventEntityOutline;
+import com.dioxideliteng.event.impl.EventHandleInput;
 import com.dioxideliteng.event.impl.EventHurtCamera;
+import com.dioxideliteng.event.impl.EventKey;
 import com.dioxideliteng.event.impl.EventMouseButton;
 import com.dioxideliteng.event.impl.EventMoveInput;
+import com.dioxideliteng.event.impl.EventMouseScroll;
 import com.dioxideliteng.event.impl.EventPacketReceive;
 import com.dioxideliteng.event.impl.EventPacketSend;
 import com.dioxideliteng.event.impl.EventPostMotion;
@@ -16,6 +23,7 @@ import com.dioxideliteng.event.impl.EventSlowdown;
 import com.dioxideliteng.event.impl.EventSound;
 import com.dioxideliteng.event.impl.EventSprint;
 import com.dioxideliteng.event.impl.EventTick;
+import com.dioxideliteng.event.impl.EventWorld;
 import com.dioxideliteng.module.FeatureManager;
 import java.util.List;
 import net.minecraft.client.Minecraft;
@@ -35,10 +43,20 @@ public class Events {
    public static final EventRotation ROTATION = new EventRotation();
    public static final EventRenderNameTag RENDER_NAME_TAG = new EventRenderNameTag();
    public static final EventEntityOutline ENTITY_OUTLINE = new EventEntityOutline();
+   // Krs parity events: singleton prototypes, reset and reused per dispatch.
+   public static final EventHandleInput HANDLE_INPUT = new EventHandleInput();
+   public static final EventKey KEY = new EventKey();
+   public static final EventMouseScroll MOUSE_SCROLL = new EventMouseScroll();
+   public static final EventAttack ATTACK = new EventAttack();
+   public static final EventWorld WORLD = new EventWorld();
+   public static final EventBlock BLOCK = new EventBlock();
+   public static final EventBlockEdge BLOCK_EDGE = new EventBlockEdge();
+   public static final EventCancelBlockBreaking CANCEL_BLOCK_BREAKING = new EventCancelBlockBreaking();
    // Packet prototypes only select listener priorities; dispatch creates a separate payload for each packet.
    private static final List<Event> EVENT_TYPES = List.of(PRE_MOTION, POST_MOTION, ROTATION, TICK, RENDER_2D, HURT_CAMERA,
       MOVE_INPUT, POST_MOVE_INPUT, SLOWDOWN, new EventPacketSend(), new EventPacketReceive(), SPRINT,
-      RENDER_NAME_TAG, ENTITY_OUTLINE, MOUSE_BUTTON, SOUND);
+      RENDER_NAME_TAG, ENTITY_OUTLINE, MOUSE_BUTTON, SOUND, HANDLE_INPUT, KEY, MOUSE_SCROLL, ATTACK, WORLD,
+      BLOCK, BLOCK_EDGE, CANCEL_BLOCK_BREAKING);
    private static final EventBus BUS = new EventBus(EVENT_TYPES);
 
    static void dispatch(Event event) {
