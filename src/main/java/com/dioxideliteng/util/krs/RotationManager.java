@@ -63,7 +63,7 @@ public class RotationManager {
     private boolean serverRotationInitialized = false;
 
     public RotationManager() {
-        if (mc.player != null) {
+        if (ensureMc() && mc.player != null) {
             syncWithPlayerRotation();
         }
     }
