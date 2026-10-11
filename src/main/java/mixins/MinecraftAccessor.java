@@ -16,6 +16,9 @@ public interface MinecraftAccessor {
    @Accessor("rightClickDelay")
    void setRightClickDelay(int rightClickDelay);
 
+   @Accessor("missTime")
+   void setMissTime(int missTime);
+
    @Accessor("user")
    void setUser(User user);
 }
