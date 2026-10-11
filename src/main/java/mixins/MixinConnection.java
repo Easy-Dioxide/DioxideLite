@@ -4,6 +4,8 @@ import com.dioxideliteng.event.impl.EventPacketReceive;
 import com.dioxideliteng.event.impl.EventPacketSend;
 import com.dioxideliteng.util.PacketBlinkQueue;
 import com.dioxideliteng.util.PacketFilter;
+import com.dioxideliteng.util.krs.PacketUtil;
+import com.dioxideliteng.util.krs.RotationManager;
 import io.netty.channel.ChannelFutureListener;
 import io.netty.channel.ChannelHandlerContext;
 import net.minecraft.network.Connection;
@@ -13,6 +15,7 @@ import net.minecraft.network.protocol.game.ClientboundStartConfigurationPacket;
 import org.spongepowered.asm.mixin.Mixin;
 import org.spongepowered.asm.mixin.injection.At;
 import org.spongepowered.asm.mixin.injection.Inject;
+import org.spongepowered.asm.mixin.injection.ModifyVariable;
 import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
 
 @Mixin({Connection.class})
@@ -39,6 +42,27 @@ public class MixinConnection {
             com.dioxideliteng.module.FeatureManager.autoRod.observePacket(packetSendEvent.getPacket());
          }
       }
+   }
+
+   @ModifyVariable(
+      method = "send(Lnet/minecraft/network/protocol/Packet;Lio/netty/channel/ChannelFutureListener;Z)V",
+      at = @At("HEAD"),
+      argsOnly = true,
+      index = 1
+   )
+   private Packet<?> dioxideliteng$normalizePacket(Packet<?> packet) {
+      if (packet == null) {
+         return packet;
+      }
+
+      if (PacketUtil.consumeSilentPacket(packet)) {
+         RotationManager.INSTANCE.recordOutgoingRotation(packet);
+         return packet;
+      }
+
+      Packet<?> normalized = RotationManager.INSTANCE.normalizeOutgoingPacket(packet);
+      RotationManager.INSTANCE.recordOutgoingRotation(normalized);
+      return normalized;
    }
 
    @Inject(
