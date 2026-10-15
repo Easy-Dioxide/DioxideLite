@@ -1,0 +1,593 @@
+package com.dioxideliteng.module.misc;
+
+import com.dioxideliteng.event.Event;
+import com.dioxideliteng.event.Events;
+import com.dioxideliteng.event.impl.EventPacketReceive;
+import com.dioxideliteng.event.impl.EventPacketSend;
+import com.dioxideliteng.event.impl.EventWorld;
+import com.dioxideliteng.module.Category;
+import com.dioxideliteng.module.Feature;
+import com.dioxideliteng.setting.BooleanSetting;
+import com.dioxideliteng.setting.NumberSetting;
+import com.dioxideliteng.util.krs.PacketUtil;
+import com.dioxideliteng.util.pathfinder.MainPathFinder;
+import java.util.ArrayList;
+import net.minecraft.core.BlockPos;
+import net.minecraft.core.Direction;
+import net.minecraft.network.protocol.Packet;
+import net.minecraft.network.protocol.game.ClientboundPlayerPositionPacket;
+import net.minecraft.network.protocol.game.ServerboundContainerClosePacket;
+import net.minecraft.network.protocol.game.ServerboundMovePlayerPacket;
+import net.minecraft.network.protocol.game.ServerboundUseItemOnPacket;
+import net.minecraft.world.inventory.ChestMenu;
+import net.minecraft.world.inventory.ShulkerBoxMenu;
+import net.minecraft.world.level.ClipContext;
+import net.minecraft.world.level.block.BarrelBlock;
+import net.minecraft.world.level.block.Block;
+import net.minecraft.world.level.block.ChestBlock;
+import net.minecraft.world.level.block.EnderChestBlock;
+import net.minecraft.world.level.block.ShulkerBoxBlock;
+import net.minecraft.world.phys.BlockHitResult;
+import net.minecraft.world.phys.HitResult;
+import net.minecraft.world.phys.Vec3;
+
+/**
+ * Ported from Krs (com.instrumentalist.krs.hacks.features.exploit.TPStealer).
+ * Krs parity: intercepting an out-of-reach container use teleports the player to the
+ * container along a pathfinder route (spread over TP Ticks move packets), re-sends the
+ * held use packet while stationed, and teleports back when the container closes. Own
+ * movement packets are suppressed while a sequence runs. The static hook trio
+ * (isSendingSpreadTeleportPacket / shouldSuppressMovement / hookBlockReach) keeps the Krs
+ * API shape for the movement/reach mixin hooks, backed by the registered instance (the
+ * equivalent of ModuleManager.getModule); Krs ModuleManager.getModuleState(tempEnabled)
+ * maps onto Feature.isEnabled().
+ */
+public class TPStealer extends Feature {
+   private final NumberSetting tpExtendedReach = new NumberSetting("TP Extended Reach", this, 30.0, 0.0, 200.0, 0.1);
+   private final NumberSetting tpTicks = new NumberSetting("TP Ticks", this, 10.0, 0.0, 60.0, 1.0);
+   private final BooleanSetting tpBack = new BooleanSetting("TP Back", this, true);
+   private final BooleanSetting tpOnGroundPacket = new BooleanSetting("TP OnGround Packet", this, true);
+
+   private enum Phase {
+      IDLE,
+      GOING,
+      STATIONED,
+      RETURNING
+   }
+
+   private record TeleportMoveStep(Vec3 position) {
+   }
+
+   private static final class PendingTeleportSequence {
+      private final ArrayList<TeleportMoveStep> steps;
+      private final ArrayList<Vec3> sentPositions = new ArrayList<>();
+      private int totalMovePackets;
+      private final int totalTicks;
+      private final Phase completedPhase;
+      private final boolean onGround;
+      private final boolean horizontalCollision;
+      private int nextStep;
+      private int sentMovePackets;
+      private int elapsedTicks;
+
+      private PendingTeleportSequence(ArrayList<TeleportMoveStep> steps, int totalMovePackets, int totalTicks,
+                                      Phase completedPhase, boolean onGround, boolean horizontalCollision) {
+         this.steps = steps;
+         this.totalMovePackets = totalMovePackets;
+         this.totalTicks = totalTicks;
+         this.completedPhase = completedPhase;
+         this.onGround = onGround;
+         this.horizontalCollision = horizontalCollision;
+      }
+   }
+
+   private static TPStealer instance;
+
+   private Phase phase = Phase.IDLE;
+   private PendingTeleportSequence pendingTeleportSequence;
+   private boolean sendingTeleportSequencePacket;
+   private Vec3 destinationPosition;
+   private Vec3 lastTeleportPosition;
+   private BlockPos chestPos;
+   private ServerboundUseItemOnPacket pendingUsePacket;
+   private int containerWaitTicks;
+   private boolean containerWasOpen;
+   private boolean checkingAim;
+
+   public TPStealer() {
+      super("TP Stealer", Category.MISC);
+      instance = this;
+   }
+
+   public static boolean isSendingSpreadTeleportPacket() {
+      TPStealer module = instance;
+      return module != null && module.sendingTeleportSequencePacket;
+   }
+
+   public static boolean shouldSuppressMovement() {
+      TPStealer module = instance;
+      return module != null
+            && module.isEnabled()
+            && module.phase != Phase.IDLE
+            && !module.sendingTeleportSequencePacket;
+   }
+
+   public static double hookBlockReach(double original) {
+      TPStealer module = instance;
+      if (module == null || !module.isEnabled() || module.checkingAim)
+         return original;
+
+      float extra = (float) module.tpExtendedReach.getValue();
+      if (extra <= 0f)
+         return original;
+
+      double extended = original + extra;
+      module.checkingAim = true;
+      try {
+         if (!module.isAimingAtStealableBlock(extended))
+            return original;
+      } finally {
+         module.checkingAim = false;
+      }
+
+      return extended;
+   }
+
+   @Override
+   public void onDisable() {
+      if (mc.player != null) {
+         if (phase == Phase.RETURNING) {
+            if (pendingTeleportSequence != null)
+               retargetReturnSequence(pendingTeleportSequence);
+            flushRemainingSteps();
+         }
+         else if (phase == Phase.GOING)
+            cancelPendingTeleportSequence();
+         else if (phase == Phase.STATIONED && tpBack.getValue())
+            teleportAlong(destinationPosition != null ? destinationPosition : mc.player.position(), mc.player.position());
+      }
+      reset();
+   }
+
+   @Override
+   public void onEnable() {
+      reset();
+   }
+
+   @Override
+   public void onEvent(Event event) {
+      if (event instanceof EventWorld) {
+         reset();
+         return;
+      }
+      if (event instanceof EventPacketSend sending && !sending.isCancelled()) {
+         onSendPacket(sending);
+         return;
+      }
+      if (event instanceof EventPacketReceive receiving && !receiving.isCancelled()) {
+         onReceivedPacket(receiving);
+         return;
+      }
+      if (event == Events.HANDLE_INPUT) {
+         onHandleInput();
+      }
+   }
+
+   private void onSendPacket(EventPacketSend sending) {
+      if (mc.player == null || mc.level == null)
+         return;
+
+      Packet<?> packet = sending.getPacket();
+
+      if (sendingTeleportSequencePacket)
+         return;
+
+      if (shouldSuppressOwnMovement() && packet instanceof ServerboundMovePlayerPacket) {
+         sending.setCancelled(true);
+         return;
+      }
+
+      if (packet instanceof ServerboundUseItemOnPacket usePacket)
+         handleUseItemOn(sending, usePacket);
+      else if (packet instanceof ServerboundContainerClosePacket && phase == Phase.STATIONED)
+         startReturnSequence();
+   }
+
+   private void onReceivedPacket(EventPacketReceive receiving) {
+      if (mc.player == null || phase == Phase.IDLE)
+         return;
+
+      if (receiving.getPacket() instanceof ClientboundPlayerPositionPacket)
+         reset();
+   }
+
+   private void onHandleInput() {
+      if (mc.player == null || mc.level == null) {
+         reset();
+         return;
+      }
+
+      if (pendingTeleportSequence != null) {
+         advancePendingTeleportSequence();
+         return;
+      }
+
+      if (phase == Phase.STATIONED)
+         holdStation();
+   }
+
+   private void handleUseItemOn(EventPacketSend sending, ServerboundUseItemOnPacket usePacket) {
+      // 26.3: ServerboundUseItemOnPacket is a record; getHitResult() -> hitResult().
+      BlockHitResult hitResult = usePacket.hitResult();
+      if (hitResult.getType() != HitResult.Type.BLOCK)
+         return;
+
+      BlockPos pos = hitResult.getBlockPos();
+      if (!isStealableBlock(mc.level.getBlockState(pos).getBlock()))
+         return;
+
+      if (isWithinNormalReach(hitResult.getLocation()) || !isWithinExtendedReach(hitResult.getLocation()))
+         return;
+
+      if (phase == Phase.STATIONED && pos.equals(chestPos))
+         return;
+
+      if (phase == Phase.GOING || phase == Phase.RETURNING)
+         return;
+
+      Vec3 destination = resolveDestination(pos, hitResult.getDirection());
+      if (destination == null)
+         return;
+
+      sending.setCancelled(true);
+      pendingUsePacket = usePacket;
+      chestPos = pos;
+      destinationPosition = destination;
+      containerWaitTicks = 0;
+      containerWasOpen = isStealableMenuOpen();
+
+      startTeleportSequence(mc.player.position(), destination, Phase.GOING);
+   }
+
+   private void holdStation() {
+      boolean containerOpen = isStealableMenuOpen();
+      if (containerOpen)
+         containerWasOpen = true;
+
+      if (containerWasOpen && !containerOpen) {
+         startReturnSequence();
+         return;
+      }
+
+      if (!containerOpen) {
+         containerWaitTicks++;
+         if (containerWaitTicks > 20) {
+            startReturnSequence();
+            return;
+         }
+      } else {
+         containerWaitTicks = 0;
+      }
+
+      if (destinationPosition != null)
+         sendTeleportMovePacket(destinationPosition, tpOnGroundPacket.getValue(), mc.player.horizontalCollision);
+   }
+
+   private void startReturnSequence() {
+      if (phase == Phase.RETURNING)
+         return;
+
+      pendingUsePacket = null;
+      containerWaitTicks = 0;
+      containerWasOpen = false;
+
+      if (!tpBack.getValue() || mc.player == null) {
+         reset();
+         return;
+      }
+
+      startTeleportSequence(
+            destinationPosition != null ? destinationPosition : mc.player.position(),
+            mc.player.position(),
+            Phase.RETURNING
+      );
+   }
+
+   private void startTeleportSequence(Vec3 from, Vec3 to, Phase travelPhase) {
+      if (mc.player == null || from == null || to == null) {
+         onSequenceComplete(travelPhase == Phase.GOING ? Phase.STATIONED : Phase.IDLE);
+         return;
+      }
+
+      ArrayList<Vec3> paths = computeTeleportPath(from, to);
+      int spreadTicks = Math.max(0, Math.min(60, (int) tpTicks.getValue()));
+
+      if (paths.isEmpty()) {
+         onSequenceComplete(travelPhase == Phase.GOING ? Phase.STATIONED : Phase.IDLE);
+         return;
+      }
+
+      phase = travelPhase;
+
+      if (spreadTicks == 0) {
+         for (Vec3 path : paths)
+            sendTeleportMovePacket(path, tpOnGroundPacket.getValue(), mc.player.horizontalCollision);
+         onSequenceComplete(travelPhase == Phase.GOING ? Phase.STATIONED : Phase.IDLE);
+         return;
+      }
+
+      ArrayList<TeleportMoveStep> steps = new ArrayList<>(paths.size());
+      for (Vec3 path : paths)
+         steps.add(new TeleportMoveStep(path));
+
+      pendingTeleportSequence = new PendingTeleportSequence(
+            steps,
+            steps.size(),
+            spreadTicks + 1,
+            travelPhase == Phase.GOING ? Phase.STATIONED : Phase.IDLE,
+            tpOnGroundPacket.getValue(),
+            mc.player.horizontalCollision
+      );
+      advancePendingTeleportSequence();
+   }
+
+   private void advancePendingTeleportSequence() {
+      PendingTeleportSequence sequence = pendingTeleportSequence;
+      if (sequence == null || mc.player == null)
+         return;
+
+      if (phase == Phase.RETURNING)
+         retargetReturnSequence(sequence);
+
+      sequence.elapsedTicks = Math.min(sequence.elapsedTicks + 1, sequence.totalTicks);
+      int totalMovePackets = Math.max(sequence.totalMovePackets, sequence.sentMovePackets);
+      int movePacketTarget = (int) ((long) totalMovePackets
+            * sequence.elapsedTicks / sequence.totalTicks);
+
+      while (sequence.nextStep < sequence.steps.size()) {
+         if (sequence.sentMovePackets >= movePacketTarget)
+            break;
+
+         TeleportMoveStep moveStep = sequence.steps.get(sequence.nextStep);
+         sendTeleportMovePacket(moveStep.position(), sequence.onGround, sequence.horizontalCollision);
+         sequence.sentPositions.add(moveStep.position());
+         sequence.sentMovePackets++;
+         sequence.nextStep++;
+      }
+
+      if (sequence.nextStep < sequence.steps.size())
+         return;
+
+      pendingTeleportSequence = null;
+      onSequenceComplete(sequence.completedPhase);
+   }
+
+   private void onSequenceComplete(Phase completedPhase) {
+      if (completedPhase == Phase.STATIONED) {
+         phase = Phase.STATIONED;
+         containerWaitTicks = 0;
+         containerWasOpen = isStealableMenuOpen();
+
+         if (!tpBack.getValue() && destinationPosition != null)
+            mc.player.setPos(destinationPosition);
+
+         if (pendingUsePacket != null) {
+            ServerboundUseItemOnPacket usePacket = pendingUsePacket;
+            pendingUsePacket = null;
+            sendTrackedPacket(usePacket);
+         }
+         return;
+      }
+
+      if (mc.player != null)
+         sendTeleportMovePacket(mc.player.position(), tpOnGroundPacket.getValue(), mc.player.horizontalCollision);
+      reset();
+   }
+
+   private void flushRemainingSteps() {
+      PendingTeleportSequence sequence = pendingTeleportSequence;
+      if (sequence == null)
+         return;
+
+      while (sequence.nextStep < sequence.steps.size()) {
+         TeleportMoveStep moveStep = sequence.steps.get(sequence.nextStep);
+         sendTeleportMovePacket(moveStep.position(), sequence.onGround, sequence.horizontalCollision);
+         sequence.nextStep++;
+      }
+      pendingTeleportSequence = null;
+   }
+
+   private void teleportAlong(Vec3 from, Vec3 to) {
+      ArrayList<Vec3> paths = computeTeleportPath(from, to);
+      if (paths.isEmpty())
+         return;
+
+      for (Vec3 path : paths)
+         sendTeleportMovePacket(path, tpOnGroundPacket.getValue(), mc.player.horizontalCollision);
+   }
+
+   private ArrayList<Vec3> computeTeleportPath(Vec3 from, Vec3 to) {
+      ArrayList<Vec3> path = new ArrayList<>();
+      if (from == null || to == null)
+         return path;
+
+      if (!isSameExactPosition(from, to)) {
+         ArrayList<Vec3> computed = MainPathFinder.computePath(from, to);
+         if (computed != null)
+            path.addAll(computed);
+      }
+
+      if (path.isEmpty() || !isSameExactPosition(path.getLast(), to))
+         path.add(to);
+      return path;
+   }
+
+   private static boolean isSameExactPosition(Vec3 first, Vec3 second) {
+      return first != null
+            && second != null
+            && first.distanceToSqr(second) <= 1.0E-6D;
+   }
+
+   private void cancelPendingTeleportSequence() {
+      PendingTeleportSequence sequence = pendingTeleportSequence;
+      if (sequence == null)
+         return;
+
+      try {
+         if (mc.player == null || sequence.sentPositions.isEmpty())
+            return;
+
+         for (int i = sequence.sentPositions.size() - 1; i >= 0; i--)
+            sendTeleportMovePacket(sequence.sentPositions.get(i), sequence.onGround, sequence.horizontalCollision);
+
+         sendTeleportMovePacket(mc.player.position(), sequence.onGround, sequence.horizontalCollision);
+      } finally {
+         pendingTeleportSequence = null;
+         sendingTeleportSequencePacket = false;
+      }
+   }
+
+   private void retargetReturnSequence(PendingTeleportSequence sequence) {
+      Vec3 from = lastTeleportPosition != null
+            ? lastTeleportPosition
+            : (destinationPosition != null ? destinationPosition : mc.player.position());
+      ArrayList<Vec3> path = computeTeleportPath(from, mc.player.position());
+
+      while (sequence.steps.size() > sequence.nextStep)
+         sequence.steps.remove(sequence.steps.size() - 1);
+
+      for (Vec3 position : path)
+         sequence.steps.add(new TeleportMoveStep(position));
+
+      sequence.totalMovePackets = sequence.sentMovePackets + path.size();
+      if (sequence.totalMovePackets < 1)
+         sequence.totalMovePackets = 1;
+   }
+
+   private void sendTeleportMovePacket(Vec3 position, boolean onGround, boolean horizontalCollision) {
+      sendTrackedPacket(new ServerboundMovePlayerPacket.Pos(
+            position.x,
+            position.y,
+            position.z,
+            onGround,
+            horizontalCollision
+      ));
+      lastTeleportPosition = position;
+   }
+
+   private void sendTrackedPacket(Packet<?> packet) {
+      boolean wasSendingTeleportSequencePacket = sendingTeleportSequencePacket;
+      sendingTeleportSequencePacket = true;
+      try {
+         PacketUtil.sendPacket(packet);
+      } finally {
+         sendingTeleportSequencePacket = wasSendingTeleportSequencePacket;
+      }
+   }
+
+   private Vec3 resolveDestination(BlockPos pos, Direction clickedFace) {
+      if (clickedFace.getAxis().isHorizontal()) {
+         BlockPos standPos = pos.relative(clickedFace);
+         if (isStandable(standPos))
+            return Vec3.atBottomCenterOf(standPos);
+
+         BlockPos below = standPos.below();
+         if (isStandable(below))
+            return Vec3.atBottomCenterOf(below);
+      }
+
+      for (Direction direction : Direction.Plane.HORIZONTAL) {
+         BlockPos standPos = pos.relative(direction);
+         if (isStandable(standPos))
+            return Vec3.atBottomCenterOf(standPos);
+
+         BlockPos below = standPos.below();
+         if (isStandable(below))
+            return Vec3.atBottomCenterOf(below);
+      }
+
+      return Vec3.atBottomCenterOf(pos);
+   }
+
+   private boolean isStandable(BlockPos pos) {
+      return MainPathFinder.isValid(pos.getX(), pos.getY(), pos.getZ(), true);
+   }
+
+   private boolean isAimingAtStealableBlock(double reach) {
+      if (mc.player == null || mc.level == null || reach <= 0.0D || !Double.isFinite(reach))
+         return false;
+
+      Vec3 start = mc.player.getEyePosition();
+      Vec3 end = start.add(mc.player.getViewVector(1.0F).scale(reach));
+      BlockHitResult hit = mc.level.clip(new ClipContext(
+            start,
+            end,
+            ClipContext.Block.OUTLINE,
+            ClipContext.Fluid.NONE,
+            mc.player
+      ));
+      return hit.getType() == HitResult.Type.BLOCK
+            && isStealableBlock(mc.level.getBlockState(hit.getBlockPos()).getBlock());
+   }
+
+   private boolean isWithinNormalReach(Vec3 location) {
+      if (mc.player == null)
+         return false;
+
+      double reach = getNormalBlockReach();
+      return mc.player.getEyePosition().distanceToSqr(location) <= reach * reach;
+   }
+
+   private boolean isWithinExtendedReach(Vec3 location) {
+      if (mc.player == null)
+         return false;
+
+      double reach = getNormalBlockReach() + tpExtendedReach.getValue();
+      return mc.player.getEyePosition().distanceToSqr(location) <= reach * reach;
+   }
+
+   private double getNormalBlockReach() {
+      if (mc.player == null)
+         return 4.5D;
+
+      boolean wasCheckingAim = checkingAim;
+      checkingAim = true;
+      try {
+         return mc.player.blockInteractionRange();
+      } finally {
+         checkingAim = wasCheckingAim;
+      }
+   }
+
+   private boolean isStealableBlock(Block block) {
+      return block instanceof ChestBlock
+            || block instanceof EnderChestBlock
+            || block instanceof BarrelBlock
+            || block instanceof ShulkerBoxBlock;
+   }
+
+   private boolean isStealableMenuOpen() {
+      if (mc.player == null)
+         return false;
+
+      return mc.player.containerMenu instanceof ChestMenu
+            || mc.player.containerMenu instanceof ShulkerBoxMenu;
+   }
+
+   private boolean shouldSuppressOwnMovement() {
+      return phase != Phase.IDLE;
+   }
+
+   private void reset() {
+      cancelPendingTeleportSequence();
+      phase = Phase.IDLE;
+      destinationPosition = null;
+      lastTeleportPosition = null;
+      chestPos = null;
+      pendingUsePacket = null;
+      containerWaitTicks = 0;
+      containerWasOpen = false;
+      sendingTeleportSequencePacket = false;
+      checkingAim = false;
+   }
+}

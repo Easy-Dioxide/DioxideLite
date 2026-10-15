@@ -27,5 +27,10 @@ public class MixinKeyboardInput {
    private void dioxideliteng$dispatchPostMoveInput(CallbackInfo callback) {
       EventPostMoveInput postMoveInputEvent = Events.POST_MOVE_INPUT;
       postMoveInputEvent.call();
+      // Krs parity: KeyboardInputMixin tick TAIL runs the module input hooks
+      // (Velocity.hookJumpResetInput / WTap.hookWTapInput) after the movement
+      // input fixes, so their modifications land last.
+      com.dioxideliteng.module.combat.Velocity2.hookJumpResetInput((net.minecraft.client.player.ClientInput) (Object) this);
+      com.dioxideliteng.module.combat.WTap.hookWTapInput((net.minecraft.client.player.ClientInput) (Object) this);
    }
 }

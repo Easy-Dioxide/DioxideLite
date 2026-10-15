@@ -3,6 +3,7 @@ package com.dioxideliteng.ui.dynamicIsland;
 import com.dioxideliteng.module.Feature;
 import com.dioxideliteng.module.FeatureManager;
 import com.dioxideliteng.module.player.Scaffold.ScaffoldBpsTracker;
+import com.dioxideliteng.module.player.ChestIslandSource;
 import com.dioxideliteng.module.player.ChestStealer;
 import com.dioxideliteng.module.player.ChestStealer.IslandGeometry;
 import com.dioxideliteng.module.player.ChestStealer.IslandView;
@@ -74,7 +75,7 @@ public final class DynamicIslandManager {
       if (module == null) {
          return;
       }
-      if (module == FeatureManager.scaffold) {
+      if (module == FeatureManager.scaffold || module == FeatureManager.scaffold2) {
          SCAFFOLD_BPS.reset();
          if (!module.isEnabled()) {
             STATE.remove("scaffold");
@@ -119,8 +120,17 @@ public final class DynamicIslandManager {
    public static synchronized void beginExtraction() { extracted = null; }
 
    public static synchronized boolean replacesContainer(Screen screen) {
-      return FeatureManager.chestStealer != null && NVGRenderer.isAvailable() && shouldRender(screen)
-         && FeatureManager.chestStealer.replacesContainer(screen);
+      return NVGRenderer.isAvailable() && shouldRender(screen) && chestSource(screen) != null;
+   }
+
+   /** The Krs port (ChestStealer2) takes priority when it owns the container; otherwise
+    *  the native ChestStealer drives the island. Both share the island record types. */
+   private static ChestIslandSource chestSource(Screen screen) {
+      if (FeatureManager.chestStealer2 != null && FeatureManager.chestStealer2.isEnabled()
+            && FeatureManager.chestStealer2.replacesContainer(screen))
+         return FeatureManager.chestStealer2;
+      return FeatureManager.chestStealer != null && FeatureManager.chestStealer.replacesContainer(screen)
+            ? FeatureManager.chestStealer : null;
    }
 
    public static synchronized boolean extractChestItems(Screen screen, GuiGraphicsExtractor graphics) {
@@ -131,14 +141,14 @@ public final class DynamicIslandManager {
       screen.extractTransparentBackground(graphics);
       MC.gui.hud.extractDeferredSubtitles();
       graphics.nextStratum();
-      FeatureManager.chestStealer.extractIslandItems(graphics, extracted.chest(), extracted.geometry());
+      chestSource(screen).extractIslandItems(graphics, extracted.chest(), extracted.geometry());
       return true;
    }
 
    private static Sample sample(long now, Screen screen) {
       boolean reducedMotion = MC.options.screenEffectScale().get() <= 0;
-      IslandView chest = FeatureManager.chestStealer == null ? null
-         : FeatureManager.chestStealer.islandView(screen, now, reducedMotion);
+      ChestIslandSource source = chestSource(screen);
+      IslandView chest = source == null ? null : source.islandView(screen, now, reducedMotion);
       if (chest == null) {
          updateScaffold(now);
          updateBedAura(now);
@@ -275,7 +285,9 @@ public final class DynamicIslandManager {
    }
 
    private static void updateScaffold(long now) {
-      if (FeatureManager.scaffold == null || !FeatureManager.scaffold.isEnabled() || MC.player == null || MC.level == null) {
+      boolean scaffoldOn = FeatureManager.scaffold != null && FeatureManager.scaffold.isEnabled();
+      boolean scaffold2On = FeatureManager.scaffold2 != null && FeatureManager.scaffold2.isEnabled();
+      if ((!scaffoldOn && !scaffold2On) || MC.player == null || MC.level == null) {
          STATE.remove("scaffold");
          SCAFFOLD_BPS.reset();
          return;

@@ -4,6 +4,7 @@ import com.dioxideliteng.event.Events;
 import com.dioxideliteng.event.impl.EventPreMotion;
 import com.dioxideliteng.event.impl.EventSlowdown;
 import com.dioxideliteng.event.impl.EventSprint;
+import com.dioxideliteng.util.krs.RotationManager;
 import com.llamalad7.mixinextras.injector.ModifyExpressionValue;
 import com.mojang.authlib.GameProfile;
 import net.minecraft.client.multiplayer.ClientLevel;
@@ -21,6 +22,8 @@ import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
 public abstract class MixinLocalPlayer extends AbstractClientPlayer {
    @Shadow
    private int sprintTriggerTime;
+   @Shadow
+   protected abstract void sendIsSprintingIfNeeded();
    @Unique
    private EventPreMotion dioxideliteng$motion;
    @Unique
@@ -51,7 +54,19 @@ public abstract class MixinLocalPlayer extends AbstractClientPlayer {
       cancellable = true
    )
    private void dioxideliteng$dispatchRotation(CallbackInfo callback) {
+      // Krs parity: RotationManager.update() runs at Player#aiStep (UpdateEvent).
+      // LocalPlayer#tick HEAD is the earliest equivalent point per player tick,
+      // and it runs after HANDLE_INPUT (Minecraft#tick -> Gui#overlay) where the
+      // Krs modules step their rotations, and before sendPosition consumes them.
+      RotationManager.INSTANCE.tick();
       Events.ROTATION.reset(this.getYRot(), this.getXRot()).call();
+      // Krs parity: ModuleManager#onMotion global hook. When a Krs module owns the
+      // rotation, its spoofed yaw/pitch override whatever modules wrote to the
+      // event, so sendPosition transmits them to the server.
+      if (RotationManager.INSTANCE.isRotating()) {
+         Events.ROTATION.setYaw(RotationManager.INSTANCE.getRotationYaw());
+         Events.ROTATION.setPitch(RotationManager.INSTANCE.getRotationPitch());
+      }
       if (Events.ROTATION.isCancelled()) {
          callback.cancel();
       }
@@ -59,10 +74,23 @@ public abstract class MixinLocalPlayer extends AbstractClientPlayer {
 
    // Keep vanilla's sendPosition body intact: ViaFabricPlus injects its movement
    // threshold, idle packets, position reminder and sneaking protocol fixes here.
-   @Inject(method = "sendPosition", at = @At("HEAD"))
+   @Inject(method = "sendPosition", at = @At("HEAD"), cancellable = true)
    private void dioxideliteng$preMotion(CallbackInfo ci) {
       this.dioxideliteng$motion = Events.PRE_MOTION.reset(this.getX(), this.getY(), this.getZ(), this.onGround(), this.horizontalCollision);
       this.dioxideliteng$motion.call();
+      // Krs parity: ClientPlayerEntityMixin#krs$sendPosition calls
+      // sendIsSprintingIfNeeded() before the MotionEvent and, when the event is
+      // cancelled, returns without sending any move packet and without touching
+      // the last-sent caches (xLast/yLast/zLast/yRotLast/xRotLast/lastOnGround/
+      // lastHorizontalCollision/positionReminder). Cancelling the vanilla body
+      // here reproduces exactly that, and the RETURN-injected post motion below
+      // never runs - matching the Krs post MotionEvent that only fires when a
+      // mode set callInPost during the (uncancelled) pre phase.
+      if (this.dioxideliteng$motion.isCancelled()) {
+         this.sendIsSprintingIfNeeded();
+         ci.cancel();
+         return;
+      }
       this.dioxideliteng$motionYaw = Events.ROTATION.getYaw();
       this.dioxideliteng$motionPitch = Events.ROTATION.getPitch();
    }
@@ -112,6 +140,9 @@ public abstract class MixinLocalPlayer extends AbstractClientPlayer {
    @Inject(method = "sendPosition", at = @At("RETURN"))
    private void dioxideliteng$postMotion(CallbackInfo ci) {
       Events.POST_MOTION.call();
+      // Krs parity: end of the rewritten sendPosition refreshes the render-side
+      // interpolated rotations (prevRender*/render*) used by MixinLivingEntityRenderer.
+      RotationManager.INSTANCE.postMotionVisualTick();
    }
 
    @ModifyExpressionValue(
