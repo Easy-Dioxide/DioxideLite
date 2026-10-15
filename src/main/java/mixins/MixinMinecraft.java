@@ -2,6 +2,7 @@ package mixins;
 
 import com.dioxideliteng.ClientBranding;
 import com.dioxideliteng.event.Events;
+import com.dioxideliteng.event.impl.EventWorld;
 import com.dioxideliteng.module.FeatureManager;
 import com.dioxideliteng.ui.mainmenu.window.WindowBranding;
 import net.minecraft.client.Minecraft;
@@ -48,6 +49,38 @@ public class MixinMinecraft {
    )
    private void dioxideliteng$dispatchTick(CallbackInfo callback) {
       Events.TICK.call();
+   }
+
+   // Krs parity: fire HANDLE_INPUT at the same point Krs does (Minecraft#tick, at the
+   // Gui.overlay() call that gates vanilla input handling). Cancelling the event skips
+   // the rest of tick(), matching Krs's HandleInputEvent semantics. This runs before
+   // ClientLevel#tickEntities (player tick -> ROTATION dispatch -> sendPosition), so
+   // rotations stepped by Krs modules here reach the server on the same tick.
+   @Inject(
+      method = {"tick"},
+      at = {@At(
+         value = "INVOKE",
+         target = "Lnet/minecraft/client/gui/Gui;overlay()Lnet/minecraft/client/gui/screens/Overlay;",
+         ordinal = 0
+      )},
+      cancellable = true
+   )
+   private void dioxideliteng$dispatchHandleInput(CallbackInfo callback) {
+      if (((Minecraft)(Object)this).player == null) return;
+      Events.HANDLE_INPUT.call();
+      if (Events.HANDLE_INPUT.isCancelled()) {
+         callback.cancel();
+      }
+   }
+
+   // Krs parity: WorldEvent at Minecraft#setLevel HEAD (join, leave, dimension swap).
+   @Inject(method = "setLevel", at = @At("HEAD"), cancellable = true)
+   private void dioxideliteng$dispatchWorld(net.minecraft.client.multiplayer.ClientLevel world, CallbackInfo callback) {
+      EventWorld event = new EventWorld(((Minecraft) (Object) this).level, world);
+      event.call();
+      if (event.isCancelled()) {
+         callback.cancel();
+      }
    }
 
    @Inject(method = "tick", at = @At("TAIL"))
