@@ -1,5 +1,6 @@
 package mixins;
 
+import com.dioxideliteng.event.impl.EventModifyPacket;
 import com.dioxideliteng.event.impl.EventPacketReceive;
 import com.dioxideliteng.event.impl.EventPacketSend;
 import com.dioxideliteng.util.PacketBlinkQueue;
@@ -23,6 +24,15 @@ public class MixinConnection {
       cancellable = true
    )
    private void dioxideliteng$dispatchPacketSend(Packet packet, ChannelFutureListener listener, boolean flush, CallbackInfo callback) {
+      // Krs parity: ModifyPacketEvent runs first and may replace the outgoing packet.
+      EventModifyPacket modifyEvent = new EventModifyPacket(packet);
+      modifyEvent.call();
+      if (modifyEvent.isCancelled() || modifyEvent.getPacket() == null) {
+         callback.cancel();
+         return;
+      }
+
+      packet = modifyEvent.getPacket();
       EventPacketSend packetSendEvent = new EventPacketSend(packet);
       packetSendEvent.call();
       if (packetSendEvent.isCancelled()) {

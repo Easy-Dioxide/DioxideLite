@@ -1,0 +1,1345 @@
+package com.dioxideliteng.module.misc;
+
+import com.dioxideliteng.event.Event;
+import com.dioxideliteng.event.Events;
+import com.dioxideliteng.event.impl.EventPacketReceive;
+import com.dioxideliteng.event.impl.EventPacketSend;
+import com.dioxideliteng.event.impl.EventWorld;
+import com.dioxideliteng.module.Category;
+import com.dioxideliteng.module.Feature;
+import com.dioxideliteng.module.player.Scaffold2;
+import com.dioxideliteng.setting.BooleanSetting;
+import com.dioxideliteng.setting.NumberSetting;
+import com.dioxideliteng.util.krs.PacketUtil;
+import com.dioxideliteng.util.pathfinder.MainPathFinder;
+import java.util.ArrayDeque;
+import java.util.ArrayList;
+import java.util.Comparator;
+import java.util.HashMap;
+import java.util.HashSet;
+import java.util.LinkedHashSet;
+import java.util.List;
+import java.util.Map;
+import java.util.Set;
+import java.util.UUID;
+import net.minecraft.core.BlockPos;
+import net.minecraft.core.Direction;
+import net.minecraft.network.protocol.Packet;
+import net.minecraft.network.protocol.game.ClientboundPlayerPositionPacket;
+import net.minecraft.network.protocol.game.ServerboundMovePlayerPacket;
+import net.minecraft.network.protocol.game.ServerboundPunchPacket;
+import net.minecraft.util.Mth;
+import net.minecraft.world.InteractionHand;
+import net.minecraft.world.entity.player.Player;
+import net.minecraft.world.item.BlockItem;
+import net.minecraft.world.item.ItemStack;
+import net.minecraft.world.level.block.Block;
+import net.minecraft.world.level.block.state.BlockState;
+import net.minecraft.world.phys.AABB;
+import net.minecraft.world.phys.BlockHitResult;
+import net.minecraft.world.phys.Vec3;
+
+/**
+ * Ported from Krs (com.instrumentalist.krs.hacks.features.exploit.TPSurround).
+ * Krs parity: teleports to the closest player along a pathfinder route, plans and places
+ * a full surround around their (lead-predicted) hitbox with the held block, relocating as
+ * the target moves, then teleports back. Movement packets are suppressed while a sequence
+ * runs, and the module self-disables when the operation finishes or aborts.
+ * Adaptations: Krs tempEnabled/setState map onto Feature.isEnabled/setEnabled (the module
+ * self-disables through the normal toggle path); Scaffold.isScaffoldBlock maps onto its
+ * faithful port Scaffold2.isScaffoldBlock; the static hook pair keeps the Krs API shape
+ * backed by the registered instance; the Krs ChatUtil.printChat abort messages have no
+ * client equivalent and are dropped (the abort/return flow itself is unchanged).
+ */
+public class TPSurround extends Feature {
+   private static final Direction[] SUPPORT_SEARCH_ORDER = {
+         Direction.DOWN,
+         Direction.NORTH,
+         Direction.SOUTH,
+         Direction.WEST,
+         Direction.EAST,
+         Direction.UP
+   };
+   private static final double COLLISION_EPSILON = 1.0E-7D;
+   private static final double[] FACE_SAMPLE_OFFSETS = {0.0D, -0.35D, 0.35D};
+   private static final int SURROUND_SEARCH_RANGE = 2;
+   private static final int MAX_SURROUND_POSITIONS = 256;
+   private static final int MAX_STALLED_TICKS = 20;
+   private static final int PLACEMENT_COOLDOWN_TICKS = 2;
+   private static final int COMPLETION_SETTLE_TICKS = 3;
+   private static final int MAX_RELOCATIONS = 32;
+
+   private final NumberSetting tpTicks = new NumberSetting("TP Ticks", this, 10.0, 0.0, 60.0, 1.0);
+   private final BooleanSetting tpOnGroundPacket = new BooleanSetting("TP OnGround Packet", this, true);
+
+   private enum Phase {
+      IDLE,
+      GOING,
+      PLACING,
+      RETURNING
+   }
+
+   private record TeleportMoveStep(Vec3 position) {
+   }
+
+   private record PlacementTarget(BlockPos pos, BlockPos neighbour, Vec3 hitPos, Direction side) {
+   }
+
+   private record ColumnPos(int x, int z) {
+   }
+
+   private record StagingCandidate(Vec3 position, int coverage, int groundPriority,
+                                   double farthestDistanceSqr, double travelDistanceSqr) {
+   }
+
+   private record SurroundPlan(List<BlockPos> positions, AABB interior, int searchCost, int motionPriority) {
+   }
+
+   private record ResolvedSurroundPlan(SurroundPlan plan, InteractionHand hand, Vec3 stagingPosition,
+                                       int requiredBlocks) {
+   }
+
+   private static final class PendingTeleportSequence {
+      private final ArrayList<TeleportMoveStep> steps;
+      private int totalMovePackets;
+      private final int totalTicks;
+      private final Phase completedPhase;
+      private final boolean recordOutbound;
+      private final boolean onGround;
+      private final boolean horizontalCollision;
+      private int nextStep;
+      private int sentMovePackets;
+      private int elapsedTicks;
+
+      private PendingTeleportSequence(ArrayList<TeleportMoveStep> steps, int totalTicks,
+                                      Phase completedPhase, boolean recordOutbound,
+                                      boolean onGround, boolean horizontalCollision) {
+         this.steps = steps;
+         this.totalMovePackets = steps.size();
+         this.totalTicks = totalTicks;
+         this.completedPhase = completedPhase;
+         this.recordOutbound = recordOutbound;
+         this.onGround = onGround;
+         this.horizontalCollision = horizontalCollision;
+      }
+   }
+
+   private static TPSurround instance;
+
+   private Phase phase = Phase.IDLE;
+   private PendingTeleportSequence pendingTeleportSequence;
+   private boolean sendingOperationPacket;
+   private boolean placementPlanInitialized;
+   private UUID targetId;
+   private InteractionHand blockHand;
+   private Vec3 originPosition;
+   private Vec3 remotePosition;
+   private AABB plannedInterior;
+   private final ArrayList<Vec3> outboundPositions = new ArrayList<>();
+   private final LinkedHashSet<BlockPos> surroundPositions = new LinkedHashSet<>();
+   private final Map<BlockPos, Integer> placementCooldowns = new HashMap<>();
+   private int placementTicks;
+   private int stalledTicks;
+   private int completionSettleTicks;
+   private int relocations;
+
+   public TPSurround() {
+      super("TP Surround", Category.MISC);
+      instance = this;
+   }
+
+   public static boolean isSendingSpreadTeleportPacket() {
+      TPSurround module = instance;
+      return module != null && module.sendingOperationPacket;
+   }
+
+   public static boolean shouldSuppressMovement() {
+      TPSurround module = instance;
+      return module != null
+            && module.isEnabled()
+            && module.phase != Phase.IDLE
+            && !module.sendingOperationPacket;
+   }
+
+   @Override
+   public void onEnable() {
+      clearState();
+
+      if (mc.player == null || mc.level == null || mc.gameMode == null) {
+         stopWithoutReturn(null);
+         return;
+      }
+
+      blockHand = findHeldBlockHand(1);
+      if (blockHand == null) {
+         stopWithoutReturn("Hold a usable block before enabling TP Surround");
+         return;
+      }
+
+      Player target = findClosestPlayer();
+      if (target == null) {
+         stopWithoutReturn("No target player was found");
+         return;
+      }
+
+      targetId = target.getUUID();
+      originPosition = mc.player.position();
+      remotePosition = originPosition;
+
+      ResolvedSurroundPlan resolvedPlan = findSurroundPlan(target, originPosition);
+      if (resolvedPlan == null)
+         resolvedPlan = findFallbackSurroundPlan(target, originPosition);
+      if (resolvedPlan == null) {
+         stopWithoutReturn("No connected surround layout could be found near the target");
+         return;
+      }
+      applySurroundPlan(resolvedPlan);
+
+      if (resolvedPlan.requiredBlocks() == 0) {
+         stopWithoutReturn(null);
+         return;
+      }
+
+      Vec3 stagingPosition = resolvedPlan.stagingPosition();
+      if (samePosition(originPosition, stagingPosition)) {
+         enterPlacementPhase();
+      } else if (!startOutboundTravel(stagingPosition)) {
+         stopWithoutReturn("No teleport path to the target was found");
+      }
+   }
+
+   @Override
+   public void onDisable() {
+      try {
+         if (mc.player == null || originPosition == null)
+            return;
+
+         if (phase == Phase.RETURNING) {
+            if (pendingTeleportSequence != null)
+               retargetReturnSequence(pendingTeleportSequence);
+            flushRemainingSteps();
+         }
+         else if (phase == Phase.GOING || phase == Phase.PLACING)
+            returnImmediately();
+      } finally {
+         clearState();
+      }
+   }
+
+   @Override
+   public void onEvent(Event event) {
+      if (event instanceof EventWorld) {
+         clearState();
+         if (isEnabled())
+            setEnabled(false);
+         return;
+      }
+      if (event instanceof EventPacketSend sending && !sending.isCancelled()) {
+         if (sendingOperationPacket)
+            return;
+
+         Packet<?> packet = sending.getPacket();
+         if (phase != Phase.IDLE && packet instanceof ServerboundMovePlayerPacket)
+            sending.setCancelled(true);
+         return;
+      }
+      if (event instanceof EventPacketReceive receiving && !receiving.isCancelled()) {
+         if (phase == Phase.IDLE || !(receiving.getPacket() instanceof ClientboundPlayerPositionPacket))
+            return;
+
+         clearState();
+         if (isEnabled())
+            setEnabled(false);
+         return;
+      }
+      if (event == Events.HANDLE_INPUT) {
+         onHandleInput();
+      }
+   }
+
+   private void onHandleInput() {
+      if (mc.player == null || mc.level == null || mc.gameMode == null) {
+         clearState();
+         if (isEnabled())
+            setEnabled(false);
+         return;
+      }
+
+      if (pendingTeleportSequence != null) {
+         advancePendingTeleportSequence();
+         return;
+      }
+
+      if (phase == Phase.PLACING)
+         handlePlacementTick();
+   }
+
+   private Player findClosestPlayer() {
+      if (mc.player == null || mc.level == null)
+         return null;
+
+      return mc.level.players().stream()
+            .filter(player -> player != mc.player)
+            .filter(player -> !player.isRemoved() && player.isAlive() && !player.isSpectator())
+            .min(Comparator
+                  .comparingDouble((Player player) -> mc.player.distanceToSqr(player))
+                  .thenComparing(Player::getUUID))
+            .orElse(null);
+   }
+
+   private Player getTarget() {
+      if (targetId == null || mc.level == null || mc.player == null)
+         return null;
+
+      for (Player player : mc.level.players()) {
+         if (player != mc.player
+               && targetId.equals(player.getUUID())
+               && !player.isRemoved()
+               && player.isAlive()
+               && !player.isSpectator())
+            return player;
+      }
+
+      return null;
+   }
+
+   private InteractionHand findHeldBlockHand(int requiredBlocks) {
+      if (mc.player == null)
+         return null;
+
+      boolean unlimitedBlocks = mc.player.getAbilities().instabuild;
+      if (isUsableHeldStack(mc.player.getMainHandItem())
+            && (unlimitedBlocks || mc.player.getMainHandItem().getCount() >= requiredBlocks))
+         return InteractionHand.MAIN_HAND;
+      if (isUsableHeldStack(mc.player.getOffhandItem())
+            && (unlimitedBlocks || mc.player.getOffhandItem().getCount() >= requiredBlocks))
+         return InteractionHand.OFF_HAND;
+      return null;
+   }
+
+   private ItemStack heldStack() {
+      if (mc.player == null || blockHand == null)
+         return ItemStack.EMPTY;
+      return blockHand == InteractionHand.MAIN_HAND
+            ? mc.player.getMainHandItem()
+            : mc.player.getOffhandItem();
+   }
+
+   private boolean isUsableHeldStack(ItemStack stack) {
+      if (stack == null || stack.isEmpty() || !(stack.getItem() instanceof BlockItem blockItem))
+         return false;
+
+      Block block = blockItem.getBlock();
+      if (!Scaffold2.isScaffoldBlock(block) || mc.level == null || mc.player == null)
+         return false;
+
+      return !block.defaultBlockState()
+            .getCollisionShape(mc.level, mc.player.blockPosition())
+            .isEmpty();
+   }
+
+   private boolean hasEnoughHeldBlocks(int requiredBlocks) {
+      ItemStack stack = heldStack();
+      return isUsableHeldStack(stack)
+            && (mc.player.getAbilities().instabuild || stack.getCount() >= requiredBlocks);
+   }
+
+   private ResolvedSurroundPlan findSurroundPlan(Player target, Vec3 from) {
+      if (target == null || from == null || mc.level == null)
+         return null;
+
+      ArrayList<SurroundPlan> candidates = buildTargetSurroundPlans(target);
+      candidates.sort(Comparator
+            .comparingInt(SurroundPlan::searchCost)
+            .thenComparingInt(SurroundPlan::motionPriority)
+            .thenComparingInt(plan -> plan.positions().size()));
+
+      InteractionHand previousHand = blockHand;
+      for (SurroundPlan candidate : candidates) {
+         int requiredBlocks = countReplaceablePositions(candidate.positions());
+         InteractionHand candidateHand = findHeldBlockHand(requiredBlocks);
+         if (candidateHand == null)
+            continue;
+
+         blockHand = candidateHand;
+         if (!hasConnectedPlacementOrder(new LinkedHashSet<>(candidate.positions())))
+            continue;
+
+         if (requiredBlocks == 0)
+            return new ResolvedSurroundPlan(candidate, candidateHand, from, 0);
+
+         Vec3 stagingPosition = findBestStagingPosition(target, candidate.positions(), from);
+         if (stagingPosition != null)
+            return new ResolvedSurroundPlan(candidate, candidateHand, stagingPosition, requiredBlocks);
+      }
+
+      blockHand = previousHand;
+      return null;
+   }
+
+   private ResolvedSurroundPlan findFallbackSurroundPlan(Player target, Vec3 from) {
+      if (target == null || from == null || mc.level == null)
+         return null;
+
+      ArrayList<SurroundPlan> candidates = buildTargetSurroundPlans(target);
+      candidates.sort(Comparator
+            .comparingInt(SurroundPlan::searchCost)
+            .thenComparingInt(SurroundPlan::motionPriority)
+            .thenComparingInt(plan -> plan.positions().size()));
+
+      InteractionHand previousHand = blockHand;
+      for (SurroundPlan candidate : candidates) {
+         int requiredBlocks = countReplaceablePositions(candidate.positions());
+         InteractionHand candidateHand = findHeldBlockHand(requiredBlocks);
+         if (candidateHand == null)
+            continue;
+
+         blockHand = candidateHand;
+         Vec3 stagingPosition = findBestStagingPosition(
+               target,
+               candidate.positions(),
+               from,
+               false
+         );
+         if (stagingPosition != null)
+            return new ResolvedSurroundPlan(candidate, candidateHand, stagingPosition, requiredBlocks);
+      }
+
+      blockHand = previousHand;
+      return null;
+   }
+
+   private boolean canAffordAnySurroundPlan(Player target) {
+      if (target == null || mc.level == null)
+         return false;
+
+      for (SurroundPlan candidate : buildTargetSurroundPlans(target)) {
+         int requiredBlocks = countReplaceablePositions(candidate.positions());
+         if (findHeldBlockHand(requiredBlocks) != null)
+            return true;
+      }
+      return false;
+   }
+
+   private AABB predictedTargetBox(Player target) {
+      AABB box = target.getBoundingBox();
+      Vec3 movement = target.getDeltaMovement();
+      double leadX = Math.max(-0.75D, Math.min(0.75D, movement.x * 2.0D));
+      double leadY = target.onGround()
+            ? 0.0D
+            : Math.max(-0.75D, Math.min(1.0D, movement.y * 1.5D));
+      double leadZ = Math.max(-0.75D, Math.min(0.75D, movement.z * 2.0D));
+      if (Math.abs(leadX) < 0.02D)
+         leadX = 0.0D;
+      if (Math.abs(leadY) < 0.05D)
+         leadY = 0.0D;
+      if (Math.abs(leadZ) < 0.02D)
+         leadZ = 0.0D;
+      return box.expandTowards(leadX, leadY, leadZ);
+   }
+
+   private ArrayList<SurroundPlan> buildTargetSurroundPlans(Player target) {
+      AABB currentBox = target.getBoundingBox();
+      AABB predictedBox = predictedTargetBox(target);
+      ArrayList<SurroundPlan> plans = buildSurroundPlans(predictedBox, 0);
+      if (!sameBox(predictedBox, currentBox))
+         plans.addAll(buildSurroundPlans(currentBox, 1));
+      return plans;
+   }
+
+   private boolean sameBox(AABB first, AABB second) {
+      return first != null && second != null
+            && Double.compare(first.minX, second.minX) == 0
+            && Double.compare(first.minY, second.minY) == 0
+            && Double.compare(first.minZ, second.minZ) == 0
+            && Double.compare(first.maxX, second.maxX) == 0
+            && Double.compare(first.maxY, second.maxY) == 0
+            && Double.compare(first.maxZ, second.maxZ) == 0;
+   }
+
+   private ArrayList<SurroundPlan> buildSurroundPlans(AABB targetBox, int motionPriority) {
+      ArrayList<SurroundPlan> plans = new ArrayList<>();
+      if (!isValidTargetBox(targetBox))
+         return plans;
+
+      int targetMinX = Mth.floor(targetBox.minX);
+      int targetMinY = Mth.floor(targetBox.minY);
+      int targetMinZ = Mth.floor(targetBox.minZ);
+      int targetMaxX = Mth.floor(Math.nextDown(targetBox.maxX));
+      int targetMaxY = Mth.floor(Math.nextDown(targetBox.maxY));
+      int targetMaxZ = Mth.floor(Math.nextDown(targetBox.maxZ));
+
+      for (int foundationDepth = 0; foundationDepth <= SURROUND_SEARCH_RANGE; foundationDepth++) {
+         for (int horizontalCost = 0; horizontalCost <= SURROUND_SEARCH_RANGE; horizontalCost++) {
+            for (int west = 0; west <= horizontalCost; west++) {
+               for (int east = 0; east <= horizontalCost - west; east++) {
+                  for (int north = 0; north <= horizontalCost - west - east; north++) {
+                     int south = horizontalCost - west - east - north;
+                     SurroundPlan plan = buildSurroundPlan(
+                           targetMinX - west,
+                           targetMinY - foundationDepth,
+                           targetMinZ - north,
+                           targetMaxX + east,
+                           targetMaxY,
+                           targetMaxZ + south,
+                           foundationDepth + horizontalCost,
+                           motionPriority
+                     );
+                     if (plan != null)
+                        plans.add(plan);
+                  }
+               }
+            }
+         }
+      }
+
+      return plans;
+   }
+
+   private SurroundPlan buildSurroundPlan(int minX, int wallMinY, int minZ,
+                                          int maxX, int wallMaxY, int maxZ, int searchCost,
+                                          int motionPriority) {
+      long width = (long) maxX - minX + 1L;
+      int roofY = wallMaxY + 1;
+      long wallHeight = (long) roofY - wallMinY + 1L;
+      long depth = (long) maxZ - minZ + 1L;
+      long wallPositions = 2L * (width + depth) * wallHeight;
+      long roofPositions = width * depth;
+      long estimatedPositions = wallPositions + roofPositions;
+      if (width <= 0L || wallHeight <= 0L || depth <= 0L
+            || estimatedPositions <= 0L || estimatedPositions > MAX_SURROUND_POSITIONS)
+         return null;
+
+      LinkedHashSet<BlockPos> positions = new LinkedHashSet<>((int) estimatedPositions);
+      for (int y = wallMinY; y <= roofY; y++) {
+         for (int x = minX; x <= maxX; x++) {
+            positions.add(new BlockPos(x, y, minZ - 1));
+            positions.add(new BlockPos(x, y, maxZ + 1));
+         }
+         for (int z = minZ; z <= maxZ; z++) {
+            positions.add(new BlockPos(minX - 1, y, z));
+            positions.add(new BlockPos(maxX + 1, y, z));
+         }
+      }
+
+      for (int x = minX; x <= maxX; x++) {
+         for (int z = minZ; z <= maxZ; z++)
+            positions.add(new BlockPos(x, roofY, z));
+      }
+
+      AABB interior = new AABB(
+            minX,
+            wallMinY,
+            minZ,
+            (double) maxX + 1.0D,
+            roofY,
+            (double) maxZ + 1.0D
+      );
+      return new SurroundPlan(new ArrayList<>(positions), interior, searchCost, motionPriority);
+   }
+
+   private boolean isValidTargetBox(AABB box) {
+      return box != null
+            && isFinite(box.minX) && isFinite(box.minY) && isFinite(box.minZ)
+            && isFinite(box.maxX) && isFinite(box.maxY) && isFinite(box.maxZ)
+            && box.maxX > box.minX && box.maxY > box.minY && box.maxZ > box.minZ;
+   }
+
+   private boolean doesCurrentPlanEnclose(Player target) {
+      if (target == null || plannedInterior == null)
+         return false;
+
+      AABB box = target.getBoundingBox();
+      return isValidTargetBox(box)
+            && box.minX >= plannedInterior.minX - COLLISION_EPSILON
+            && box.minY >= plannedInterior.minY - COLLISION_EPSILON
+            && box.minZ >= plannedInterior.minZ - COLLISION_EPSILON
+            && box.maxX <= plannedInterior.maxX + COLLISION_EPSILON
+            && box.maxY <= plannedInterior.maxY + COLLISION_EPSILON
+            && box.maxZ <= plannedInterior.maxZ + COLLISION_EPSILON;
+   }
+
+   private void applySurroundPlan(ResolvedSurroundPlan resolvedPlan) {
+      blockHand = resolvedPlan.hand();
+      plannedInterior = resolvedPlan.plan().interior();
+      surroundPositions.clear();
+      surroundPositions.addAll(resolvedPlan.plan().positions());
+      placementCooldowns.clear();
+      stalledTicks = 0;
+      completionSettleTicks = 0;
+      relocations = 0;
+   }
+
+   private void enterPlacementPhase() {
+      phase = Phase.PLACING;
+      stalledTicks = 0;
+      completionSettleTicks = 0;
+
+      if (placementPlanInitialized)
+         return;
+
+      Player target = getTarget();
+      if (target == null) {
+         startReturnSequence();
+         return;
+      }
+
+      int requiredBlocks = countReplaceablePositions(surroundPositions);
+      boolean currentPlanReady = doesCurrentPlanEnclose(target)
+            && requiredBlocks != Integer.MAX_VALUE
+            && (requiredBlocks == 0 || hasEnoughHeldBlocks(requiredBlocks))
+            && hasConnectedPlacementOrder(surroundPositions);
+      if (!currentPlanReady) {
+         ResolvedSurroundPlan resolvedPlan = findSurroundPlan(target, remotePosition);
+         if (resolvedPlan == null) {
+            ResolvedSurroundPlan fallbackPlan = findFallbackSurroundPlan(target, remotePosition);
+            if (fallbackPlan != null) {
+               applySurroundPlan(fallbackPlan);
+               if (!samePosition(remotePosition, fallbackPlan.stagingPosition()))
+                  startOutboundTravel(fallbackPlan.stagingPosition());
+               return;
+            }
+            if (!canAffordAnySurroundPlan(target))
+               abortAndReturn("Not enough held blocks remain for the moving target");
+            return;
+         }
+
+         applySurroundPlan(resolvedPlan);
+         requiredBlocks = resolvedPlan.requiredBlocks();
+         if (!samePosition(remotePosition, resolvedPlan.stagingPosition())) {
+            if (!startOutboundTravel(resolvedPlan.stagingPosition()))
+               abortAndReturn("No teleport path to the searched surround position was found");
+            return;
+         }
+      }
+
+      if (requiredBlocks == 0) {
+         startReturnSequence();
+         return;
+      }
+
+      placementPlanInitialized = true;
+   }
+
+   private void handlePlacementTick() {
+      placementTicks++;
+
+      if (remotePosition != null)
+         sendTeleportMovePacket(remotePosition, tpOnGroundPacket.getValue(), mc.player.horizontalCollision);
+
+      Player target = getTarget();
+      if (target == null) {
+         startReturnSequence();
+         return;
+      }
+
+      if (!placementPlanInitialized) {
+         enterPlacementPhase();
+         return;
+      }
+
+      if (!doesCurrentPlanEnclose(target)) {
+         ResolvedSurroundPlan resolvedPlan = findSurroundPlan(target, remotePosition);
+         if (resolvedPlan == null) {
+            ResolvedSurroundPlan fallbackPlan = findFallbackSurroundPlan(target, remotePosition);
+            if (fallbackPlan != null) {
+               applySurroundPlan(fallbackPlan);
+               placementPlanInitialized = false;
+               stalledTicks = 0;
+               completionSettleTicks = 0;
+               if (!samePosition(remotePosition, fallbackPlan.stagingPosition()))
+                  startOutboundTravel(fallbackPlan.stagingPosition());
+               return;
+            }
+            if (!canAffordAnySurroundPlan(target))
+               abortAndReturn("Not enough held blocks remain for the moving target");
+            return;
+         }
+
+         applySurroundPlan(resolvedPlan);
+         stalledTicks = 0;
+         completionSettleTicks = 0;
+         if (resolvedPlan.requiredBlocks() == 0) {
+            startReturnSequence();
+            return;
+         }
+
+         if (!samePosition(remotePosition, resolvedPlan.stagingPosition())) {
+            startOutboundTravel(resolvedPlan.stagingPosition());
+            return;
+         }
+      }
+
+      List<BlockPos> remaining = getReplaceablePositions();
+      if (remaining.isEmpty()) {
+         completionSettleTicks++;
+         if (completionSettleTicks >= COMPLETION_SETTLE_TICKS)
+            startReturnSequence();
+         return;
+      }
+
+      completionSettleTicks = 0;
+      if (!isUsableHeldStack(heldStack())) {
+         abortAndReturn("The held block is no longer available");
+         return;
+      }
+
+      PlacementTarget placementTarget = findNextPlacementTarget(remaining, target, remotePosition, true);
+      if (placementTarget == null) {
+         if (hasCoolingPosition(remaining)) {
+            stalledTicks++;
+         } else if (hasConnectedCandidate(remaining, target)) {
+            if (relocations < MAX_RELOCATIONS && relocateForRemaining(target, remaining))
+               return;
+            stalledTicks++;
+         } else {
+            stalledTicks++;
+         }
+
+         if (stalledTicks >= MAX_STALLED_TICKS)
+            abortAndReturn("No connected block face is available for the remaining surround");
+         return;
+      }
+
+      if (tryPlaceBlock(placementTarget, target)) {
+         placementCooldowns.put(placementTarget.pos(), placementTicks + PLACEMENT_COOLDOWN_TICKS);
+         stalledTicks = 0;
+      } else {
+         stalledTicks++;
+         if (stalledTicks >= MAX_STALLED_TICKS)
+            abortAndReturn("The server rejected the remaining surround placements");
+      }
+   }
+
+   private List<BlockPos> getReplaceablePositions() {
+      ArrayList<BlockPos> remaining = new ArrayList<>();
+      if (mc.level == null)
+         return remaining;
+
+      for (BlockPos pos : surroundPositions) {
+         if (mc.level.getBlockState(pos).canBeReplaced())
+            remaining.add(pos);
+      }
+      return remaining;
+   }
+
+   private int countReplaceablePositions(Iterable<BlockPos> positions) {
+      if (mc.level == null)
+         return Integer.MAX_VALUE;
+
+      int count = 0;
+      for (BlockPos pos : positions) {
+         if (mc.level.getBlockState(pos).canBeReplaced())
+            count++;
+      }
+      return count;
+   }
+
+   private boolean hasConnectedPlacementOrder(Set<BlockPos> desiredPositions) {
+      if (mc.level == null)
+         return false;
+
+      Set<BlockPos> replaceable = new HashSet<>();
+      for (BlockPos pos : desiredPositions) {
+         if (mc.level.getBlockState(pos).canBeReplaced())
+            replaceable.add(pos);
+      }
+      if (replaceable.isEmpty())
+         return true;
+
+      Set<BlockPos> reachable = new HashSet<>();
+      ArrayDeque<BlockPos> queue = new ArrayDeque<>();
+      for (BlockPos pos : replaceable) {
+         for (Direction direction : SUPPORT_SEARCH_ORDER) {
+            BlockPos neighbour = pos.relative(direction);
+            if (isPlacementSupport(mc.level.getBlockState(neighbour))) {
+               reachable.add(pos);
+               queue.add(pos);
+               break;
+            }
+         }
+      }
+
+      while (!queue.isEmpty()) {
+         BlockPos placed = queue.removeFirst();
+         for (Direction direction : Direction.values()) {
+            BlockPos neighbour = placed.relative(direction);
+            if (replaceable.contains(neighbour) && reachable.add(neighbour))
+               queue.addLast(neighbour);
+         }
+      }
+
+      return reachable.size() == replaceable.size();
+   }
+
+   private PlacementTarget findNextPlacementTarget(List<BlockPos> positions, Player target,
+                                                   Vec3 standPosition, boolean respectCooldown) {
+      PlacementTarget bestTarget = null;
+      double bestDistanceSqr = Double.MAX_VALUE;
+
+      for (BlockPos pos : positions) {
+         if (respectCooldown && placementCooldowns.getOrDefault(pos, 0) > placementTicks)
+            continue;
+
+         PlacementTarget candidate = findPlacementTarget(pos, target, standPosition);
+         if (candidate == null)
+            continue;
+
+         double distanceSqr = ghostEyePosition(standPosition).distanceToSqr(candidate.hitPos());
+         if (bestTarget == null
+               || candidate.pos().getY() < bestTarget.pos().getY()
+               || candidate.pos().getY() == bestTarget.pos().getY() && distanceSqr < bestDistanceSqr) {
+            bestTarget = candidate;
+            bestDistanceSqr = distanceSqr;
+         }
+      }
+
+      return bestTarget;
+   }
+
+   private PlacementTarget findPlacementTarget(BlockPos pos, Player target, Vec3 standPosition) {
+      if (mc.level == null || pos == null || target == null || standPosition == null)
+         return null;
+      if (!mc.level.getBlockState(pos).canBeReplaced())
+         return null;
+      if (!canPlaceHeldBlockAt(pos, target, standPosition))
+         return null;
+
+      PlacementTarget bestTarget = null;
+      double bestDistanceSqr = Double.MAX_VALUE;
+      for (Direction direction : SUPPORT_SEARCH_ORDER) {
+         BlockPos neighbour = pos.relative(direction);
+         if (!isPlacementSupport(mc.level.getBlockState(neighbour)))
+            continue;
+
+         Direction sideToClick = direction.getOpposite();
+         for (Vec3 hitPos : buildPlacementFaceSamples(neighbour, sideToClick)) {
+            if (!isWithinPlacementReach(standPosition, hitPos))
+               continue;
+
+            double distanceSqr = ghostEyePosition(standPosition).distanceToSqr(hitPos);
+            if (bestTarget == null || distanceSqr < bestDistanceSqr) {
+               bestTarget = new PlacementTarget(pos, neighbour, hitPos, sideToClick);
+               bestDistanceSqr = distanceSqr;
+            }
+         }
+      }
+
+      return bestTarget;
+   }
+
+   private List<Vec3> buildPlacementFaceSamples(BlockPos neighbour, Direction sideToClick) {
+      ArrayList<Vec3> samples = new ArrayList<>(FACE_SAMPLE_OFFSETS.length * FACE_SAMPLE_OFFSETS.length);
+      Vec3 faceCenter = Vec3.atCenterOf(neighbour).add(
+            sideToClick.getStepX() * 0.5D,
+            sideToClick.getStepY() * 0.5D,
+            sideToClick.getStepZ() * 0.5D
+      );
+
+      for (double firstOffset : FACE_SAMPLE_OFFSETS) {
+         for (double secondOffset : FACE_SAMPLE_OFFSETS) {
+            Vec3 sample = switch (sideToClick.getAxis()) {
+               case X -> faceCenter.add(0.0D, firstOffset, secondOffset);
+               case Y -> faceCenter.add(firstOffset, 0.0D, secondOffset);
+               case Z -> faceCenter.add(firstOffset, secondOffset, 0.0D);
+            };
+            samples.add(sample);
+         }
+      }
+      return samples;
+   }
+
+   private boolean hasConnectedCandidate(List<BlockPos> positions, Player target) {
+      if (mc.level == null || target == null || remotePosition == null)
+         return false;
+
+      for (BlockPos pos : positions) {
+         if (!canPlaceHeldBlockAt(pos, target, remotePosition))
+            continue;
+         for (Direction direction : SUPPORT_SEARCH_ORDER) {
+            if (isPlacementSupport(mc.level.getBlockState(pos.relative(direction))))
+               return true;
+         }
+      }
+      return false;
+   }
+
+   private boolean hasCoolingPosition(List<BlockPos> positions) {
+      for (BlockPos pos : positions) {
+         if (placementCooldowns.getOrDefault(pos, 0) > placementTicks)
+            return true;
+      }
+      return false;
+   }
+
+   private boolean relocateForRemaining(Player target, List<BlockPos> remaining) {
+      Vec3 stagingPosition = findBestStagingPosition(target, remaining, remotePosition);
+      if (stagingPosition == null || samePosition(remotePosition, stagingPosition))
+         return false;
+
+      relocations++;
+      return startOutboundTravel(stagingPosition);
+   }
+
+   private Vec3 findBestStagingPosition(Player target, Iterable<BlockPos> desiredPositions, Vec3 from) {
+      return findBestStagingPosition(target, desiredPositions, from, true);
+   }
+
+   private Vec3 findBestStagingPosition(Player target, Iterable<BlockPos> desiredPositions, Vec3 from,
+                                        boolean requireConnectedPlacement) {
+      if (mc.player == null || mc.level == null || target == null || from == null)
+         return null;
+
+      ArrayList<BlockPos> positions = new ArrayList<>();
+      Set<ColumnPos> blockedColumns = new HashSet<>();
+      for (BlockPos pos : desiredPositions) {
+         positions.add(pos);
+         blockedColumns.add(new ColumnPos(pos.getX(), pos.getZ()));
+      }
+      if (positions.isEmpty())
+         return from;
+
+      AABB targetBox = target.getBoundingBox();
+      int minX = Mth.floor(targetBox.minX);
+      int maxX = Mth.floor(Math.nextDown(targetBox.maxX));
+      int minZ = Mth.floor(targetBox.minZ);
+      int maxZ = Mth.floor(Math.nextDown(targetBox.maxZ));
+      int baseY = Mth.floor(targetBox.minY);
+      int[] verticalOffsets = {0, -1, 1, 2, -2};
+
+      ArrayList<Vec3> rawCandidates = new ArrayList<>();
+      rawCandidates.add(from);
+      for (int radius = 1; radius <= 3; radius++) {
+         int outerMinX = minX - radius;
+         int outerMaxX = maxX + radius;
+         int outerMinZ = minZ - radius;
+         int outerMaxZ = maxZ + radius;
+         for (int yOffset : verticalOffsets) {
+            int y = baseY + yOffset;
+            for (int x = outerMinX; x <= outerMaxX; x++) {
+               addStagingCandidate(rawCandidates, blockedColumns, x, y, outerMinZ);
+               addStagingCandidate(rawCandidates, blockedColumns, x, y, outerMaxZ);
+            }
+            for (int z = outerMinZ + 1; z < outerMaxZ; z++) {
+               addStagingCandidate(rawCandidates, blockedColumns, outerMinX, y, z);
+               addStagingCandidate(rawCandidates, blockedColumns, outerMaxX, y, z);
+            }
+         }
+      }
+
+      ArrayList<StagingCandidate> candidates = new ArrayList<>();
+      Set<BlockPos> seen = new HashSet<>();
+      for (Vec3 candidatePosition : rawCandidates) {
+         BlockPos candidateBlock = BlockPos.containing(candidatePosition);
+         if (!seen.add(candidateBlock)
+               || !isValidStagingPosition(candidatePosition, target, positions))
+            continue;
+
+         int coverage = 0;
+         double farthestDistanceSqr = 0.0D;
+         Vec3 eyes = ghostEyePosition(candidatePosition);
+         for (BlockPos pos : positions) {
+            double distanceSqr = eyes.distanceToSqr(Vec3.atCenterOf(pos));
+            farthestDistanceSqr = Math.max(farthestDistanceSqr, distanceSqr);
+            if (findPlacementTarget(pos, target, candidatePosition) != null)
+               coverage++;
+         }
+         if (requireConnectedPlacement && coverage == 0)
+            continue;
+
+         candidates.add(new StagingCandidate(
+               candidatePosition,
+               coverage,
+               isGroundedStagingPosition(candidatePosition) ? 0 : 1,
+               farthestDistanceSqr,
+               from.distanceToSqr(candidatePosition)
+         ));
+      }
+
+      candidates.sort(Comparator
+            .comparingInt(StagingCandidate::groundPriority)
+            .thenComparing(Comparator.comparingInt(StagingCandidate::coverage).reversed())
+            .thenComparingDouble(StagingCandidate::farthestDistanceSqr)
+            .thenComparingDouble(StagingCandidate::travelDistanceSqr));
+      return candidates.isEmpty() ? null : candidates.getFirst().position();
+   }
+
+   private void addStagingCandidate(List<Vec3> candidates, Set<ColumnPos> blockedColumns,
+                                    int x, int y, int z) {
+      if (blockedColumns.contains(new ColumnPos(x, z)))
+         return;
+      candidates.add(Vec3.atBottomCenterOf(new BlockPos(x, y, z)));
+   }
+
+   private boolean isValidStagingPosition(Vec3 position, Player target, List<BlockPos> desiredPositions) {
+      if (mc.player == null || mc.level == null || position == null)
+         return false;
+      if (!isFinite(position.x) || !isFinite(position.y) || !isFinite(position.z))
+         return false;
+
+      int x = Mth.floor(position.x);
+      int y = Mth.floor(position.y);
+      int z = Mth.floor(position.z);
+      if (!MainPathFinder.isValid(x, y, z, false))
+         return false;
+
+      AABB playerBox = ghostPlayerBox(position);
+      if (playerBox.intersects(target.getBoundingBox().deflate(COLLISION_EPSILON))
+            || !mc.level.noCollision(mc.player, playerBox))
+         return false;
+
+      for (BlockPos pos : desiredPositions) {
+         if (playerBox.intersects(new AABB(pos).deflate(COLLISION_EPSILON)))
+            return false;
+      }
+      return true;
+   }
+
+   private boolean isGroundedStagingPosition(Vec3 position) {
+      if (position == null)
+         return false;
+      return MainPathFinder.isValid(
+            Mth.floor(position.x),
+            Mth.floor(position.y),
+            Mth.floor(position.z),
+            true
+      );
+   }
+
+   private boolean canPlaceHeldBlockAt(BlockPos pos, Player target, Vec3 standPosition) {
+      if (mc.level == null || mc.player == null || pos == null || target == null || standPosition == null)
+         return false;
+
+      ItemStack stack = heldStack();
+      if (!isUsableHeldStack(stack) || !(stack.getItem() instanceof BlockItem blockItem))
+         return false;
+
+      BlockState placementState = blockItem.getBlock().defaultBlockState();
+      if (!placementState.canSurvive(mc.level, pos))
+         return false;
+
+      var collisionShape = placementState.getCollisionShape(mc.level, pos);
+      if (collisionShape.isEmpty())
+         return false;
+
+      AABB targetBox = target.getBoundingBox().deflate(COLLISION_EPSILON);
+      AABB playerBox = ghostPlayerBox(standPosition).deflate(COLLISION_EPSILON);
+      for (AABB shapeBox : collisionShape.toAabbs()) {
+         AABB worldBox = shapeBox.move(pos);
+         if (worldBox.intersects(targetBox) || worldBox.intersects(playerBox))
+            return false;
+      }
+      return true;
+   }
+
+   private AABB ghostPlayerBox(Vec3 position) {
+      return mc.player.getBoundingBox().move(
+            position.x - mc.player.getX(),
+            position.y - mc.player.getY(),
+            position.z - mc.player.getZ()
+      );
+   }
+
+   private Vec3 ghostEyePosition(Vec3 position) {
+      return position.add(0.0D, mc.player.getEyeHeight(), 0.0D);
+   }
+
+   private boolean isWithinPlacementReach(Vec3 standPosition, Vec3 hitPos) {
+      if (mc.player == null || standPosition == null || hitPos == null)
+         return false;
+
+      double reach = mc.player.blockInteractionRange();
+      return Double.isFinite(reach)
+            && reach > 0.0D
+            && ghostEyePosition(standPosition).distanceToSqr(hitPos) <= reach * reach + 1.0E-4D;
+   }
+
+   private boolean isPlacementSupport(BlockState state) {
+      return state != null
+            && !state.isAir()
+            && !state.canBeReplaced()
+            && state.getFluidState().isEmpty();
+   }
+
+   private boolean tryPlaceBlock(PlacementTarget target, Player surroundTarget) {
+      if (mc.player == null || mc.level == null || mc.gameMode == null || blockHand == null)
+         return false;
+      if (!mc.level.getBlockState(target.pos()).canBeReplaced()
+            || !isPlacementSupport(mc.level.getBlockState(target.neighbour()))
+            || !canPlaceHeldBlockAt(target.pos(), surroundTarget, remotePosition)
+            || !isWithinPlacementReach(remotePosition, target.hitPos()))
+         return false;
+
+      boolean wasSendingOperationPacket = sendingOperationPacket;
+      sendingOperationPacket = true;
+      try {
+         BlockHitResult hitResult = new BlockHitResult(
+               target.hitPos(),
+               target.side(),
+               target.neighbour(),
+               false
+         );
+         boolean placed = mc.gameMode.useItemOn(mc.player, blockHand, hitResult).consumesAction();
+         if (placed)
+            // ServerboundSwingPacket was removed in 26.3; the serverbound swing notification is
+            // now the parameterless ServerboundPunchPacket (the server always swings MAIN_HAND).
+            PacketUtil.sendPacket(ServerboundPunchPacket.INSTANCE);
+         return placed;
+      } catch (RuntimeException ignored) {
+         return false;
+      } finally {
+         sendingOperationPacket = wasSendingOperationPacket;
+      }
+   }
+
+   private boolean startOutboundTravel(Vec3 destination) {
+      if (mc.player == null || remotePosition == null || destination == null)
+         return false;
+
+      if (samePosition(remotePosition, destination)) {
+         enterPlacementPhase();
+         return true;
+      }
+
+      ArrayList<Vec3> path = MainPathFinder.computePath(remotePosition, destination);
+      if (path == null || path.isEmpty())
+         return false;
+
+      ArrayList<TeleportMoveStep> steps = new ArrayList<>();
+      Vec3 lastPosition = remotePosition;
+      for (Vec3 position : path) {
+         if (position == null || !isFinite(position.x) || !isFinite(position.y) || !isFinite(position.z))
+            continue;
+         if (!samePosition(lastPosition, position)) {
+            steps.add(new TeleportMoveStep(position));
+            lastPosition = position;
+         }
+      }
+      if (!samePosition(lastPosition, destination))
+         steps.add(new TeleportMoveStep(destination));
+      if (steps.isEmpty()) {
+         enterPlacementPhase();
+         return true;
+      }
+
+      phase = Phase.GOING;
+      startTeleportSequence(steps, Phase.PLACING, true);
+      return true;
+   }
+
+   private void startReturnSequence() {
+      if (phase == Phase.RETURNING)
+         return;
+
+      pendingTeleportSequence = null;
+      placementCooldowns.clear();
+      phase = Phase.RETURNING;
+
+      ArrayList<TeleportMoveStep> steps = buildReturnSteps(remotePosition, mc.player.position());
+      if (steps.isEmpty()) {
+         finishOperation();
+         return;
+      }
+
+      startTeleportSequence(steps, Phase.IDLE, false);
+   }
+
+   private void startTeleportSequence(ArrayList<TeleportMoveStep> steps, Phase completedPhase,
+                                      boolean recordOutbound) {
+      if (mc.player == null || steps == null || steps.isEmpty()) {
+         onTeleportSequenceComplete(completedPhase);
+         return;
+      }
+
+      int spreadTicks = Math.max(0, Math.min(60, (int) tpTicks.getValue()));
+      if (spreadTicks == 0) {
+         for (TeleportMoveStep step : steps) {
+            sendTeleportMovePacket(step.position(), tpOnGroundPacket.getValue(), mc.player.horizontalCollision);
+            if (recordOutbound)
+               outboundPositions.add(step.position());
+         }
+         onTeleportSequenceComplete(completedPhase);
+         return;
+      }
+
+      pendingTeleportSequence = new PendingTeleportSequence(
+            steps,
+            spreadTicks + 1,
+            completedPhase,
+            recordOutbound,
+            tpOnGroundPacket.getValue(),
+            mc.player.horizontalCollision
+      );
+      advancePendingTeleportSequence();
+   }
+
+   private void advancePendingTeleportSequence() {
+      PendingTeleportSequence sequence = pendingTeleportSequence;
+      if (sequence == null || mc.player == null)
+         return;
+
+      if (phase == Phase.RETURNING)
+         retargetReturnSequence(sequence);
+
+      sequence.elapsedTicks = Math.min(sequence.elapsedTicks + 1, sequence.totalTicks);
+      int totalMovePackets = Math.max(sequence.totalMovePackets, sequence.sentMovePackets);
+      int movePacketTarget = (int) ((long) totalMovePackets
+            * sequence.elapsedTicks / sequence.totalTicks);
+
+      while (sequence.nextStep < sequence.steps.size()
+            && sequence.sentMovePackets < movePacketTarget) {
+         TeleportMoveStep step = sequence.steps.get(sequence.nextStep++);
+         sendTeleportMovePacket(step.position(), sequence.onGround, sequence.horizontalCollision);
+         if (sequence.recordOutbound)
+            outboundPositions.add(step.position());
+         sequence.sentMovePackets++;
+      }
+
+      if (sequence.nextStep < sequence.steps.size())
+         return;
+
+      pendingTeleportSequence = null;
+      onTeleportSequenceComplete(sequence.completedPhase);
+   }
+
+   private void onTeleportSequenceComplete(Phase completedPhase) {
+      if (completedPhase == Phase.PLACING) {
+         enterPlacementPhase();
+         return;
+      }
+
+      if (mc.player != null && !samePosition(remotePosition, mc.player.position()))
+         sendTeleportMovePacket(mc.player.position(), tpOnGroundPacket.getValue(), mc.player.horizontalCollision);
+
+      phase = Phase.IDLE;
+      finishOperation();
+   }
+
+   private void sendTeleportMovePacket(Vec3 position, boolean onGround, boolean horizontalCollision) {
+      if (position == null)
+         return;
+
+      sendTrackedPacket(new ServerboundMovePlayerPacket.Pos(
+            position.x,
+            position.y,
+            position.z,
+            onGround,
+            horizontalCollision
+      ));
+      remotePosition = position;
+   }
+
+   private void sendTrackedPacket(Packet<?> packet) {
+      boolean wasSendingOperationPacket = sendingOperationPacket;
+      sendingOperationPacket = true;
+      try {
+         PacketUtil.sendPacket(packet);
+      } finally {
+         sendingOperationPacket = wasSendingOperationPacket;
+      }
+   }
+
+   private void flushRemainingSteps() {
+      PendingTeleportSequence sequence = pendingTeleportSequence;
+      if (sequence == null)
+         return;
+
+      while (sequence.nextStep < sequence.steps.size()) {
+         TeleportMoveStep step = sequence.steps.get(sequence.nextStep++);
+         sendTeleportMovePacket(step.position(), sequence.onGround, sequence.horizontalCollision);
+      }
+      pendingTeleportSequence = null;
+   }
+
+   private void retargetReturnSequence(PendingTeleportSequence sequence) {
+      ArrayList<TeleportMoveStep> path = buildReturnSteps(remotePosition, mc.player.position());
+
+      while (sequence.steps.size() > sequence.nextStep)
+         sequence.steps.remove(sequence.steps.size() - 1);
+
+      sequence.steps.addAll(path);
+      sequence.totalMovePackets = sequence.sentMovePackets + path.size();
+      if (sequence.totalMovePackets < 1)
+         sequence.totalMovePackets = 1;
+   }
+
+   private void returnImmediately() {
+      if (mc.player == null)
+         return;
+
+      for (TeleportMoveStep step : buildReturnSteps(remotePosition, mc.player.position()))
+         sendTeleportMovePacket(step.position(), tpOnGroundPacket.getValue(), mc.player.horizontalCollision);
+   }
+
+   private ArrayList<TeleportMoveStep> buildReturnSteps(Vec3 from, Vec3 to) {
+      ArrayList<TeleportMoveStep> steps = new ArrayList<>();
+      if (to == null)
+         return steps;
+
+      Vec3 lastPosition = from;
+      if (from != null && !samePosition(from, to)) {
+         ArrayList<Vec3> path = MainPathFinder.computePath(from, to);
+         if (path != null) {
+            for (Vec3 position : path) {
+               if (position == null || !isFinite(position.x) || !isFinite(position.y) || !isFinite(position.z))
+                  continue;
+               if (lastPosition == null || !samePosition(lastPosition, position)) {
+                  steps.add(new TeleportMoveStep(position));
+                  lastPosition = position;
+               }
+            }
+         }
+      }
+
+      if (lastPosition == null || !samePosition(lastPosition, to))
+         steps.add(new TeleportMoveStep(to));
+      return steps;
+   }
+
+   private void abortAndReturn(String message) {
+      startReturnSequence();
+   }
+
+   private void finishOperation() {
+      phase = Phase.IDLE;
+      pendingTeleportSequence = null;
+      if (isEnabled())
+         setEnabled(false);
+   }
+
+   private void stopWithoutReturn(String message) {
+      phase = Phase.IDLE;
+      pendingTeleportSequence = null;
+      if (isEnabled())
+         setEnabled(false);
+   }
+
+   private void clearState() {
+      phase = Phase.IDLE;
+      pendingTeleportSequence = null;
+      sendingOperationPacket = false;
+      placementPlanInitialized = false;
+      targetId = null;
+      blockHand = null;
+      originPosition = null;
+      remotePosition = null;
+      plannedInterior = null;
+      outboundPositions.clear();
+      surroundPositions.clear();
+      placementCooldowns.clear();
+      placementTicks = 0;
+      stalledTicks = 0;
+      completionSettleTicks = 0;
+      relocations = 0;
+   }
+
+   private static boolean samePosition(Vec3 first, Vec3 second) {
+      return first != null
+            && second != null
+            && first.distanceToSqr(second) <= 1.0E-8D;
+   }
+
+   private static boolean isFinite(double value) {
+      return Double.isFinite(value);
+   }
+}

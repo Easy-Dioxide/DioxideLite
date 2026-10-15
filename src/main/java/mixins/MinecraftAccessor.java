@@ -16,6 +16,10 @@ public interface MinecraftAccessor {
    @Accessor("rightClickDelay")
    void setRightClickDelay(int rightClickDelay);
 
+   // Krs parity: NoCombatDelay clears Minecraft#missTime every UpdateEvent.
+   @Accessor("missTime")
+   void setMissTime(int missTime);
+
    @Accessor("user")
    void setUser(User user);
 }

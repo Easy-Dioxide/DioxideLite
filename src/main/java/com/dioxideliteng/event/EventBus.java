@@ -34,4 +34,9 @@ public final class EventBus {
          feature.onEvent(event);
       }
    }
+
+   /** Cheap check for hot-path dispatch sites (e.g. block collision iteration). */
+   public boolean hasListeners(Class<? extends Event> type) {
+      return !this.listeners.getOrDefault(type, List.of()).isEmpty();
+   }
 }

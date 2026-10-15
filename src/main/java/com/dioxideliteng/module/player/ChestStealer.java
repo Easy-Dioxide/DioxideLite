@@ -29,7 +29,7 @@ import net.minecraft.world.inventory.ContainerInput;
 import net.minecraft.world.entity.EquipmentSlot;
 import net.minecraft.world.item.ItemStack;
 
-public class ChestStealer extends Feature {
+public class ChestStealer extends Feature implements ChestIslandSource {
    private final NumberSetting delay = new NumberSetting("Delay", this, 2, 0, 20, 1);
    private final NumberSetting delayMax = new NumberSetting("Delay Max", this, 2, 0, 20, 1);
    private final NumberSetting openDelay = new NumberSetting("Open Delay", this, 1, 0, 20, 1);

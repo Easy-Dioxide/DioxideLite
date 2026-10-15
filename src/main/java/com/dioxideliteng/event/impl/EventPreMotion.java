@@ -2,6 +2,7 @@ package com.dioxideliteng.event.impl;
 
 import com.dioxideliteng.event.Event;
 import com.dioxideliteng.event.Events;
+import com.dioxideliteng.util.krs.RotationManager;
 import net.minecraft.client.Minecraft;
 
 public class EventPreMotion extends Event {
@@ -55,8 +56,16 @@ public class EventPreMotion extends Event {
          this.pitch = Events.ROTATION.getPitch();
       }
 
-      if (Events.ROTATION.getYaw() != Minecraft.getInstance().player.getYRot()) {
-         Minecraft.getInstance().player.yBodyRot = Events.ROTATION.getYaw();
+      // While a Krs module owns the rotation (silent aim), do not bend the local
+      // player's head/body fields: the first-person camera must stay put and the
+      // avatar's turn is rendered from RotationManager's interpolated values
+      // (see MixinLivingEntityRenderer). Native modules keep the direct writes.
+      if (!RotationManager.INSTANCE.isRotating()) {
+         if (Events.ROTATION.getYaw() != Minecraft.getInstance().player.getYRot()) {
+            Minecraft.getInstance().player.yBodyRot = Events.ROTATION.getYaw();
+         }
+
+         Minecraft.getInstance().player.yHeadRot = Events.ROTATION.getYaw();
       }
 
       this.x = x;
@@ -64,7 +73,6 @@ public class EventPreMotion extends Event {
       this.z = z;
       this.onGround = onGround;
       this.horizontalCollision = horizontalCollision;
-      Minecraft.getInstance().player.yHeadRot = Events.ROTATION.getYaw();
       return this;
    }
 
