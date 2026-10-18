@@ -1261,142 +1261,189 @@ public class Scaffold2 extends Feature {
             return null;
 
         Vec3 hitPos = hit.getLocation();
+        if (player.getEyePosition().distanceToSqr(hitPos) > placementReachSqr() + 1.0E-4D)
+            return null;
+
         return new PlacementTarget(placementPos, neighbour, hitPos, sideToClick, searchDistance);
     }
 
     private PlacementTarget reusableMathPlacementTarget(BlockPos currentTargetBlock) {
-        PlacementTarget locked = lockedMathPlacementTarget;
-        if (locked == null)
-            return null;
-
+        PlacementTarget target = lockedMathPlacementTarget;
         var level = mc.level;
-        if (level == null)
+        var player = mc.player;
+        if (target == null || currentTargetBlock == null || level == null || player == null)
+            return null;
+        if (!rotationMode.getValue().equalsIgnoreCase("math"))
+            return null;
+        if (target.pos().getY() != currentTargetBlock.getY())
             return null;
 
-        if (locked.pos().getY() != currentTargetBlock.getY())
+        int searchDistance = scaffoldSearchDistance(currentTargetBlock, target.pos());
+        if (searchDistance > currentSearchRange())
+            return null;
+        if (!isScaffoldReplaceable(target.pos()))
             return null;
 
-        if (!isScaffoldReplaceable(locked.pos()))
+        var neighbourState = level.getBlockState(target.neighbour());
+        if (!isScaffoldSupport(neighbourState))
+            return null;
+        if (player.getEyePosition().distanceToSqr(target.hitPos()) > placementReachSqr() + 1.0E-4D)
             return null;
 
-        if (!isScaffoldSupport(level.getBlockState(locked.neighbour())))
-            return null;
-
-        int distance = scaffoldSearchDistance(currentTargetBlock, locked.pos());
-        if (distance > currentSearchRange())
-            return null;
-
-        return locked;
+        PlacementTarget updatedTarget = target.searchDistance() == searchDistance
+                ? target
+                : new PlacementTarget(target.pos(), target.neighbour(), target.hitPos(), target.side(), searchDistance);
+        return isIdealPlacementHitReachable(updatedTarget) ? updatedTarget : null;
     }
 
     private PlacementTarget selectMathPositionTarget(BlockPos currentTargetBlock, PlacementTarget lockedTarget, PlacementTarget bestTarget) {
         if (lockedTarget == null)
             return bestTarget;
-
         if (bestTarget == null)
             return lockedTarget;
+        if (samePlacementTarget(lockedTarget, bestTarget))
+            return preferMovementAlignedTarget(lockedTarget, bestTarget);
+
+        if (lockedTarget.searchDistance() != bestTarget.searchDistance())
+            return bestTarget.searchDistance() < lockedTarget.searchDistance() ? bestTarget : lockedTarget;
+
+        boolean lockedReady = currentPlacementHit(lockedTarget) != null;
+        boolean bestReady = currentPlacementHit(bestTarget) != null;
+        if (lockedReady && !bestReady)
+            return lockedTarget;
+        if (!lockedReady && bestReady)
+            return bestTarget;
 
         double lockedScore = placementTargetScore(currentTargetBlock, lockedTarget);
         double bestScore = placementTargetScore(currentTargetBlock, bestTarget);
-
-        if (lockedScore <= bestScore + MATH_SEARCH_ORIGIN_PRIORITY_TICKS)
-            return lockedTarget;
-
-        return bestTarget;
+        return bestScore + 10.0D < lockedScore ? bestTarget : lockedTarget;
     }
 
     private PlacementTarget selectAdaptiveMathSearchTarget(BlockPos searchOrigin, PlacementTarget positionTarget, PlacementTarget rotationTarget) {
         if (positionTarget == null)
             return rotationTarget;
-
         if (rotationTarget == null)
             return positionTarget;
+        if (samePlacementTarget(positionTarget, rotationTarget))
+            return preferMovementAlignedTarget(rotationTarget, positionTarget);
 
-        double positionScore = placementTargetScore(searchOrigin, positionTarget);
-        double rotationScore = placementTargetScore(searchOrigin, rotationTarget);
-
-        if (isTellyMode()) {
-            if (shouldConserveMathTellyBlocks()) {
-                double positionTellyScore = mathTellyConservationScore(searchOrigin, positionTarget);
-                double rotationTellyScore = mathTellyConservationScore(searchOrigin, rotationTarget);
-                if (Math.abs(positionTellyScore - rotationTellyScore) > 1.0E-4D)
-                    return positionTellyScore < rotationTellyScore ? positionTarget : rotationTarget;
-            }
-        }
-
-        if (rotationScore < positionScore)
+        int distanceGap = rotationTarget.searchDistance() - positionTarget.searchDistance();
+        if (distanceGap <= 0)
             return rotationTarget;
 
-        return positionTarget;
+        if (!isStablePlacementHit(rotationTarget.hitPos(), rotationTarget.neighbour(), rotationTarget.side()))
+            return positionTarget;
+
+        double positionRotationTicks = placementRotationTicks(positionTarget);
+        double rotationTargetTicks = placementRotationTicks(rotationTarget);
+        double preRotationTicks = availablePreRotationTicks(searchOrigin, positionTarget);
+        double rotationTimeSaving = Math.max(0.0D, positionRotationTicks - preRotationTicks)
+                - rotationTargetTicks;
+
+        double requiredRotationSavingTicks = MATH_SEARCH_BASE_ROTATION_SAVING_TICKS
+                + distanceGap * MATH_SEARCH_DISTANCE_SAVING_TICKS
+                + distanceGap * distanceGap * MATH_SEARCH_DISTANCE_SQUARED_SAVING_TICKS;
+
+        if (positionTarget.searchDistance() == 0)
+            requiredRotationSavingTicks += MATH_SEARCH_ORIGIN_PRIORITY_TICKS;
+
+        requiredRotationSavingTicks += mathSearchPathPenaltyTicks(searchOrigin, rotationTarget.pos(), distanceGap);
+
+        double playerDistanceLoss = horizontalDistanceToBlock(rotationTarget.pos())
+                - horizontalDistanceToBlock(positionTarget.pos());
+        if (playerDistanceLoss > 0.0D)
+            requiredRotationSavingTicks += playerDistanceLoss * MATH_SEARCH_PLAYER_DISTANCE_WEIGHT_TICKS;
+
+        var player = mc.player;
+        if (player != null && !player.onGround() && player.getDeltaMovement().y < 0.0D)
+            requiredRotationSavingTicks += distanceGap * MATH_SEARCH_PATH_WEIGHT_TICKS;
+
+        return rotationTimeSaving >= requiredRotationSavingTicks ? rotationTarget : positionTarget;
     }
 
-    private PlacementTarget preferMovementAlignedTarget(PlacementTarget currentTarget, PlacementTarget candidateTarget) {
-        if (currentTarget == null)
-            return candidateTarget;
+   private PlacementTarget preferMovementAlignedTarget(PlacementTarget currentTarget, PlacementTarget candidateTarget) {
+      Float movementYaw = movementFixMathInputYaw();
+      if (movementYaw == null)
+         return currentTarget;
 
-        if (candidateTarget == null)
-            return currentTarget;
-
-        float currentYaw = rotationsToHitPos(currentTarget.hitPos())[0];
-        float candidateYaw = rotationsToHitPos(candidateTarget.hitPos())[0];
-        float movementYaw = getScaffoldMovementDirection();
-
-        double currentAlignment = mathMovementAlignmentScore(currentYaw);
-        double candidateAlignment = mathMovementAlignmentScore(candidateYaw);
-
-        if (Math.abs(candidateAlignment - currentAlignment) > MATH_MOVEMENT_ALIGNMENT_EPSILON)
-            return candidateAlignment < currentAlignment ? candidateTarget : currentTarget;
-
-        return currentTarget;
-    }
+      float currentYaw = rotationsToHitPos(currentTarget.hitPos())[0];
+      float candidateYaw = rotationsToHitPos(candidateTarget.hitPos())[0];
+      double currentScore = mathMovementAlignmentError(currentYaw, movementYaw) * MATH_MOVEMENT_ALIGNMENT_WEIGHT
+              + mathMovementTransitionScore(rotationManager.getRotationYaw(), currentYaw, movementYaw);
+      double candidateScore = mathMovementAlignmentError(candidateYaw, movementYaw) * MATH_MOVEMENT_ALIGNMENT_WEIGHT
+              + mathMovementTransitionScore(rotationManager.getRotationYaw(), candidateYaw, movementYaw);
+      return candidateScore + MATH_MOVEMENT_ALIGNMENT_EPSILON < currentScore ? candidateTarget : currentTarget;
+   }
 
     private double mathSearchPathPenaltyTicks(BlockPos origin, BlockPos candidate, int distanceGap) {
-        if (distanceGap <= 0)
+        if (origin == null || candidate == null || distanceGap <= 0)
             return 0.0D;
 
-        BlockPos lastPlaced = usableLastPlacedScaffoldBlock(origin);
-        if (lastPlaced == null)
+        Vec3 direction = getPreRotationDirection();
+        double directionLength = Math.sqrt(direction.x * direction.x + direction.z * direction.z);
+        if (directionLength <= 1.0E-6D)
+            return distanceGap * MATH_SEARCH_PATH_WEIGHT_TICKS;
+
+        double offsetX = candidate.getX() - origin.getX();
+        double offsetZ = candidate.getZ() - origin.getZ();
+        double offsetLength = Math.sqrt(offsetX * offsetX + offsetZ * offsetZ);
+        if (offsetLength <= 1.0E-6D)
             return 0.0D;
 
-        return lastPlacedBridgePathPenalty(origin, candidate, lastPlaced) * MATH_SEARCH_PATH_WEIGHT_TICKS;
+        double alignment = (offsetX * direction.x + offsetZ * direction.z) / (offsetLength * directionLength);
+        return (1.0D - Mth.clamp(alignment, -1.0D, 1.0D))
+                * distanceGap
+                * MATH_SEARCH_PATH_WEIGHT_TICKS;
     }
 
     private double placementRotationTicks(PlacementTarget target) {
-        if (target == null)
-            return Double.MAX_VALUE;
-
         float[] rotations = rotationsToHitPos(target.hitPos());
         float yawDiff = Math.abs(Mth.wrapDegrees(rotations[0] - rotationManager.getClientYaw()));
         float pitchDiff = Math.abs(rotations[1] - rotationManager.getClientPitch());
-
         double yawTicks = rotationTicks(yawDiff, expectedMathYawSpeed());
         double pitchTicks = rotationTicks(pitchDiff, expectedMathPitchSpeed());
-        return Math.max(yawTicks, pitchTicks);
+        double movementAlignmentTicks = mathMovementAlignmentScore(rotations[0])
+                / Math.max(1.0D, expectedMathYawSpeed());
+        return Math.max(yawTicks, pitchTicks) + movementAlignmentTicks;
     }
 
-    private double availablePreRotationTicks(BlockPos searchOrigin, PlacementTarget target) {
-        if (target == null)
-            return 0.0D;
+   private double availablePreRotationTicks(BlockPos searchOrigin, PlacementTarget target) {
+      if (!usesMathPreRotation() || searchOrigin == null || target == null || target.pos().equals(searchOrigin))
+         return 0.0D;
 
-        double speed = MovementUtil.getSpeed();
-        double leadDistance = mathPreRotationLeadDistance(speed);
-        if (leadDistance <= 1.0E-6D)
-            return 0.0D;
+      var player = mc.player;
+      if (player == null)
+         return 0.0D;
 
-        double originDistance = horizontalDistanceToBlock(searchOrigin);
-        double targetDistance = horizontalDistanceToBlock(target.pos());
-        double distanceGain = Math.max(0.0D, originDistance - targetDistance);
-        if (distanceGain <= 1.0E-6D)
-            return 0.0D;
+      double horizontalSpeed = MovementUtil.getSpeed(
+              player.getDeltaMovement().x,
+              player.getDeltaMovement().z
+      );
+      if (horizontalSpeed <= 1.0E-4D)
+         return 0.0D;
 
-        double ticksToReach = leadDistance / Math.max(speed, 1.0E-4D);
-        double distanceTicks = distanceGain / Math.max(speed, 1.0E-4D) * MATH_SEARCH_DISTANCE_SAVING_TICKS;
-        return Math.min(ticksToReach, distanceTicks + MATH_SEARCH_BASE_ROTATION_SAVING_TICKS);
-    }
+      Vec3 direction = getPreRotationDirection();
+      double directionLength = Math.sqrt(direction.x * direction.x + direction.z * direction.z);
+      double offsetX = target.pos().getX() - searchOrigin.getX();
+      double offsetZ = target.pos().getZ() - searchOrigin.getZ();
+      double offsetLength = Math.sqrt(offsetX * offsetX + offsetZ * offsetZ);
+      if (directionLength <= 1.0E-6D || offsetLength <= 1.0E-6D)
+         return 0.0D;
+
+      double alignment = (offsetX * direction.x + offsetZ * direction.z) / (offsetLength * directionLength);
+      if (alignment <= 0.0D)
+         return 0.0D;
+
+      double leadDistance = mathPreRotationLeadDistance(horizontalSpeed);
+      return Mth.clamp(leadDistance / horizontalSpeed, 0.0D, 8.0D)
+              * Mth.clamp(alignment, 0.0D, 1.0D);
+   }
 
     private static double rotationTicks(float angleDifference, double degreesPerTick) {
-        if (degreesPerTick <= 0.0D)
-            return angleDifference > 0.0D ? Double.MAX_VALUE : 0.0D;
+        if (angleDifference <= 1.0E-3F)
+            return 0.0D;
+        if (degreesPerTick <= 1.0E-3D)
+            return Double.POSITIVE_INFINITY;
         return angleDifference / degreesPerTick;
     }
 
@@ -1414,10 +1461,12 @@ public class Scaffold2 extends Feature {
 
     private static double horizontalDistanceToBlock(BlockPos pos) {
         var player = mc.player;
-        if (player == null) return Double.MAX_VALUE;
-        double dx = pos.getX() + 0.5D - player.getX();
-        double dz = pos.getZ() + 0.5D - player.getZ();
-        return Math.sqrt(dx * dx + dz * dz);
+        if (player == null || pos == null)
+            return 0.0D;
+
+        double xDistance = Math.max(Math.max(pos.getX() - player.getX(), player.getX() - (pos.getX() + 1.0D)), 0.0D);
+        double zDistance = Math.max(Math.max(pos.getZ() - player.getZ(), player.getZ() - (pos.getZ() + 1.0D)), 0.0D);
+        return Math.sqrt(xDistance * xDistance + zDistance * zDistance);
     }
 
     private boolean isIdealPlacementHitReachable(PlacementTarget target) {
@@ -1427,31 +1476,50 @@ public class Scaffold2 extends Feature {
         return isMatchingPlacementHit(hit, target);
     }
 
-    private boolean shouldConserveMathTellyBlocks() {
-        return isTellyMode() && hotbarStackSize <= 8;
-    }
+   private boolean shouldConserveMathTellyBlocks() {
+      return rotationMode.getValue().equalsIgnoreCase("math")
+              && isTellyMode()
+              && !shouldUseNormalScaffoldForTelly(mc.player)
+              && !isDownScaffoldActive();
+   }
 
-    private double mathTellyConservationScore(BlockPos origin, PlacementTarget target) {
-        if (target == null) return Double.MAX_VALUE;
-        return scaffoldSearchDistance(origin, target.pos()) + mathTellyFallbackAlignment(origin, target.pos()) * 0.5D;
-    }
+   private double mathTellyConservationScore(BlockPos origin, PlacementTarget target) {
+      if (!shouldConserveMathTellyBlocks() || origin == null || target == null || target.pos().equals(origin))
+         return 0.0D;
 
-    private double mathTellyFallbackAlignment(BlockPos origin, BlockPos candidate) {
-        float movementYaw = getScaffoldMovementDirection();
-        float candidateYaw = blockOffsetYaw(candidate.getX() - origin.getX(), candidate.getZ() - origin.getZ());
-        return Math.abs(Mth.wrapDegrees(candidateYaw - movementYaw));
-    }
+      double alignment = mathTellyFallbackAlignment(origin, target.pos());
+      double directionPenalty = (1.0D - Mth.clamp(alignment, -1.0D, 1.0D)) * 8.0D;
+      return target.searchDistance() * 3.0D + directionPenalty;
+   }
 
-    private static boolean samePlacementTarget(PlacementTarget first, PlacementTarget second) {
-        if (first == null || second == null)
-            return first == second;
-        return first.pos().equals(second.pos())
-                && first.neighbour().equals(second.neighbour())
-                && first.side() == second.side();
-    }
+   private double mathTellyFallbackAlignment(BlockPos origin, BlockPos candidate) {
+      Vec3 direction = getPreRotationDirection();
+      double directionLength = Math.sqrt(direction.x * direction.x + direction.z * direction.z);
+      if (directionLength <= 1.0E-6D)
+         return -1.0D;
+
+      double offsetX = candidate.getX() - origin.getX();
+      double offsetZ = candidate.getZ() - origin.getZ();
+      double offsetLength = Math.sqrt(offsetX * offsetX + offsetZ * offsetZ);
+      if (offsetLength <= 1.0E-6D)
+         return 1.0D;
+
+      return (offsetX * direction.x + offsetZ * direction.z) / (offsetLength * directionLength);
+   }
+
+   private static boolean samePlacementTarget(PlacementTarget first, PlacementTarget second) {
+      return first != null
+              && second != null
+              && first.pos().equals(second.pos())
+              && first.neighbour().equals(second.neighbour())
+              && first.side() == second.side();
+   }
 
     private void clearMathPlacementTarget() {
         lockedMathPlacementTarget = null;
+        humanizedMathAimTarget = null;
+        humanizedMathAimPos = null;
+        humanizedMathAimRefreshTick = Integer.MIN_VALUE;
     }
 
     private List<BlockPos> buildScaffoldCandidates(BlockPos pos) {
@@ -1736,6 +1804,7 @@ public class Scaffold2 extends Feature {
         if (!isPlacementPositionClearForPlayer(pos)) return null;
 
         Vec3 eyesPos = player.getEyePosition();
+        Vec3 targetCenter = Vec3.atCenterOf(pos);
         PlacementTarget bestTarget = null;
         double bestScore = Double.MAX_VALUE;
 
@@ -1746,17 +1815,19 @@ public class Scaffold2 extends Feature {
 
             if (!isScaffoldSupport(neighbourState)) continue;
 
-            PlacementHit hit = findRayTraceablePlacementHit(neighbour, sideToClick);
-            if (hit == null) continue;
-
-            PlacementTarget target = new PlacementTarget(pos, neighbour, hit.hitPos(), sideToClick, searchDistance);
-            if (shouldSkipBackwardsPlacementTarget(target))
+            Vec3 neighbourCenter = Vec3.atCenterOf(neighbour);
+            PlacementHit rayTraceHit = findRayTraceablePlacementHit(neighbour, sideToClick);
+            if (rayTraceHit == null)
                 continue;
 
-            double score = hit.rotationScore() + hit.distanceSqr() * MATH_SEARCH_DISTANCE_SQUARED_SAVING_TICKS;
+            double score = rayTraceHit.rotationScore()
+                    + rayTraceHit.distanceSqr() * 0.01D
+                    + Math.abs(eyesPos.distanceToSqr(targetCenter) - eyesPos.distanceToSqr(neighbourCenter)) * 0.001D
+                    + placementSideScore(sideToClick)
+                    + lastPlacedBridgePlacementScore(searchOrigin, pos, neighbour);
             if (score < bestScore) {
+                bestTarget = new PlacementTarget(pos, neighbour, rayTraceHit.hitPos(), sideToClick, searchDistance);
                 bestScore = score;
-                bestTarget = target;
             }
         }
 
@@ -2017,99 +2088,213 @@ public class Scaffold2 extends Feature {
         return reach * reach;
     }
 
-    private double placementRotationScore(float[] rotations, float currentYaw, float currentPitch) {
-        float yawDiff = Math.abs(Mth.wrapDegrees(rotations[0] - currentYaw));
-        float pitchDiff = Math.abs(rotations[1] - currentPitch);
-        return yawDiff + pitchDiff * 1.5D;
-    }
+   private double placementRotationScore(float[] rotations, float currentYaw, float currentPitch) {
+      float yawDiff = Math.abs(Mth.wrapDegrees(rotations[0] - currentYaw));
+      float pitchDiff = Math.abs(rotations[1] - currentPitch);
+      return yawDiff + pitchDiff + mathMovementAlignmentScore(rotations[0]);
+   }
 
-    private double smartPlacementHitScore(Vec3 hitPos, float[] rotations, float currentYaw, float currentPitch, Vec3 eyesPos, Vec3 faceCenter, Direction side, boolean currentCanHit) {
-        double baseScore = placementRotationScore(rotations, currentYaw, currentPitch);
-        if (!currentCanHit)
-            baseScore += MATH_EDGE_HIT_PENALTY;
+   private double smartPlacementHitScore(Vec3 hitPos, float[] rotations, float currentYaw, float currentPitch, Vec3 eyesPos, Vec3 faceCenter, Direction side, boolean currentCanHit) {
+      double centerScore = normalizedFaceCenterDistanceSqr(hitPos, faceCenter, side);
+      double score = placementRotationScore(rotations, currentYaw, currentPitch)
+              + eyesPos.distanceToSqr(hitPos) * 0.001D
+              + centerScore * MATH_FACE_CENTER_WEIGHT;
 
-        if (isStablePlacementHit(hitPos, faceCenter, side))
-            baseScore -= MATH_FACE_CENTER_WEIGHT;
+      if (!isStablePlacementHit(hitPos, faceCenter, side))
+         score += MATH_EDGE_HIT_PENALTY;
 
-        return baseScore;
-    }
+      if (currentCanHit)
+         score += centerScore * 1.5D;
 
-    private double mathMovementAlignmentScore(float targetYaw) {
-        float movementYaw = getScaffoldMovementDirection();
-        float error = mathMovementAlignmentError(targetYaw, movementYaw);
-        return error * MATH_MOVEMENT_ALIGNMENT_WEIGHT;
-    }
+      return score;
+   }
+
+   private double mathMovementAlignmentScore(float targetYaw) {
+      Float movementYaw = movementFixMathInputYaw();
+      if (movementYaw == null)
+         return 0.0D;
+
+      double targetAlignmentScore = mathMovementAlignmentError(targetYaw, movementYaw)
+              * MATH_MOVEMENT_ALIGNMENT_WEIGHT;
+      return targetAlignmentScore + mathMovementTransitionScore(
+              rotationManager.getRotationYaw(),
+              targetYaw,
+              movementYaw
+      );
+   }
 
     private static float mathMovementAlignmentError(float targetYaw, float movementYaw) {
         return Math.abs(Mth.wrapDegrees(targetYaw - movementYaw));
     }
 
-    private static float mathMovementSignedAlignmentError(float targetYaw, float movementYaw) {
-        return Mth.wrapDegrees(targetYaw - movementYaw);
-    }
+   private static float mathMovementSignedAlignmentError(float targetYaw, float movementYaw) {
+      // Krs parity: keep this tied to MovementFix's exact sector boundary behavior,
+      // including 22.5-degree ties.
+      return MovementFix.getCorrectionDirectionError(movementYaw, targetYaw);
+   }
 
-    private double mathMovementTransitionScore(float currentYaw, float targetYaw, float movementYaw) {
-        float yawDifference = Mth.wrapDegrees(targetYaw - currentYaw);
-        float targetError = mathMovementAlignmentError(targetYaw, movementYaw);
-        float currentError = mathMovementAlignmentError(currentYaw, movementYaw);
+   private double mathMovementTransitionScore(float currentYaw, float targetYaw, float movementYaw) {
+      float yawDifference = Mth.wrapDegrees(targetYaw - currentYaw);
+      if (Math.abs(yawDifference) <= MATH_MOVEMENT_ALIGNMENT_EPSILON)
+         return 0.0D;
+      if (usesHumanizedMathRotation())
+         return humanizedMathMovementTransitionScore(currentYaw, yawDifference, movementYaw)
+                 * mathMovementSpeedFactor();
 
-        double transitionScore = 0.0D;
-        if (Math.abs(yawDifference) > 1.0E-4D) {
-            float errorChange = targetError - currentError;
-            transitionScore = errorChange * MATH_MOVEMENT_PATH_ALIGNMENT_WEIGHT;
-        }
+      double minSpeed = Math.min(minRotationSpeed.getValue(), maxRotationSpeed.getValue());
+      double maxSpeed = Math.max(minRotationSpeed.getValue(), maxRotationSpeed.getValue());
+      double averageSpeed = (minSpeed + maxSpeed) * 0.5D;
+      double score = 0.0D;
+      int samples = 0;
 
-        double swayScore = targetError * MATH_MOVEMENT_SWAY_WEIGHT;
-        return transitionScore + swayScore;
-    }
+      if (minSpeed > MATH_MOVEMENT_ALIGNMENT_EPSILON) {
+         score += mathMovementTransitionScoreAtSpeed(currentYaw, yawDifference, movementYaw, minSpeed);
+         samples++;
+      }
+      if (averageSpeed > MATH_MOVEMENT_ALIGNMENT_EPSILON
+              && Math.abs(averageSpeed - minSpeed) > MATH_MOVEMENT_ALIGNMENT_EPSILON) {
+         score += mathMovementTransitionScoreAtSpeed(currentYaw, yawDifference, movementYaw, averageSpeed);
+         samples++;
+      }
+      if (maxSpeed > MATH_MOVEMENT_ALIGNMENT_EPSILON
+              && Math.abs(maxSpeed - averageSpeed) > MATH_MOVEMENT_ALIGNMENT_EPSILON) {
+         score += mathMovementTransitionScoreAtSpeed(currentYaw, yawDifference, movementYaw, maxSpeed);
+         samples++;
+      }
+      if (samples == 0)
+         return 0.0D;
 
-    private double humanizedMathMovementTransitionScore(float currentYaw, float yawDifference, float movementYaw) {
-        float[] speeds = humanizedMathRotationSpeeds(currentYaw + yawDifference, rotationManager.getClientPitch());
-        return mathMovementTransitionScoreAtHumanizedSpeed(currentYaw, yawDifference, movementYaw, speeds[0]);
-    }
+      return score / samples * mathMovementSpeedFactor();
+   }
 
-    private double mathMovementTransitionScoreAtHumanizedSpeed(float currentYaw, float yawDifference, float movementYaw, float yawSpeed) {
-        return mathMovementTransitionScoreAtSpeed(currentYaw, yawDifference, movementYaw, yawSpeed);
-    }
+   private double humanizedMathMovementTransitionScore(float currentYaw, float yawDifference, float movementYaw) {
+      if (!jitter.getValue())
+         return mathMovementTransitionScoreAtHumanizedSpeed(
+                 currentYaw, yawDifference, movementYaw, 0.0F
+         );
 
-    private static double mathMovementTransitionScoreAtSpeed(float currentYaw, float yawDifference, float movementYaw, double yawSpeed) {
-        if (yawSpeed <= 0.0D)
-            return Double.MAX_VALUE;
+      float biasSpread = MATH_HUMAN_SPEED_BIAS * 0.5F;
+      double lowScore = mathMovementTransitionScoreAtHumanizedSpeed(
+              currentYaw, yawDifference, movementYaw,
+              Mth.clamp(humanizedMathSpeedBias - biasSpread, -MATH_HUMAN_SPEED_BIAS, MATH_HUMAN_SPEED_BIAS)
+      );
+      double expectedScore = mathMovementTransitionScoreAtHumanizedSpeed(
+              currentYaw, yawDifference, movementYaw, humanizedMathSpeedBias
+      );
+      double highScore = mathMovementTransitionScoreAtHumanizedSpeed(
+              currentYaw, yawDifference, movementYaw,
+              Mth.clamp(humanizedMathSpeedBias + biasSpread, -MATH_HUMAN_SPEED_BIAS, MATH_HUMAN_SPEED_BIAS)
+      );
+      return (lowScore + expectedScore * 2.0D + highScore) * 0.25D;
+   }
 
-        float targetYaw = currentYaw + yawDifference;
-        float targetError = mathMovementAlignmentError(targetYaw, movementYaw);
-        float currentError = mathMovementAlignmentError(currentYaw, movementYaw);
+   private double mathMovementTransitionScoreAtHumanizedSpeed(float currentYaw, float yawDifference, float movementYaw,
+                                                              float speedBias) {
+      float minSpeed = (float) Math.min(minRotationSpeed.getValue(), maxRotationSpeed.getValue());
+      float maxSpeed = (float) Math.max(minRotationSpeed.getValue(), maxRotationSpeed.getValue());
+      float acceleration = Math.max(1.5F, (maxSpeed - minSpeed) * 0.18F);
+      float deceleration = Math.max(2.0F, (maxSpeed - minSpeed) * 0.26F);
+      float speed = Float.isFinite(humanizedMathYawSpeed) ? humanizedMathYawSpeed : minSpeed;
+      double yawDistance = Math.abs(yawDifference);
+      double yawDirection = Math.signum(yawDifference);
+      double travelledYaw = 0.0D;
+      float previousError = mathMovementSignedAlignmentError(currentYaw, movementYaw);
+      double alignmentError = 0.0D;
+      double directionSway = 0.0D;
+      int predictedTicks = 0;
 
-        double ticks = Math.abs(yawDifference) / yawSpeed;
-        double errorChangePerTick = (targetError - currentError) / Math.max(ticks, 1.0E-4D);
-        return errorChangePerTick * MATH_MOVEMENT_PATH_ALIGNMENT_WEIGHT + targetError * MATH_MOVEMENT_SWAY_WEIGHT;
-    }
+      while (predictedTicks < MATH_MOVEMENT_PREDICTION_TICKS && travelledYaw < yawDistance) {
+         float remainingYaw = (float) (yawDistance - travelledYaw);
+         float desiredSpeed = humanizedDesiredRotationSpeed(
+                 minSpeed, maxSpeed, remainingYaw, 90.0F, 0.18F, speedBias
+         );
+         speed = approachHumanizedSpeed(speed, desiredSpeed, minSpeed, acceleration, deceleration);
+         if (speed <= MATH_MOVEMENT_ALIGNMENT_EPSILON)
+            break;
 
-    private static double mathMovementSpeedFactor() {
-        var player = mc.player;
-        if (player == null) return 1.0D;
-        double speed = MovementUtil.getSpeed();
-        return Mth.clamp(speed / 0.28D, 0.0D, 1.0D);
-    }
+         travelledYaw += Math.min(remainingYaw, speed);
+         float predictedYaw = Mth.wrapDegrees((float) (currentYaw + yawDirection * travelledYaw));
+         float predictedError = mathMovementSignedAlignmentError(predictedYaw, movementYaw);
+         alignmentError += Math.abs(predictedError);
+         directionSway += Math.abs(Mth.wrapDegrees(predictedError - previousError));
+         previousError = predictedError;
+         predictedTicks++;
+      }
+
+      if (predictedTicks == 0)
+         return 0.0D;
+      return alignmentError / predictedTicks * MATH_MOVEMENT_PATH_ALIGNMENT_WEIGHT
+              + directionSway * MATH_MOVEMENT_SWAY_WEIGHT;
+   }
+
+   private static double mathMovementTransitionScoreAtSpeed(float currentYaw, float yawDifference, float movementYaw,
+                                                            double degreesPerTick) {
+      double yawDistance = Math.abs(yawDifference);
+      double yawDirection = Math.signum(yawDifference);
+      int predictedTicks = Math.min(
+              MATH_MOVEMENT_PREDICTION_TICKS,
+              Math.max(1, (int) Math.ceil(yawDistance / degreesPerTick))
+      );
+      float previousError = mathMovementSignedAlignmentError(currentYaw, movementYaw);
+      double alignmentError = 0.0D;
+      double directionSway = 0.0D;
+
+      for (int tick = 1; tick <= predictedTicks; tick++) {
+         double travelledYaw = Math.min(yawDistance, degreesPerTick * tick);
+         float predictedYaw = Mth.wrapDegrees((float) (currentYaw + yawDirection * travelledYaw));
+         float predictedError = mathMovementSignedAlignmentError(predictedYaw, movementYaw);
+         alignmentError += Math.abs(predictedError);
+         directionSway += Math.abs(Mth.wrapDegrees(predictedError - previousError));
+         previousError = predictedError;
+      }
+
+      return alignmentError / predictedTicks * MATH_MOVEMENT_PATH_ALIGNMENT_WEIGHT
+              + directionSway * MATH_MOVEMENT_SWAY_WEIGHT;
+   }
+
+   private static double mathMovementSpeedFactor() {
+      var player = mc.player;
+      if (player == null)
+         return 1.0D;
+
+      double horizontalSpeed = MovementUtil.getSpeed(
+              player.getDeltaMovement().x,
+              player.getDeltaMovement().z
+      );
+      double speedFactor = Mth.clamp(horizontalSpeed / 0.28D, 0.35D, 1.5D);
+      if (!player.onGround())
+         speedFactor *= 1.15D;
+      return speedFactor;
+   }
 
     private static boolean isStablePlacementHit(Vec3 hitPos, BlockPos neighbour, Direction side) {
         return isStablePlacementHit(hitPos, placementFaceCenter(neighbour, side), side);
     }
 
-    private static boolean isStablePlacementHit(Vec3 hitPos, Vec3 faceCenter, Direction side) {
-        double distSqr = normalizedFaceCenterDistanceSqr(hitPos, faceCenter, side);
-        return distSqr <= 0.04D;
-    }
+   private static boolean isStablePlacementHit(Vec3 hitPos, Vec3 faceCenter, Direction side) {
+      double xOffset = Math.abs(hitPos.x - faceCenter.x);
+      double yOffset = Math.abs(hitPos.y - faceCenter.y);
+      double zOffset = Math.abs(hitPos.z - faceCenter.z);
+      double safeRadius = 0.5D - MATH_SAFE_HIT_INSET;
 
-    private static double normalizedFaceCenterDistanceSqr(Vec3 hitPos, Vec3 faceCenter, Direction side) {
-        double dx = 0.0D, dy = 0.0D, dz = 0.0D;
-        switch (side.getAxis()) {
-            case X -> { dy = hitPos.y - faceCenter.y; dz = hitPos.z - faceCenter.z; }
-            case Y -> { dx = hitPos.x - faceCenter.x; dz = hitPos.z - faceCenter.z; }
-            case Z -> { dx = hitPos.x - faceCenter.x; dy = hitPos.y - faceCenter.y; }
-        }
-        return dx * dx + dy * dy + dz * dz;
-    }
+      return switch (side.getAxis()) {
+         case X -> yOffset <= safeRadius && zOffset <= safeRadius;
+         case Y -> xOffset <= safeRadius && zOffset <= safeRadius;
+         case Z -> xOffset <= safeRadius && yOffset <= safeRadius;
+      };
+   }
+
+   private static double normalizedFaceCenterDistanceSqr(Vec3 hitPos, Vec3 faceCenter, Direction side) {
+      double x = (hitPos.x - faceCenter.x) * 2.0D;
+      double y = (hitPos.y - faceCenter.y) * 2.0D;
+      double z = (hitPos.z - faceCenter.z) * 2.0D;
+
+      return switch (side.getAxis()) {
+         case X -> y * y + z * z;
+         case Y -> x * x + z * z;
+         case Z -> x * x + y * y;
+      };
+   }
 
     private static Vec3 placementFaceCenter(BlockPos neighbour, Direction side) {
         return Vec3.atCenterOf(neighbour).add(
@@ -2120,36 +2305,28 @@ public class Scaffold2 extends Feature {
     }
 
     private double placementTargetScore(PlacementTarget target) {
-        return target == null ? Double.MAX_VALUE : placementTargetScore(null, target);
+        float[] rotations = rotationsToHitPos(target.hitPos());
+        return placementRotationScore(rotations, rotationManager.getClientYaw(), rotationManager.getClientPitch())
+                + minimumPlacementTargetScore(target.searchDistance())
+                + placementSideScore(target.side());
     }
 
     private double placementTargetScore(BlockPos currentTargetBlock, PlacementTarget target) {
-        if (target == null) return Double.MAX_VALUE;
-
-        double score = placementRotationTicks(target);
-        score -= availablePreRotationTicks(currentTargetBlock != null ? currentTargetBlock : target.pos(), target);
-        score += target.searchDistance() * MATH_SEARCH_DISTANCE_SAVING_TICKS;
-        score += placementSideScore(target.side());
-
-        if (currentTargetBlock != null)
-            score += mathSearchPathPenaltyTicks(currentTargetBlock, target.pos(), target.searchDistance());
-
-        if (target.searchDistance() == 0)
-            score -= minimumPlacementTargetScore(0);
-
-        return score;
+        return placementTargetScore(target)
+                + mathTellyConservationScore(currentTargetBlock, target)
+                + lastPlacedBridgePlacementScore(currentTargetBlock, target.pos(), target.neighbour());
     }
 
     private static double minimumPlacementTargetScore(int searchDistance) {
-        return searchDistance * MATH_SEARCH_DISTANCE_SAVING_TICKS;
+        return searchDistance * 4.0D;
     }
 
     private static double placementSideScore(Direction side) {
-        return side == Direction.DOWN ? 1.0D : 0.0D;
+        return side == Direction.UP ? 0.0D : side == Direction.NORTH || side == Direction.SOUTH || side == Direction.WEST || side == Direction.EAST ? 0.05D : 0.1D;
     }
 
     private boolean isDownwardsPlacementSupport(Direction side) {
-        return side == Direction.UP;
+        return side == Direction.UP && isDownScaffoldActive();
     }
 
     private boolean tryPlaceBlock(PlacementTarget target, int slot) {
@@ -2703,8 +2880,10 @@ public class Scaffold2 extends Feature {
     }
 
     private Float movementFixMathInputYaw() {
-        Float inputYaw = scaffoldInputDirection();
-        return inputYaw;
+        if (!MovementFix.isModuleEnabled())
+            return null;
+
+        return scaffoldInputDirection();
     }
 
     private static Vec3 offsetPlacementFaceHit(Vec3 hitPos, Direction side, double offsetA, double offsetB) {
@@ -2833,6 +3012,7 @@ public class Scaffold2 extends Feature {
         float safeMin = min > 18.0F
                 ? Math.min(12.0F, safeMax)
                 : Math.min(min, safeMax);
+        safeMin = Math.max(Math.min(1.0F, safeMax), safeMin);
 
         return new float[]{safeMin, safeMax};
     }

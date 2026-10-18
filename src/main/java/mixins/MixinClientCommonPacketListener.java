@@ -28,8 +28,10 @@ public class MixinClientCommonPacketListener {
    private void dioxideliteng$normalizeOutgoingRotation(Packet<?> packet, CallbackInfo callback) {
       if (packet == null) return;
 
-      // PacketUtil 已标记为 silent 的包：记录旋转后放行（不重复归一化）
-      if (PacketUtil.consumeSilentPacket(packet)) {
+      // PacketUtil 已标记为 silent 的包：只记录旋转后放行。silent marker 不在这里
+      // 消费——由更底层的 MixinConnection 发送钩子消费并跳过事件派发，与 Krs 的
+      // Connection.send 1 参钩子语义一致（silent 包不发 SendPacketEvent）。
+      if (PacketUtil.isSilentPacket(packet)) {
          RotationManager.INSTANCE.recordOutgoingRotation(packet);
          return;
       }

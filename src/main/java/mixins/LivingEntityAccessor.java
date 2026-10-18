@@ -24,4 +24,11 @@ public interface LivingEntityAccessor {
 
    @Invoker("setLivingEntityFlag")
    void invokeSetLivingEntityFlag(int flag, boolean value);
+
+   // Krs parity (RotationManager.updateVanillaRenderBodyYaw reads attackAnim):
+   // 26.3 replaced the public LivingEntity#attackAnim field with the private
+   // LivingEntity$SwingState#animation value; expose the holder for the exact
+   // swing-progress condition (see SwingStateAccessor).
+   @Accessor("swingState")
+   LivingEntity.SwingState getSwingState();
 }

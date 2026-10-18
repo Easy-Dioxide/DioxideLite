@@ -45,19 +45,30 @@ public class PacketUtil {
         }
     }
 
-    public static boolean consumeSilentPacket(Packet<?> packet) {
-        if (packet == null)
-            return false;
+   public static boolean consumeSilentPacket(Packet<?> packet) {
+      if (packet == null)
+         return false;
 
-        Set<Packet<?>> packetsForThread = SILENT_PACKETS.get();
-        if (packetsForThread == null)
-            return false;
+      Set<Packet<?>> packetsForThread = SILENT_PACKETS.get();
+      if (packetsForThread == null)
+         return false;
 
-        boolean removed = packetsForThread.remove(packet);
-        if (packetsForThread.isEmpty())
-            SILENT_PACKETS.remove();
-        return removed;
-    }
+      boolean removed = packetsForThread.remove(packet);
+      if (packetsForThread.isEmpty())
+         SILENT_PACKETS.remove();
+      return removed;
+   }
+
+   // Krs parity: the Connection.send hook consumes the silent marker itself, so the
+   // higher-level send hook must be able to look without consuming (see
+   // MixinClientCommonPacketListener#dioxideliteng$normalizeOutgoingRotation).
+   public static boolean isSilentPacket(Packet<?> packet) {
+      if (packet == null)
+         return false;
+
+      Set<Packet<?>> packetsForThread = SILENT_PACKETS.get();
+      return packetsForThread != null && packetsForThread.contains(packet);
+   }
 
     /**
      * 调用全局 RotationManager.INSTANCE 归一化 outgoing packet 的旋转字段，

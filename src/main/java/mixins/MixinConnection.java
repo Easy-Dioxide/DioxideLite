@@ -1,10 +1,11 @@
 package mixins;
 
 import com.dioxideliteng.event.impl.EventModifyPacket;
-import com.dioxideliteng.event.impl.EventPacketReceive;
 import com.dioxideliteng.event.impl.EventPacketSend;
 import com.dioxideliteng.util.PacketBlinkQueue;
 import com.dioxideliteng.util.PacketFilter;
+import com.dioxideliteng.util.krs.PacketUtil;
+import com.dioxideliteng.util.krs.RotationManager;
 import io.netty.channel.ChannelFutureListener;
 import io.netty.channel.ChannelHandlerContext;
 import net.minecraft.network.Connection;
@@ -24,6 +25,12 @@ public class MixinConnection {
       cancellable = true
    )
    private void dioxideliteng$dispatchPacketSend(Packet packet, ChannelFutureListener listener, boolean flush, CallbackInfo callback) {
+      // Krs parity: PacketUtil.sendPacketAsSilent marks the packet so the send hook
+      // skips the SendPacketEvent dispatch (and the blink/filter pipelines that hang
+      // off it) - the packet itself still goes out, exactly like the Krs
+      // Connection#send(Packet) hook. The marker is consumed here because this is the
+      // last hook before the real send.
+      boolean silent = PacketUtil.consumeSilentPacket(packet);
       // Krs parity: ModifyPacketEvent runs first and may replace the outgoing packet.
       EventModifyPacket modifyEvent = new EventModifyPacket(packet);
       modifyEvent.call();
@@ -33,6 +40,11 @@ public class MixinConnection {
       }
 
       packet = modifyEvent.getPacket();
+      if (silent) {
+         RotationManager.INSTANCE.recordOutgoingRotation(packet);
+         return;
+      }
+
       EventPacketSend packetSendEvent = new EventPacketSend(packet);
       packetSendEvent.call();
       if (packetSendEvent.isCancelled()) {
@@ -57,14 +69,13 @@ public class MixinConnection {
       cancellable = true
    )
    private void dioxideliteng$dispatchPacketReceive(ChannelHandlerContext channelContext, Packet packet, CallbackInfo callback) {
-      EventPacketReceive packetReceiveEvent = new EventPacketReceive(packet);
-      packetReceiveEvent.call();
+      // Krs parity: the ReceivedPacketEvent dispatch itself lives at the packet-handle
+      // stage (MixinPacketProcessor, on PacketProcessor$ListenerAndPacket#handle), which
+      // runs on the main thread and unwraps ClientboundBundlePacket sub-packets.
+      // channelRead0 runs on the netty thread; only the blink-queue safety checks stay
+      // here (they are this port's own guard, not a Krs event dispatch).
       if (packet instanceof ClientboundDisconnectPacket || packet instanceof ClientboundStartConfigurationPacket) {
          PacketBlinkQueue.disable();
-      }
-
-      if (packetReceiveEvent.isCancelled()) {
-         callback.cancel();
       }
    }
 }

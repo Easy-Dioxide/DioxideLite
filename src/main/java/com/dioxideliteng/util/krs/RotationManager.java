@@ -754,8 +754,8 @@ public class RotationManager {
                 bodyTarget -= 180.0F;
         }
 
-        if (mc.player.isSwinging())
-            bodyTarget = headYaw;
+      if (swingAnimationProgress(mc.player) > 0.0F)
+         bodyTarget = headYaw;
 
         renderBodyYaw += Mth.wrapDegrees(bodyTarget - renderBodyYaw) * 0.3F;
 
@@ -767,13 +767,31 @@ public class RotationManager {
         fixRenderBodyYawInterpolation();
     }
 
-    private void fixRenderBodyYawInterpolation() {
-        while (renderBodyYaw - prevRenderBodyYaw < -180.0F)
-            prevRenderBodyYaw -= 360.0F;
+   /**
+    * Krs parity: updateVanillaRenderBodyYaw reads {@code attackAnim > 0.0F} on the Krs
+    * mappings. 26.3 moved that value into the private LivingEntity$SwingState#animation
+    * field, so it is read back through the SwingStateAccessor mixin. This is the exact
+    * vanilla body-yaw condition (vanilla 26.3 LivingEntity#tick reads
+    * {@code swingState.animation > 0.0F} to snap the body target to the head yaw while
+    * swinging); isSwinging() would flip one tick early and getSwingAnimation() one tick
+    * late, neither of which matches vanilla.
+    */
+   private static float swingAnimationProgress(net.minecraft.world.entity.LivingEntity entity) {
+      if (entity == null) {
+         return 0.0f;
+      }
 
-        while (renderBodyYaw - prevRenderBodyYaw >= 180.0F)
-            prevRenderBodyYaw += 360.0F;
-    }
+      var swingState = ((mixins.LivingEntityAccessor) entity).getSwingState();
+      return swingState == null ? 0.0f : ((mixins.SwingStateAccessor) (Object) swingState).getSwingAnimationValue();
+   }
+
+   private void fixRenderBodyYawInterpolation() {
+      while (renderBodyYaw - prevRenderBodyYaw < -180.0F)
+         prevRenderBodyYaw -= 360.0F;
+
+      while (renderBodyYaw - prevRenderBodyYaw >= 180.0F)
+         prevRenderBodyYaw += 360.0F;
+   }
 
     private boolean ensureServerRotationInitialized() {
         if (serverRotationInitialized) {

@@ -9,6 +9,7 @@ import com.dioxideliteng.event.impl.EventWorld;
 import com.dioxideliteng.module.Category;
 import com.dioxideliteng.module.Feature;
 import com.dioxideliteng.module.FeatureManager;
+import com.dioxideliteng.module.player.InvManager2;
 import com.dioxideliteng.setting.BooleanSetting;
 import com.dioxideliteng.setting.ModeSetting;
 import com.dioxideliteng.util.krs.MovementUtil;
@@ -48,20 +49,21 @@ import net.minecraft.world.phys.HitResult;
  *  - Krs ModuleManager.getModuleState(Scaffold.class) -> FeatureManager.scaffold2 (Scaffold2 is
  *    the faithful port of the Krs Scaffold the Vulcan Scaffold bypass was written against);
  *  - Krs Client.rotationManager -> RotationManager.INSTANCE; Client.mc -> mc;
- *  - PacketUtil.sendPacketAsSilent semantics are preserved; re-entrant EventPacketSend dispatch
- *    (Connection#send re-entry) is guarded per mode, as the silent-send marker alone does not
- *    suppress the packet-send event;
+ *  - PacketUtil.sendPacketAsSilent semantics are preserved: silent packets skip
+ *    EventPacketSend dispatch (MixinConnection consumes the marker before the event), exactly
+ *    like Krs where Connection.send(Packet, listener) is the WrapMethod boundary and the
+ *    1-arg silent path never reaches SendPacketEvent;
  *  - Krs mutated ServerboundKeepAlivePacket#id in place; EventPacketSend exposes no mutable
- *    packet field, so the Verus bypass cancels the original and resends a modified copy under a
- *    re-entry guard (same server-visible effect);
+ *    packet field and 26.3 keeps the id field private final, so the Verus bypass cancels the
+ *    original and resends a modified copy silently (same server-visible effect; the silent
+ *    send also prevents the resend from re-entering this hook);
  *  - The Krs "Hypixel NCP Sprint" sub-feature wrote MotionEvent#yaw; EventPreMotion has no yaw
  *    setter, but the outgoing packet yaw is read from Events.ROTATION after PRE_MOTION dispatch
  *    (MixinLocalPlayer#preMotion), so the spoofed direction is applied via
  *    Events.ROTATION.setYaw with the same !rotationManager.isRotating() guard as Krs;
  *  - Notifications/chat prints (Client.notificationManager / ChatUtil.printChat) are dropped
- *    (no client equivalent in this port), the InvManager.getCleaning() inventory-move condition
- *    is dropped (Krs InvManager is out of the exploit porting scope and has no ported
- *    equivalent), and the empty onAttack forward of every mode is omitted.
+ *    (no client equivalent in this port), and the empty onAttack forward of every mode is
+ *    omitted.
  */
 public class Disabler2 extends Feature {
    private static final String HYPIXEL = "Hypixel";
@@ -95,17 +97,9 @@ public class Disabler2 extends Feature {
    // Mineland state (Krs MinelandDisabler.respawnTimes)
    private long minelandRespawnTimes;
 
-   // Miniblox state (Krs MinibloxDisabler.tick / cancelTick)
-   private long minibloxTick;
-   private int minibloxCancelTick;
-   // Re-entry guard for the silent pong resend (replaces Krs silent-send semantics)
-   private boolean minibloxResending;
-
    // Verus state (Krs VerusDisabler.prevTran / godTick)
    private int verusPrevTran;
    private int verusGodTick;
-   // Re-entry guard for the modified keep-alive resend
-   private boolean verusResending;
 
    private String activeMode = null;
 
@@ -148,10 +142,6 @@ public class Disabler2 extends Feature {
             this.hypSentFirstOpen = false;
             this.hypCaughtClientStatus = false;
             this.hypCaughtCloseWindow = false;
-         }
-         case MINIBLOX -> {
-            this.minibloxCancelTick = 0;
-            this.minibloxTick = 0;
          }
          case VERUS -> {
             this.verusPrevTran = 0;
@@ -272,7 +262,7 @@ public class Disabler2 extends Feature {
          this.hypCaughtClientStatus = false;
          this.hypCaughtCloseWindow = false;
 
-         if (mc.gui.screen() instanceof InventoryScreen) {
+         if (mc.gui.screen() instanceof InventoryScreen || isInvManagerCleaning()) {
             if (!this.hypSentFirstOpen) {
                PacketUtil.sendPacketAsSilent(new ServerboundContainerClosePacket(0));
                this.hypSentFirstOpen = true;
@@ -357,6 +347,19 @@ public class Disabler2 extends Feature {
    }
 
    // ===================== Krs cross-module state accessors =====================
+
+   /**
+    * Krs parity: HypixelDisabler#onUpdate opens the inventory-move bypass window while
+    * {@code ModuleManager.getModuleState(InvManager.class) && InvManager.getCleaning()}.
+    * Resolves the ported InvManager2 instance the same way the other ports do.
+    */
+   private static boolean isInvManagerCleaning() {
+      for (var feature : FeatureManager.getModules()) {
+         if (feature instanceof InvManager2 manager)
+            return manager.isEnabled() && InvManager2.getCleaning();
+      }
+      return false;
+   }
 
    /** Krs parity: DisablerModule.hypixelMotion.get(). */
    public boolean isHypixelNcpMotionEnabled() {
@@ -443,11 +446,9 @@ public class Disabler2 extends Feature {
       if (mc.player == null) return;
       Packet<?> packet = sending.getPacket();
       if (packet instanceof ServerboundPongPacket pong) {
-         if (!this.minibloxResending) {
-            this.minibloxResending = true;
-            mc.getConnection().send(new ServerboundPongPacket(Math.abs(pong.getId())));
-            this.minibloxResending = false;
-         }
+         // Krs parity: PacketUtil.sendPacketAsSilent(new ServerboundPongPacket(Math.abs(id))) -
+         // the original pong is NOT cancelled, an extra modified copy goes out.
+         PacketUtil.sendPacketAsSilent(new ServerboundPongPacket(Math.abs(pong.getId())));
       }
    }
 
@@ -457,15 +458,13 @@ public class Disabler2 extends Feature {
       if (mc.player == null) return;
       Packet<?> packet = sending.getPacket();
       if (packet instanceof ServerboundKeepAlivePacket keepAlive) {
-         // Krs mutated the final id field in place; here we cancel and resend a
-         // modified copy, guarding against the re-entrant EventPacketSend dispatch.
-         if (!this.verusResending) {
-            long newId = keepAlive.getId() - RandomUtil.nextInt(1, 2147483647);
-            this.verusResending = true;
-            sending.setCancelled(true);
-            mc.getConnection().send(new ServerboundKeepAlivePacket(newId));
-            this.verusResending = false;
-         }
+         // Krs mutated the final id field in place (id -= random). ServerboundKeepAlivePacket.id
+         // is private final on 26.3 so the in-place mutation is impossible; the faithful
+         // equivalent is to cancel the original and resend a modified copy silently, which also
+         // avoids re-entering this hook (Krs would have looped on a fresh packet otherwise).
+         long newId = keepAlive.getId() - RandomUtil.nextInt(1, 2147483647);
+         sending.setCancelled(true);
+         PacketUtil.sendPacketAsSilent(new ServerboundKeepAlivePacket(newId));
       }
       if (packet instanceof ServerboundMovePlayerPacket) {
          PacketUtil.sendPacket(new ServerboundPlayerInputPacket(new Input(false, false, false, false, false, false, false)));
