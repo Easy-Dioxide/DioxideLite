@@ -49,6 +49,13 @@ public class MovementFix extends Feature {
       return isSprintCorrectionEnabled() && (shouldUseRotationFix() || sprintConditionOverridden);
    }
 
+   // Module-state query mirroring Krs ModuleManager.getModuleState(MovementFix.class),
+   // for call sites that need "is the module on" without the rotation precondition.
+   public static boolean isModuleEnabled() {
+      MovementFix module = inst();
+      return module != null && module.isEnabled();
+   }
+
    public static float getMovementYaw() {
       if (!shouldFixMovement())
          return mc.player != null ? mc.player.getYRot() : 0.0f;

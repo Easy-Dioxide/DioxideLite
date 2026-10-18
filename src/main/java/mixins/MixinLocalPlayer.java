@@ -4,11 +4,16 @@ import com.dioxideliteng.event.Events;
 import com.dioxideliteng.event.impl.EventPreMotion;
 import com.dioxideliteng.event.impl.EventSlowdown;
 import com.dioxideliteng.event.impl.EventSprint;
+import com.dioxideliteng.module.movement.MovementFix;
+import com.dioxideliteng.module.movement.NoSlow2;
+import com.dioxideliteng.module.movement.Sprint2;
 import com.dioxideliteng.util.krs.RotationManager;
 import com.llamalad7.mixinextras.injector.ModifyExpressionValue;
+import com.llamalad7.mixinextras.injector.ModifyReturnValue;
 import com.mojang.authlib.GameProfile;
 import net.minecraft.client.multiplayer.ClientLevel;
 import net.minecraft.client.player.AbstractClientPlayer;
+import net.minecraft.client.player.ClientInput;
 import net.minecraft.client.player.LocalPlayer;
 import net.minecraft.world.phys.Vec3;
 import org.spongepowered.asm.mixin.Mixin;
@@ -24,6 +29,21 @@ public abstract class MixinLocalPlayer extends AbstractClientPlayer {
    private int sprintTriggerTime;
    @Shadow
    protected abstract void sendIsSprintingIfNeeded();
+   @Shadow
+   private boolean isSlowDueToUsingItem() {
+      return false;
+   }
+
+   @Shadow
+   private boolean isSprintingPossible(boolean isFlying) {
+      return false;
+   }
+
+   @Shadow
+   public abstract boolean isMovingSlowly();
+
+   @Shadow
+   public ClientInput input;
    @Unique
    private EventPreMotion dioxideliteng$motion;
    @Unique
@@ -157,5 +177,76 @@ public abstract class MixinLocalPlayer extends AbstractClientPlayer {
       EventSprint sprintEvent = Events.SPRINT.reset(this.sprintTriggerTime, original);
       sprintEvent.call();
       return sprintEvent.isSprinting();
+   }
+
+   // =====================================================================
+   // Krs routine: MovementFix / Sprint sprint-condition hooks
+   // (com.instrumentalist.mixin.injector.ClientPlayerEntityMixin)
+   //
+   // These three hooks make the vanilla sprint start/stop conditions read the
+   // MovementFix-corrected input (the key presses remapped into the spoofed
+   // rotation frame by MovementFix.updateInput) instead of the raw physical
+   // input. Without them, a player who is rotated server-side (KillAura2 /
+   // Scaffold2 telly) keeps the raw movement direction: sprint starts and
+   // stops on the wrong impulse, which is both a functional bug (telly
+   // back-turn sprint lock) and an anticheat tell.
+   // =====================================================================
+
+   // aiStep: the single ClientInput#hasForwardImpulse read feeding the
+   // (swim) sprint start condition.
+   @ModifyExpressionValue(
+      method = {"aiStep"},
+      at = @At(
+         value = "INVOKE",
+         target = "Lnet/minecraft/client/player/ClientInput;hasForwardImpulse()Z"
+      )
+   )
+   private boolean movementFixSprintStartImpulse(boolean original) {
+      if (MovementFix.shouldFixSprintCondition() || Sprint2.shouldSprintOmnidirectional())
+         return MovementFix.hasForwardImpulseForSprint(this.input);
+
+      return original;
+   }
+
+   // canStartSprinting: when vanilla says no, re-evaluate with the corrected
+   // impulse and the NoSlow overrides (mirrors the vanilla body, only the
+   // forward-impulse source and the NoSlow exemptions differ).
+   @ModifyReturnValue(method = "canStartSprinting()Z", at = @At("RETURN"))
+   private boolean canStartSprintingHook(boolean original) {
+      if (original)
+         return original;
+
+      boolean noSlowActive = NoSlow2.noSlowHook();
+      boolean shouldFixForwardImpulse = MovementFix.shouldFixSprintCondition() || Sprint2.shouldSprintOmnidirectional();
+
+      if (!noSlowActive && !shouldFixForwardImpulse)
+         return false;
+
+      if (this.isSprinting() || !MovementFix.hasForwardImpulseForSprint(this.input) || !this.isSprintingPossible(this.getAbilities().flying))
+         return false;
+
+      if (this.isSlowDueToUsingItem() && !noSlowActive)
+         return false;
+
+      if (this.isFallFlying() && !this.isUnderWater())
+         return false;
+
+      return !this.isMovingSlowly() || this.isUnderWater() || noSlowActive && NoSlow2.shouldNoSlowSneak();
+   }
+
+   // shouldStopRunSprinting / shouldStopSwimSprinting: stop the sprint when the
+   // corrected input loses its forward impulse (vanilla reads the raw one).
+   @ModifyExpressionValue(
+      method = {"shouldStopRunSprinting", "shouldStopSwimSprinting"},
+      at = @At(
+         value = "INVOKE",
+         target = "Lnet/minecraft/client/player/ClientInput;hasForwardImpulse()Z"
+      )
+   )
+   private boolean movementFixSprintStopImpulse(boolean original) {
+      if (MovementFix.shouldFixSprintCondition() || Sprint2.shouldSprintOmnidirectional())
+         return MovementFix.hasForwardImpulseForSprint(this.input);
+
+      return original;
    }
 }

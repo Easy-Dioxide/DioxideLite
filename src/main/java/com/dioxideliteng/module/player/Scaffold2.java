@@ -5,6 +5,8 @@ import com.dioxideliteng.event.Events;
 import com.dioxideliteng.module.Category;
 import com.dioxideliteng.module.Feature;
 import com.dioxideliteng.module.FeatureManager;
+import com.dioxideliteng.module.movement.MovementFix;
+import com.dioxideliteng.module.movement.Sprint2;
 import com.dioxideliteng.setting.BooleanSetting;
 import com.dioxideliteng.setting.ModeSetting;
 import com.dioxideliteng.setting.NumberSetting;
@@ -407,7 +409,11 @@ public class Scaffold2 extends Feature {
             player.setSprinting(false);
 
         if (isTellyMovementActive() && hotbarStackSize > 0 && !normalTellyJump && !suppressTellySprint)
-            tryStartSprinting(player);
+            // Krs parity: Scaffold#handleTellyJumpInput calls
+            // Sprint.tryStartSprinting(player, input.keyPresses, true) - the full
+            // Sprint2 decision chain (auto-sprint settings, vanilla-like sprint
+            // preconditions, wall check), not a local forward-key shortcut.
+            Sprint2.tryStartSprinting(player, input.keyPresses == null ? Input.EMPTY : input.keyPresses, true);
 
         if (!isTellyGroundPhase(player))
             return;
@@ -422,21 +428,19 @@ public class Scaffold2 extends Feature {
             InputUtil.setJumping(input, false);
     }
 
-    private void tryStartSprinting(net.minecraft.client.player.LocalPlayer player) {
-        if (player == null) return;
-        Input presses = player.input != null ? player.input.keyPresses : Input.EMPTY;
-        if (presses.forward() && !presses.backward() && !player.isShiftKeyDown())
-            player.setSprinting(true);
-    }
-
     private boolean requestTellyJump(net.minecraft.client.player.LocalPlayer player, ClientInput input) {
         Input keyPresses = input.keyPresses == null ? Input.EMPTY : input.keyPresses;
         if (isTellyNormalJumpTiming(player))
             return requestNormalTellyJump(player, input, keyPresses);
 
+        // Krs parity: Scaffold#requestTellyJump - the telly jump only carries the
+        // sprint flag when the sprint actually started (or was already held).
+        // The old unconditional `sprinting = true` forced the telly jump input to
+        // always sprint, which locked the player into sprinting while tellying
+        // with their back turned and broke the MovementFix sprint correction.
         boolean sprinting = keyPresses.sprint() || player.isSprinting();
-        tryStartSprinting(player);
-        sprinting = true;
+        if (Sprint2.tryStartSprinting(player, keyPresses, true))
+            sprinting = true;
 
         if (!sprinting)
             return false;
@@ -723,7 +727,9 @@ public class Scaffold2 extends Feature {
         var player = mc.player;
         if (player == null || !isMovingInput(input)) return Vec3.ZERO;
 
-        float movementYaw = player.getYRot();
+        // Krs parity: read the movement yaw through MovementFix when the
+        // rotation fix is active (spoofed rotation frame), else the real yaw.
+        float movementYaw = MovementFix.shouldFixMovement() ? MovementFix.getMovementYaw() : player.getYRot();
         return MovementUtil.getHorizontalDirectionVector(getMovementDirection(movementYaw, input));
     }
 
@@ -860,7 +866,8 @@ public class Scaffold2 extends Feature {
         if (player == null || !isMovingInput(input))
             return Vec3.ZERO;
 
-        float movementYaw = player.getYRot();
+        // Krs parity: MovementFix-aware movement yaw (see getAutoSneakDirection).
+        float movementYaw = MovementFix.shouldFixMovement() ? MovementFix.getMovementYaw() : player.getYRot();
         return MovementUtil.getHorizontalDirectionVector(getMovementDirection(movementYaw, input));
     }
 
@@ -2847,6 +2854,12 @@ public class Scaffold2 extends Feature {
         var player = mc.player;
         if (player == null) return 0.0f;
 
+        // Krs parity: while the rotation fix is active the movement direction is
+        // derived from the corrected (raw, pre-sector) input in the player's real
+        // yaw frame, so it stays consistent with the remapped key presses.
+        if (MovementFix.shouldFixMovement())
+            return getMovementDirection(player.getYRot(), MovementFix.getRawInput());
+
         return MovementUtil.getPlayerDirection();
     }
 
@@ -2855,7 +2868,18 @@ public class Scaffold2 extends Feature {
         if (player == null)
             return null;
 
-        Input input = player.input != null ? player.input.keyPresses : Input.EMPTY;
+        // Krs parity: prefer the MovementFix raw input while the module is on;
+        // fall back to the physical input when it shows no movement and the
+        // rotation fix is not active.
+        Input input;
+        if (MovementFix.isModuleEnabled()) {
+            input = MovementFix.getRawInput();
+            if (!isMovingInput(input) && !MovementFix.shouldFixMovement())
+                input = player.input != null ? player.input.keyPresses : Input.EMPTY;
+        } else {
+            input = player.input != null ? player.input.keyPresses : Input.EMPTY;
+        }
+
         return isMovingInput(input) ? getMovementDirection(player.getYRot(), input) : null;
     }
 

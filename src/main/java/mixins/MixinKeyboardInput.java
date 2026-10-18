@@ -25,11 +25,18 @@ public class MixinKeyboardInput {
       at = {@At("TAIL")}
    )
    private void dioxideliteng$dispatchPostMoveInput(CallbackInfo callback) {
+      // Krs parity: KeyboardInputMixin tick TAIL runs the Krs routine first:
+      // MovementFix.updateInput remaps the raw key presses into the spoofed
+      // rotation frame (sector input + sprint correction) and rewrites both
+      // keyPresses and moveVector. It must run BEFORE the module input hooks
+      // (Scaffold2 edgeSafeSneak / tellyJump / autoInputFix via POST_MOVE_INPUT,
+      // Velocity2, WTap) so they observe the corrected input.
+      com.dioxideliteng.module.movement.MovementFix.updateInput((net.minecraft.client.player.ClientInput) (Object) this);
       EventPostMoveInput postMoveInputEvent = Events.POST_MOVE_INPUT;
       postMoveInputEvent.call();
-      // Krs parity: KeyboardInputMixin tick TAIL runs the module input hooks
-      // (Velocity.hookJumpResetInput / WTap.hookWTapInput) after the movement
-      // input fixes, so their modifications land last.
+      // Krs parity: the remaining module input hooks (Velocity.hookJumpResetInput /
+      // WTap.hookWTapInput) run after the movement input fixes, so their
+      // modifications land last.
       com.dioxideliteng.module.combat.Velocity2.hookJumpResetInput((net.minecraft.client.player.ClientInput) (Object) this);
       com.dioxideliteng.module.combat.WTap.hookWTapInput((net.minecraft.client.player.ClientInput) (Object) this);
    }

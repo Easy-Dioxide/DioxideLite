@@ -52,7 +52,10 @@ public class WTap extends Feature {
 
    @Override
    public void onEvent(Event event) {
-      if (event != Events.ATTACK) return;
+      // MixinMultiPlayerGameMode dispatches a fresh EventAttack instance per
+      // attack, so identity comparison against the Events.ATTACK singleton
+      // never matches - match by type instead.
+      if (!(event instanceof EventAttack)) return;
       if (((EventAttack) event).isCancelled()) return;
       onAttack();
    }
