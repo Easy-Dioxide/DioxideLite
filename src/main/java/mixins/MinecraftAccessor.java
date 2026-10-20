@@ -1,0 +1,25 @@
+package mixins;
+
+import net.minecraft.client.Minecraft;
+import net.minecraft.client.User;
+import org.spongepowered.asm.mixin.Mixin;
+import org.spongepowered.asm.mixin.gen.Accessor;
+
+@Mixin({Minecraft.class})
+public interface MinecraftAccessor {
+   @Accessor("rightClickDelay")
+   int getRightClickDelay();
+
+   @Accessor("user")
+   User getUser();
+
+   @Accessor("rightClickDelay")
+   void setRightClickDelay(int rightClickDelay);
+
+   // Krs parity: NoCombatDelay clears Minecraft#missTime every UpdateEvent.
+   @Accessor("missTime")
+   void setMissTime(int missTime);
+
+   @Accessor("user")
+   void setUser(User user);
+}

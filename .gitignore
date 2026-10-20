@@ -1,0 +1,15 @@
+# Gradle / build
+.gradle/
+build/
+
+# Runtime
+run/
+run-caps/
+logs/
+*.log
+
+# IDE
+.idea/
+*.iml
+.DS_Store
+.vscode/

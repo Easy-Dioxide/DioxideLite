@@ -1,0 +1,14 @@
+-d
+/tmp/syncheck
+--enable-preview
+--release
+20
+-nowarn
+src/main/java/com/dioxideliteng/module/movement/LongJump2.java
+src/main/java/com/dioxideliteng/module/movement/MovementFix.java
+src/main/java/com/dioxideliteng/module/movement/NoPush.java
+src/main/java/com/dioxideliteng/module/movement/NoSlow2.java
+src/main/java/com/dioxideliteng/module/movement/PerfectHorseJump.java
+src/main/java/com/dioxideliteng/module/movement/Step.java
+src/main/java/com/dioxideliteng/module/movement/Sprint2.java
+src/main/java/mixins/LocalPlayerSprintAccessor.java
