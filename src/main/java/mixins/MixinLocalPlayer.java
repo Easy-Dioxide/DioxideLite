@@ -111,6 +111,19 @@ public abstract class MixinLocalPlayer extends AbstractClientPlayer {
          ci.cancel();
          return;
       }
+      // Krs parity: ModuleManager#onMotion reads rotationManager at MotionEvent
+      // dispatch time (Client.eventManager.call(event) inside krs$sendPosition),
+      // NOT at tick HEAD. Modules that step their rotations on Events.UPDATE
+      // (Player#aiStep) — AutoPot, Step, AntiAFK2, SpinBot2, CivBreak, Nuker,
+      // Breaker — would otherwise transmit one tick stale, because their
+      // startRotation only lands in RotationManager after the tick-HEAD
+      // snapshot in dioxideliteng$dispatchRotation already ran. Scaffold2 /
+      // KillAura2 (Events.TICK, before the player tick) are unaffected; this
+      // read is idempotent for them.
+      if (RotationManager.INSTANCE.isRotating()) {
+         Events.ROTATION.setYaw(RotationManager.INSTANCE.getRotationYaw());
+         Events.ROTATION.setPitch(RotationManager.INSTANCE.getRotationPitch());
+      }
       this.dioxideliteng$motionYaw = Events.ROTATION.getYaw();
       this.dioxideliteng$motionPitch = Events.ROTATION.getPitch();
    }
