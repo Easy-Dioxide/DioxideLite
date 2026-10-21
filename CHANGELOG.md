@@ -1,5 +1,17 @@
 # Changelog
 
+## B11（2026-10-21）
+
+- 修复 Scaffold2 转头不完整导致的 GrimAC 大量 simulation VL——Krs 移动模拟闭环三处断链全部修复：
+  - `MixinEntity#moveRelative` 补 `MovementFix` / `TargetStrafe` 分支（Krs `EntityMixin#updateVelocity`）：移动向量改用 spoofed yaw，客户端移动系与服务端模拟系对齐（主因）。
+  - `MixinLivingEntity#jumpFromGround` 补全 directionYaw 链（Krs `LivingEntityMixin#jumpEvent`）：冲刺跳跃 0.2 加成沿 spoofed 系施加，接线 `Sprint2#getOmnidirectionalJumpYaw`，加 LocalPlayer 守卫。
+  - `MixinLocalPlayer#preMotion` 补发包前沿 rotationManager 现读（Krs `ModuleManager#onMotion`）：挂 `Events.UPDATE` 的模块转头不再旧一跳。
+- 补 `MixinEntity` 的 `targetStrafeCollisionGuard`（Krs `Entity#move` 变量守卫）。
+- 审计留档：26.3 协议已移除 `ServerboundSwingPacket`（vanilla `useItemOn` 同样不发），`Scaffold2#tryPlaceBlock` 的 `player.swing(...)` 即 26.3 等价物，无需改动。
+- 版本号 `b10 → b11`，构建产物 `dioxideliteng-b11.jar`、`dioxideliteng-b11-sources.jar`。
+
+详细记录见 [devlog-b11.md](devlog-b11.md)。
+
 ## B10（2026-10-20）
 
 - 修复 KillAura2 `"no order"` 摆动模式多发 `ServerboundPunchPacket`（Krs 该模式不产生摆动包）。
