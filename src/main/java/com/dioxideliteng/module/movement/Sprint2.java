@@ -3,17 +3,14 @@ package com.dioxideliteng.module.movement;
 import com.dioxideliteng.event.Event;
 import com.dioxideliteng.event.Events;
 import com.dioxideliteng.event.impl.EventPacketSend;
-import com.dioxideliteng.event.impl.EventWorld;
 import com.dioxideliteng.module.Category;
 import com.dioxideliteng.module.Feature;
 import com.dioxideliteng.module.FeatureManager;
 import com.dioxideliteng.module.player.Scaffold2;
 import com.dioxideliteng.setting.BooleanSetting;
 import com.dioxideliteng.util.krs.MovementUtil;
-import com.dioxideliteng.util.krs.PacketUtil;
 import mixins.LocalPlayerSprintAccessor;
 import net.minecraft.client.player.LocalPlayer;
-import net.minecraft.network.protocol.game.ServerboundPlayerCommandPacket;
 import net.minecraft.world.entity.player.Input;
 import net.minecraft.world.entity.player.Player;
 
@@ -37,6 +34,11 @@ import net.minecraft.world.entity.player.Player;
  *  - {@code KeyboardInput#calculateImpulse} is private in MC 26.3; the identical
  *    vanilla logic is inlined below (same approach as the ported InputUtil/WTap).
  *
+ * <p>Deviation from Krs: the "Silent" sprint behaviour (cancelling outbound
+ * START/STOP_SPRINTING command packets) is intentionally disabled — on 26.3 it
+ * desyncs the server-side/Grim sprint state and causes simulation flags
+ * (see {@link #onSendPacket}). Everything else matches Krs verbatim.
+ *
  * <p>The static entry points (shouldSprintOmnidirectional / getOmnidirectionalJumpYaw /
  * applyInputSprint / tryStartSprinting / keepSprintHook) are preserved verbatim for
  * the Krs ClientPlayerEntityMixin/PlayerEntityMixin/LivingEntityMixin hooks; the
@@ -47,10 +49,11 @@ public class Sprint2 extends Feature {
    private final BooleanSetting autoSprint = new BooleanSetting("Auto Sprint", this, true);
    private final BooleanSetting multiDirection = new BooleanSetting("Multi Direction", this, true);
    private final BooleanSetting keepSprint = new BooleanSetting("Keep Sprint", this, true);
-   private final BooleanSetting silentSprint = new BooleanSetting("Silent", this, true);
+   // Legacy Krs "Silent" toggle, kept for config compatibility only. It no longer affects
+   // packet flow: suppressing START/STOP_SPRINTING desyncs sprint state on 26.3 (see
+   // onSendPacket), which produced per-tick simulation offsets on Grim.
+   private final BooleanSetting silentSprint = new BooleanSetting("Silent", this, false);
    private final BooleanSetting wallCheck = new BooleanSetting("Wall Check", this, false);
-
-   private boolean swimming = false;
 
    public Sprint2() {
       super("Sprint2", Category.MOVEMENT);
@@ -59,19 +62,12 @@ public class Sprint2 extends Feature {
    }
 
    @Override
-   public void onDisable() {
-      this.swimming = false;
-   }
-
-   @Override
    public void onEnable() {
    }
 
    @Override
    public void onEvent(Event event) {
-      if (event instanceof EventWorld) {
-         this.swimming = false;
-      } else if (event == Events.UPDATE) {
+      if (event == Events.UPDATE) {
          onUpdate();
       } else if (event instanceof EventPacketSend sending) {
          onSendPacket(sending);
@@ -87,22 +83,23 @@ public class Sprint2 extends Feature {
    }
 
    private void onSendPacket(EventPacketSend event) {
-      var player = mc.player;
-      if (player == null) return;
-
-      var packet = event.getPacket();
-      if (this.silentSprint.getValue()
-              && packet instanceof ServerboundPlayerCommandPacket commandPacket
-              && (commandPacket.getAction() == ServerboundPlayerCommandPacket.Action.START_SPRINTING || commandPacket.getAction() == ServerboundPlayerCommandPacket.Action.STOP_SPRINTING)) {
-         event.setCancelled(true);
-         if (player.isInWater() && player.isSprinting() && !this.swimming && commandPacket.getAction() == ServerboundPlayerCommandPacket.Action.START_SPRINTING) {
-            PacketUtil.sendPacketAsSilent(new ServerboundPlayerCommandPacket(player, ServerboundPlayerCommandPacket.Action.START_SPRINTING));
-            this.swimming = true;
-         } else if (!player.isSprinting() && this.swimming && commandPacket.getAction() == ServerboundPlayerCommandPacket.Action.STOP_SPRINTING) {
-            PacketUtil.sendPacketAsSilent(new ServerboundPlayerCommandPacket(player, ServerboundPlayerCommandPacket.Action.STOP_SPRINTING));
-            this.swimming = false;
-         }
-      }
+      // 26.3 sprint synchronization chain (verified against vanilla bytecode):
+      //   ServerboundPlayerInputPacket -> ServerGamePacketListenerImpl#handlePlayerInput
+      //     mirrors ONLY input.shift(); the sprint flag of the input packet is ignored by
+      //     the vanilla server. The sole path that tells the server "the player is
+      //     sprinting" is ServerboundPlayerCommandPacket (START/STOP_SPRINTING) ->
+      //     ServerPlayer#setSprinting.
+      //   Grim mirrors this exactly: PacketEntityAction is the ONLY writer of
+      //   player.isSprinting (PacketPlayerSteer merely stores input.isSprinting() into
+      //   knownInput, which the prediction engine never consumes — Grim's own
+      //   "1.21.5+ sprint desync" comment), and PredictionEngine /
+      //   MovementCheckRunner read player.isSprinting for sprint multipliers and the
+      //   sprinting attribute (Grim issue #838: suppressed sprint packets -> the server
+      //   never sees sprinting -> hundreds of simulation flags per match).
+      // Therefore sprint command packets must NEVER be cancelled here: the client sprints
+      // locally (sprint speed / 1.3 multiplier / sprint FOV) while the server would
+      // predict non-sprint movement, producing a per-tick offset -> simulated VL.
+      // Intentionally left as a no-op; the "Silent" setting is legacy (see field).
    }
 
    public static boolean shouldSprintOmnidirectional() {
