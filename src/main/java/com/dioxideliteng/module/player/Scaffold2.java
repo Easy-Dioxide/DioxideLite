@@ -103,10 +103,18 @@ import org.lwjgl.glfw.GLFW;
  *  - {@code Client.rotationManager} replaced with a local {@link RotationManager} instance; its
  *    yaw/pitch are applied to the player through {@link Events#ROTATION}.
  *  - {@code ModuleManager.rotTick} replaced with a local counter.
- *  - {@code MovementFix} (no client equivalent) dropped; movement direction uses the player yaw.
- *  - {@code Sprint.tryStartSprinting} replaced with direct sprint toggling.
+ *  - {@code Sprint.tryStartSprinting} replaced with the ported {@link Sprint2#tryStartSprinting}.
  *  - {@code ServerboundSwingPacket} (removed in 26.3) replaced with {@code player.swing(...)}.
  *  - {@code ModuleManager.getModuleState(SpeedModule)} replaced with a FeatureManager lookup.
+ *
+ * <p>Anticheat parity (B11): this module transmits its spoofed rotations through
+ * {@link RotationManager}. For the client's own movement to stay in the same frame as the
+ * server-side simulation, the standalone <b>Movement Fix</b> module (Krs {@code MovementFix})
+ * must be enabled alongside Scaffold2 — it is a manual switch in Krs too and is never
+ * auto-enabled. With Movement Fix off, the client moves along its real yaw while the server
+ * simulates the transmitted spoofed rotation, which anticheats flag as simulation
+ * violations. The hooks that close this loop: {@code MixinEntity#moveRelative},
+ * {@code MixinLivingEntity#jumpFromGround}, {@code MixinLocalPlayer#preMotion}.
  */
 public class Scaffold2 extends Feature {
 

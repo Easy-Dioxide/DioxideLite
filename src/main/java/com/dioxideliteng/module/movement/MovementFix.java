@@ -27,8 +27,16 @@ import net.minecraft.world.phys.Vec3;
  *    vanilla logic is inlined below (same approach as the ported InputUtil/WTap).
  *
  * <p>The swimming look-vector hook this module needs is appended to
- * {@code mixins/MixinPlayer} (dioxideliteng$movementFixSwimmingLookVector); the
- * remaining mixin injections are not part of this port (see report).
+ * {@code mixins/MixinPlayer} (dioxideliteng$movementFixSwimmingLookVector); since B11 the
+ * remaining mixin injections are wired as well: {@code MixinEntity#moveRelative} (strafe yaw),
+ * {@code MixinLivingEntity#jumpFromGround} (sprint-jump boost direction) and
+ * {@code MixinLocalPlayer#preMotion} (fresh rotationManager read at packet time, Krs
+ * {@code ModuleManager#onMotion}).
+ *
+ * <p>This module is a <b>manual switch</b> (default off), exactly like Krs: no rotation module
+ * auto-enables it. Enable it whenever a rotation module (Scaffold2 / KillAura2) is active,
+ * otherwise the client moves along its real yaw while the server simulates the transmitted
+ * spoofed rotation — a per-tick position divergence flagged as simulation violations.
  */
 public class MovementFix extends Feature {
    private static Input rawInput = Input.EMPTY;

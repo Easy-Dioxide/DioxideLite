@@ -1,5 +1,15 @@
 # Changelog
 
+## B12（2026-10-22）
+
+- Scaffold2 全量排查（对照 Krs 逐行）：模块本体无逻辑漏洞——输入钩子、5 处 MovementFix 调用点、11 处 tower 速度操纵、事件订阅、telly 链全部对应。
+- 定位"模拟 VL"用户侧根因：**Movement Fix 是独立手动开关，默认关闭，Scaffold2 开启不会自动带开**（Krs 全源码同样无自动启用逻辑）。Scaffold2 转头中而 Movement Fix 关闭时，客户端按真实 yaw 移动、发送 spoofed 旋转，每 tick 位置分歧即 simulation VL。**用法：开 Scaffold2 必须同时开 Movement Fix（Movement 分类）。**
+- b10 报 VL 属必然：moveRelative/jumpFromGround 的 MovementFix 分支为 b11 新增，b10 上开不开 Movement Fix 都断链；已升级 b11 并开启 Movement Fix 后链路闭合。
+- 修正 Scaffold2 / MovementFix 两处过时头部注释（原"MovementFix dropped / mixin 未接线"描述与现状矛盾），补 B11 反作弊闭环说明。
+- 版本号 `b11 → b12`，无语义变化，jar 行为与 b11 相同。
+
+详细记录见 [devlog-b12.md](devlog-b12.md)。
+
 ## B11（2026-10-21）
 
 - 修复 Scaffold2 转头不完整导致的 GrimAC 大量 simulation VL——Krs 移动模拟闭环三处断链全部修复：
