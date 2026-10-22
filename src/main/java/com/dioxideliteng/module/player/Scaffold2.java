@@ -176,6 +176,8 @@ public class Scaffold2 extends Feature {
     private static boolean autoSneaking = false;
 
     private final RotationManager rotationManager = RotationManager.INSTANCE;
+    // Scaffold2 ↔ MovementFix auto-link (Krs users pair these by hand; see onEnable).
+    private boolean movementFixWasEnabled = false;
 
     private boolean once = false;
     private double jumpGround = 0.0;
@@ -242,6 +244,18 @@ public class Scaffold2 extends Feature {
         var player = mc.player;
         if (player == null || mc.level == null) return;
 
+        // Krs-ecosystem parity hardening: Krs users enable "Movement Fix" by hand
+        // whenever a rotation module is on. In Krs a Scaffold rotation with
+        // MovementFix off makes the client move along its real yaw while the
+        // server simulates the transmitted spoofed rotation — every tick a
+        // position divergence, which GrimAC flags as simulation violations.
+        // Auto-enable MovementFix alongside Scaffold2 (restoring the previous
+        // state on disable) so the loop can never be left open by accident.
+        movementFixWasEnabled = MovementFix.isModuleEnabled();
+        if (!movementFixWasEnabled && MovementFix.setModuleEnabled(true)) {
+            DynamicIslandManager.notifyInfo("Scaffold2", "已自动开启 Movement Fix（搭路转头闭环）");
+        }
+
         DynamicIslandManager.notifyInfo("Scaffold2", "已开启 Scaffold2 搭路");
         launchY = player.blockPosition().getY();
         lastSlot = player.getInventory().getSelectedSlot();
@@ -287,6 +301,11 @@ public class Scaffold2 extends Feature {
 
         lastSlot = null;
         once = false;
+        // Restore MovementFix to the state it had before Scaffold2 auto-enabled it.
+        if (!movementFixWasEnabled && MovementFix.isModuleEnabled()) {
+            MovementFix.setModuleEnabled(false);
+        }
+        movementFixWasEnabled = false;
         jumpGround = 0.0;
         wasTowering = false;
         checkGround = false;
