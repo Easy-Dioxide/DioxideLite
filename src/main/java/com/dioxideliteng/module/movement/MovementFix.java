@@ -64,6 +64,19 @@ public class MovementFix extends Feature {
       return module != null && module.isEnabled();
    }
 
+   // Used by Scaffold2's auto-link (Krs users pair the two modules by hand; see
+   // Scaffold2#onEnable). Returns false when the module instance cannot be
+   // resolved so the caller can skip its bookkeeping.
+   public static boolean setModuleEnabled(boolean enabled) {
+      MovementFix module = inst();
+      if (module == null || module.isEnabled() == enabled) {
+         return false;
+      }
+
+      module.setEnabled(enabled);
+      return true;
+   }
+
    public static float getMovementYaw() {
       if (!shouldFixMovement())
          return mc.player != null ? mc.player.getYRot() : 0.0f;
