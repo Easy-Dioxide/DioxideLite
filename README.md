@@ -1,135 +1,430 @@
-# DioxideLite
+# DioxideLiteNG b13 — KRS 全量模块移植说明
 
-<div align="center">
-    <img width="128" src="docs/dioxide-lite-logo.png" alt="DioxideLite logo">
-</div>
+## 一、交付物
 
-**DioxideLite** 是一个基于 Mixin 运行时注入的开源 Minecraft 客户端（Fabric），为 Minecraft **26.3** 打造：保留流畅的 HUD 视觉、ClickGUI 与启动体验，并以 **KRS 全量内核移植**的方式提供完整的战斗 / 移动 / 世界 / 杂项能力。
+| 文件 | 说明 |
+|---|---|
+| `dioxideliteng-b13.jar` | 成品 mod（83.8 MB，直接放进 `mods/`） |
+| `dioxideliteng-b13-sources.jar` | 源码 jar，便于对照阅读 |
 
-> 当前版本：**B13** · 平台：Fabric · 游戏版本：Minecraft 26.3 · Java 25 · 支持 Windows / Linux / macOS
+校验值：
+
+```
+3032b5cfd974c0fef60a5378fc15251b54abb555f27e01363365da46cd956aa2  dioxideliteng-b13.jar
+2981e0ab81d2a3b235dad9fff52832ff5129c6b2eab04cf65fde53c835b46d86  dioxideliteng-b13-sources.jar
+```
+
+**版本号**：`mod_version` 已从 `b3` 改为 `b13`，`fabric.mod.json` 中 `version: "b13"`。
 
 ---
 
-## 版本沿革
+## 二、移植范围
 
-| 版本 | 定位 |
-| --- | --- |
-| B2 | 视觉改版：启动动画、主菜单干员主题、ClickGUI / HUD 视觉调整 |
-| B3 | 主菜单立绘更换为「维什戴尔 · 绝对主角」 |
-| B7 | 以 B3 为基座重建，首次移植 Krs 非可视化模块（102 个）+ 事件分发层 |
-| B8 | 修复 B7 运行期缺陷：MovementFix routine 接线、Scaffold2 疾跑、WTap / MaceExploit 攻击钩子 |
-| B9 | 打滑模块全面对照 Krs 审计：Scaffold2 数学放置评分还原、RotationManager 摆动条件精确化 |
-| B10 | 修复 B9 遗留偏差；移植 Krs `Rotations` 渲染模块 |
-| B11 | 修复 Scaffold2 转头导致的 GrimAC simulation VL（移动模拟闭环三处断链） |
-| B12 | Scaffold2 全量排查，定位「模拟 VL」用户侧根因为 Movement Fix 未手动开启 |
-| **B13** | **改用整套内核移植**：搬入 KRS 运行时（133 模块类 + 86 Mixin），以桥接层接入 NG 界面 |
+KRS 最新版（MC 26.3）的功能模块**全量移植**，包括你点名的视觉 reader。
 
-> B7–B12 走的是「按模块逐个重写成 NG 风格」的路线，B13 改为「保留 KRS 内核 + 加适配层」。两条路线的差异见 [devlog-b13.md](devlog-b13.md) 第二节。
+### 2.1 已移植内容
 
-## 特性
+| 类别 | 数量 | 说明 |
+|---|---|---|
+| KRS 模块类 | 133 | 全部重映射进 `com.dioxideliteng.krs` |
+| 参与界面注册 | 124 | 124 个正式模块全部接入 NG 桥接层 |
+| Mixin | 87 | 全部注册进 `dioxideliteng.krs.mixins.json` |
+| Access Widener | 1 | `krs.accesswidener`（126 行） |
+| 内嵌依赖 | 39 | 全部改包名后编入 jar `META-INF/jars/` |
 
-### 界面与品牌
+### 2.2 包名重映射
 
-- **启动动画**：LaunchIntro 四阶段（boot → login → connection → emblem），「轮回」品牌标识 + TERMINAL SERVICE 登录窗，约 13 秒。
-- **主菜单（干员主题）**：「风暴瞭望 STORMWATCH」活动入口、干员立绘、终端数值面板（理智 / 等级 / 关卡进度 / 日期横幅）。
-- **渐变品牌消息前缀**：聊天每字符按色相渐变渲染。
-- **ClickGUI**：多主题布局，左键开关模块、右键展开设置，GUI Scale 可调。
-- **HUD 编辑器**：ClickGUI 右下角铅笔按钮进入，自由拖拽排版（RESET / DONE）。
-- **DynamicIsland 灵动岛**：顶部胶囊信息面板，实时显示客户端版本 / FPS / 延迟 / 模块开关提示。
-- **账户管理**：微软登录（内嵌 WebView）、Altening 会话、账户保存与切换。
-
-### 模块体系
-
-**KRS 内核移植（129 个模块类，界面注册 125 个）**
-
-| 分类 | 数量 | 代表模块 |
-| --- | --- | --- |
-| Combat | 16 | KillAura2、Velocity2、Backtrack2、Criticals2、AntiBot2、AutoTotem2、Reach、WTap、MaceExploit、CrossbowExploit |
-| Movement | 24 | Speed2、LongJump2、Stasis2、Sprint2、NoSlow2、InventoryMove2、ElytraFly、Jesus、Spider、Step、Parkour |
-| Player | 23 | Scaffold2、ChestStealer2、InvManager2、NoFall2、AutoTool2、Freecam、Phase、SpinBot、MiddleClick |
-| Render | 24 | NameTags2、FullBright2、ClickGui2、ESP、Rotations、ViewModel、Zoom、PlayerIndicator |
-| Exploit | 18 | Blink2、XCarry、PortalGodMode、PacketDuper、ChestTP、PathFinder、NoBreakReset |
-| Level | 14 | Timer2、Nuker、Xray、CaveFinder、NoteBot、Spammer、Breaker、CivBreak |
-| Dev/Misc | 9 | Disabler2、PluginsDetector、FukumaiPlayerTracker、ChatExcepChecker、BlockBreakSimulator2 |
-
-**NG 原生模块（53 个）**
-
-保留 B1–B3 时期的全部原生模块，与 KRS 模块共存于同一 ClickGUI。名称冲突的 22 个已自动加 `2`，例如 `KillAura`（NG 原生）与 `KillAura2`（KRS 版）。
-
-### 工程与安全
-
-- **静默转头（silent aim）**：`RotationManager` 三态（client / server / render）旋转引擎，转头值与发包值分离。
-- **事件系统**：NG 的 `EventBus`（priority 分发）+ KRS 的 `EventManager` 双总线并存，由适配层协调。
-- **配置持久化**：原子化写入（AtomicFiles / ClientStateStore）、`.config save/load` 预设。
-- **Mixin 注入**：NG 原有 + KRS 移植共 **140 个**，覆盖渲染 / 输入 / 网络 / 菜单多个切面。
-- **Access Widener**：`krs.accesswidener`（126 行）。
-
-## 截图
-
-| 启动动画 | 主菜单 |
-| --- | --- |
-| ![启动动画](docs/screenshots/b2-loading.png) | ![主菜单](docs/screenshots/b2-main-menu.png) |
-
-| ClickGUI | HUD 游戏界面 |
-| --- | --- |
-| ![ClickGUI](docs/screenshots/b2-clickgui.png) | ![HUD 游戏界面](docs/screenshots/b2-hud.png) |
-
-## 使用方式
-
-1. 从 [Releases](https://github.com/Easy-Dioxide/DioxideLite/releases) 下载 `dioxideliteng-b13.jar`，或自行构建。
-2. 为 Minecraft 26.3 安装 Fabric Loader 0.19.5+。
-3. 将 jar 放入 `mods` 目录，用 Java 25 启动 Fabric 档位。
-4. **Right Shift** 打开 ClickGUI；聊天输入 `.help` 查看指令；`.config save/load <name>` 管理预设。
-5. 自动状态存于 `dioxideliteng/state.json`，预设存于 `dioxideliteng/configs/`（游戏目录下）。
-
-> **踩坑提示**：开 `Scaffold2` 时必须同时开启 `Movement Fix`（Movement 分类）。KRS 源码无自动启用逻辑，若只开 Scaffold2，客户端按真实 yaw 移动、发送欺骗旋转，每 tick 位置分歧会产生大量 GrimAC simulation VL。
-
-## 构建
-
-使用 JDK 25（Temurin 25.0.4.1 LTS）：
-
-```bash
-./gradlew clean build
+```
+com.instrumentalist.krs      -> com.dioxideliteng.krs
+com.instrumentalist.mixin.*  -> com.dioxideliteng.mixin.krs
+org.nvgu                     -> com.dioxideliteng.krs.nvgu
+xyz.breadloaf.imguimc        -> com.dioxideliteng.krs.imguimc
 ```
 
-产物位于 `build/libs/`：
+`org.json` 用了另一套方案：org.json 的版本号是纯日期（如 `20240303`），不满足 Fabric 的 semver 校验，会导致 mod 拒绝加载。因此写了一份 **Gson 实现的 `org.json` 兼容层**，保留原包名，KRS 业务代码零改动。
 
-- `dioxideliteng-b13.jar`（83.8 MB，含内嵌依赖与各平台 natives）
-- `dioxideliteng-b13-sources.jar`（19.9 MB）
+---
 
-## 源码规模
+## 三、功能注册（桥接设计）
 
-| 项目 | 数量 |
-| --- | --- |
-| Java 源文件 | 648 |
-| KRS 移植部分 | 396 |
-| 功能模块 | 182（KRS 内核 129 + NG 原生 53） |
-| Mixin | 140（KRS 86 + NG 原生 54） |
+两套框架差异很大，没有硬塞进同一套体系，而是加了桥接层：
 
-## 更新日志
+- **NG**：抽象类 `Feature` + `EventBus` 按 priority 分发 + 手动声明 `BooleanSetting/NumberSetting/ModeSetting`
+- **KRS**：`Module implements EventListener` + 反射 `@Module.Setting` 注解 + `SettingValue<T>` 体系
 
-| 版本 | Devlog |
-| --- | --- |
-| B13 | [devlog-b13.md](devlog-b13.md) — KRS 全量内核移植（133 模块类 + 86 Mixin），桥接层接入 NG 界面，22 个重名模块加 `2` |
-| B12 | [devlog-b12.md](devlog-b12.md) — Scaffold2 全量排查，定位模拟 VL 根因为 Movement Fix 未开启 |
-| B11 | [devlog-b11.md](devlog-b11.md) — 修复 Scaffold2 转头导致的 GrimAC simulation VL（移动模拟闭环三处断链） |
-| B10 | [devlog-b10.md](devlog-b10.md) — 修复 no order 摆动包 / hypixel ncp 门控 / Blink2 Freecam 门控；移植 Krs `Rotations` |
-| B9 | [devlog-b9.md](devlog-b9.md) — 打滑模块全面对照 Krs 审计，Scaffold2 数学放置评分还原 |
-| B8 | [devlog-b8.md](devlog-b8.md) — 接线 Krs MovementFix routine，修复 Scaffold2 疾跑与 WTap / MaceExploit 钩子 |
-| B7 | [devlog-b7.md](devlog-b7.md) — 以 B3 为基座全量移植 Krs 非可视化模块（102 个） |
-| B3 | [devlog-b3.md](devlog-b3.md) — 主菜单立绘更换为「维什戴尔 · 绝对主角」 |
-| B2 | [devlog-b2.md](devlog-b2.md) — 视觉改版：启动动画与主菜单视觉升级 + ClickGUI / HUD 视觉调整 |
+### 3.1 KrsModuleAdapter
 
-详细更新记录见 [CHANGELOG.md](CHANGELOG.md)。
+把 KRS 的 `Module` 包装成 NG 的 `Feature`：
 
-## 致谢
+- `onEnable()/onDisable()` → `module.setState(true/false)`
+- 反射读取 `@Module.Setting` 标注的字段，逐个映射成 NG 设置项
+- **每 tick 双向同步**：NG 界面改动写回 KRS（触发 KRS 自己的 onChange），KRS 内部改值也回写到界面
 
-绕过逻辑参考并移植自 [Krs](https://github.com/Aspw-w/Krs)（作者 Aspw-w）。B13 起采用整套内核移植，仅做包名重映射与事件系统适配，模块逻辑保持原样。
+| KRS 类型 | NG 类型 |
+|---|---|
+| `BooleanValue` | `BooleanSetting` |
+| `FloatValue` / `IntValue` | `NumberSetting` |
+| `ListValue` | `ModeSetting` |
+| `KeyBindValue` / `TextValue` / `ColorValue` | 跳过（NG 无对应编辑器） |
 
-## 许可
+### 3.2 分类映射
 
-本项目基于 **GPL-3.0-or-later** 开源（详见 [LICENSE](LICENSE)）。
+KRS 的 `ModuleCategory` 枚举常量是 `Combat`/`Movement`/`Player`/`Render`/`Exploit`/`Level`/`Dev`（首字母大写）。这里按**枚举对象**匹配而不是字符串比较，避免大小写不一致导致所有模块静默落进 MISC：
 
-## 联系
+| KRS | NG |
+|---|---|
+| Combat | COMBAT |
+| Movement | MOVEMENT |
+| Player | PLAYER |
+| Render | VISUAL |
+| Exploit / Level / Dev | MISC |
 
-QQ：**81622964**
+### 3.3 界面处理
+
+**不搬 KRS 的 GUI**，只搬功能：
+
+- `NanoVGClickGuiScreen` 改为空占位 `Screen`
+- `ModuleRenderable`（原 1003 行 ImGui 面板）退化为转发壳
+- 删掉 `ModuleManager` 里用右 Shift 打开 KRS 界面的逻辑 —— 否则会和 NG 的 ClickGui 抢同一个键
+
+KRS 的聊天命令系统保留（`KrsCommands`，约 396 行）。
+
+---
+
+## 四、重名处理
+
+判定规则：**类名 + 显示名都比对**，且做归一化（忽略大小写、空格、标点），因为 KRS 显示名带空格（`"Kill Aura"`），NG 不带（`"KillAura"`），直接字符串比较永远不相等。
+
+共 **22 个**重名模块已加 `2`：
+
+| KRS 原名 | KRS 类名 | NG 已有 | 最终名称 |
+|---|---|---|---|
+| AntiBot | `AntiBot` | AntiBot | **AntiBot2** |
+| AutoTool | `AutoTool` | AutoTool | **AutoTool2** |
+| AutoWalk | `AutoWalk` | AutoWalk | **AutoWalk2** |
+| Backtrack | `Backtrack` | Backtrack | **Backtrack2** |
+| Blink | `Blink` | Blink | **Blink2** |
+| ChestStealer | `ChestStealer` | ChestStealer | **ChestStealer2** |
+| ClickGui | `ClickGui` | ClickGui | **ClickGui2** |
+| Criticals | `Criticals` | Criticals | **Criticals2** |
+| Disabler | `DisablerModule` | Disabler | **Disabler2** |
+| FullBright | `FullBright` | FullBright | **FullBright2** |
+| InventoryMove | `InventoryMove` | InventoryMove | **InventoryMove2** |
+| KillAura | `KillAura` | KillAura | **KillAura2** |
+| LongJump | `LongJump` | LongJump | **LongJump2** |
+| NameTags | `NameTags` | NameTags | **NameTags2** |
+| NoFall | `NoFall` | NoFall | **NoFall2** |
+| NoSlow | `NoSlow` | NoSlow | **NoSlow2** |
+| Scaffold | `Scaffold` | Scaffold | **Scaffold2** |
+| Speed | `SpeedModule` | Speed | **Speed2** |
+| Sprint | `Sprint` | Sprint | **Sprint2** |
+| Stasis | `Stasis` | Stasis | **Stasis2** |
+| Timer | `Timer` | Timer | **Timer2** |
+| Velocity | `Velocity` | Velocity | **Velocity2** |
+
+> 注：KRS 的 `NoHurtCam` / `InvManager` 与 NG 的 `NoHurtCamera` / `InventoryManager` 名称不同，**不算重名**，保持原名。
+
+显示名同时抹掉了空格，与 NG 的紧凑风格统一（`KillAura2` 而不是 `Kill Aura2`）。
+
+---
+
+## 五、模块清单（124 个主力 + 1 个 Dev 白名单 = 125）
+
+#### Combat（16 个）
+
+| 显示名 | 类名 |
+|---|---|
+| AntiBot | `AntiBot` |
+| AutoPot | `AutoPot` |
+| AutoTotem | `AutoTotem` |
+| Backtrack | `Backtrack` |
+| Criticals | `Criticals` |
+| CrossbowExploit | `CrossbowExploit` |
+| FastBow | `FastBow` |
+| FastEat | `FastEat` |
+| KillAura | `KillAura` |
+| MaceExploit | `MaceExploit` |
+| NoCombatDelay | `NoCombatDelay` |
+| Reach | `Reach` |
+| TargetStrafe | `TargetStrafe` |
+| Teams | `Teams` |
+| Velocity | `Velocity` |
+| WTap | `WTap` |
+
+#### Movement（24 个）
+
+| 显示名 | 类名 |
+|---|---|
+| AntiLevitation | `AntiLevitation` |
+| AntiVoid | `AntiVoid` |
+| AutoRocket | `AutoRocket` |
+| AutoSneak | `AutoSneak` |
+| AutoWalk | `AutoWalk` |
+| ElytraFly | `ElytraFly` |
+| EntityControl | `EntityControl` |
+| EntityFly | `EntityFly` |
+| FastFall | `FastFall` |
+| InventoryMove | `InventoryMove` |
+| Jesus | `Jesus` |
+| LongJump | `LongJump` |
+| MovementFix | `MovementFix` |
+| NoJumpCooldown | `NoJumpCooldown` |
+| NoPush | `NoPush` |
+| NoSlow | `NoSlow` |
+| NoWeb | `NoWeb` |
+| Parkour | `Parkour` |
+| PerfectHorseJump | `PerfectHorseJump` |
+| SafeWalk | `SafeWalk` |
+| Spider | `Spider` |
+| Sprint | `Sprint` |
+| Stasis | `Stasis` |
+| Step | `Step` |
+
+#### Player（23 个）
+
+| 显示名 | 类名 |
+|---|---|
+| AirPlace | `AirPlace` |
+| AntiAFK | `AntiAFK` |
+| AutoFish | `AutoFish` |
+| AutoLeave | `AutoLeave` |
+| AutoRespawn | `AutoRespawn` |
+| AutoTool | `AutoTool` |
+| ChatCommands | `ChatCommands` |
+| ChestStealer | `ChestStealer` |
+| DurabilityAlert | `DurabilityAlert` |
+| FastBreak | `FastBreak` |
+| FastLadder | `FastLadder` |
+| Freecam | `Freecam` |
+| HackerDetector | `HackerDetector` |
+| InvManager | `InvManager` |
+| LookTP | `LookTP` |
+| MiddleClick | `MiddleClick` |
+| MurdererDetector | `MurdererDetector` |
+| NoFall | `NoFall` |
+| Phase | `Phase` |
+| Scaffold | `Scaffold` |
+| SneakSpam | `SneakSpam` |
+| SpinBot | `SpinBot` |
+| Stalker | `Stalker` |
+
+#### Render（24 个）
+
+| 显示名 | 类名 |
+|---|---|
+| AntiBlind | `AntiBlind` |
+| CameraNoClip | `CameraNoClip` |
+| Capes | `Capes` |
+| ClickGui | `ClickGui` |
+| CustomModel | `CustomModel` |
+| ESP | `ESP` |
+| FPSBobbing | `FPSBobbing` |
+| FullBright | `FullBright` |
+| HudHider | `HUDHider` |
+| ImGui | `ImGui` |
+| Imposter | `Imposter` |
+| Interface | `Interface` |
+| KillEffect | `KillEffect` |
+| NameTags | `NameTags` |
+| NoHurtCam | `NoHurtCam` |
+| OldHitting | `OldHitting` |
+| PlayerIndicator | `PlayerIndicator` |
+| Rotations | `Rotations` |
+| ThunderDetector | `ThunderDetector` |
+| TrueSight | `TrueSight` |
+| ViewModel | `ViewModel` |
+| WidelyPutin | `WidelyPutin` |
+| WorldTime | `WorldTime` |
+| Zoom | `Zoom` |
+
+#### Exploit（18 个）
+
+| 显示名 | 类名 |
+|---|---|
+| Blink | `Blink` |
+| BrandSpoofer | `BrandSpoofer` |
+| ChestTP | `ChestTP` |
+| ConsoleSpammer | `ConsoleSpammer` |
+| EntityDesync | `EntityDesync` |
+| ExploitPatcher | `ExploitPatcher` |
+| FakePinger | `FakePinger` |
+| LongThrow | `LongThrow` |
+| NoBreakReset | `NoBreakReset` |
+| PackSpoofer | `PackSpoofer` |
+| PacketDuper | `PacketDuper` |
+| PathFinder | `PathFinder` |
+| PortalGodMode | `PortalGodMode` |
+| PortalScreen | `PortalScreen` |
+| ServerCrasher | `ServerCrasher` |
+| SurroundTP | `SurroundTP` |
+| TransactionConfirmBlinker | `TransactionConfirmBlinker` |
+| XCarry | `XCarry` |
+
+#### Level（14 个）
+
+| 显示名 | 类名 |
+|---|---|
+| AlwaysRiptide | `AlwaysRiptide` |
+| AntiCheatDetector | `AntiCheatDetector` |
+| AutoBypass | `AutoBypass` |
+| Breaker | `Breaker` |
+| CaveFinder | `CaveFinder` |
+| CivBreak | `CivBreak` |
+| ItemDropChanger | `ItemDropChanger` |
+| NoBreakCooldown | `NoBreakCooldown` |
+| NoteBot | `NoteBot` |
+| Nuker | `Nuker` |
+| QuickMacro | `QuickMacro` |
+| Spammer | `Spammer` |
+| Timer | `Timer` |
+| Xray | `Xray` |
+
+#### Dev（10 个）
+
+| 显示名 | 类名 |
+|---|---|
+| BlockBreakSimulator2 | `BlockBreakSimulator2` |
+| ChatExcepChecker | `ChatExcepChecker` |
+| Debugga | `Debugga` |
+| FukumaiPlayerTracker | `FukumaiPlayerTracker` |
+| HatenaPiano | `HatenaPiano` |
+| MovementUtilTest | `MovementUtilTest` |
+| NoMoreAutism | `NoMoreAutism` |
+| PluginsDetector | `PluginsDetector` |
+| Sex | `Sex` |
+| TuckMod | `TuckMod` |
+
+
+---
+
+## 六、验证结果（本地实跑）
+
+全部结论来自 Minecraft 26.3 + Fabric Loader 0.19.5 的 `runClient` 真实启动，
+不是静态检查。
+
+### 6.1 端到端自检
+
+启动时输出的自检结果：
+
+```
+[SELFCHECK] expected=125  ngAdapters=125  uniqueBridged=125
+            missingInNg=0  cmdUnreachable=0  settingNull=0  ngTotalFeatures=177
+```
+
+| 指标 | 值 | 含义 |
+|---|---|---|
+| `expected` | 125 | 应被桥接的 KRS 模块全集（`modules` 124 + Dev 白名单 1） |
+| `ngAdapters` | 125 | NG 模块表里的 `KrsModuleAdapter` 实例数 |
+| `uniqueBridged` | 125 | 去重后的实际桥接模块数 |
+| `missingInNg` | **0** | 没有任何模块漏接 —— ClickGui 里能全部看到 |
+| `cmdUnreachable` | **0** | 每个模块都能被 KRS 命令层 `/t <名字>` 唯一命中 |
+| `settingNull` | **0** | 354 个 `@Module.Setting` 反射字段无一为 null |
+| `ngTotalFeatures` | 177 | NG 侧模块表总条目（52 个原生 + 125 个 KRS） |
+
+> 口径说明：`ModuleManager.modules` 是 124 个主力模块；`devModules` 里另有 8 个调试工具，
+> 其中 `FukumaiPlayerTracker` 按白名单并入界面（共 125），其余 7 个
+> （`BlockBreakSimulator2` / `Debugga` / `NoMoreAutism` / `ChatExcepChecker` /
+> `MovementUtilTest` / `TuckMod` / `Sex`）属纯调试用途，不暴露给界面。
+
+### 6.2 启动与渲染
+
+| 项目 | 结果 |
+|---|---|
+| `./gradlew clean build` | ✅ BUILD SUCCESSFUL |
+| 加载 mod 数 | ✅ `Loading 52 mods`，含 `dioxideliteng b13` |
+| Mixin 应用错误 | ✅ 0 条 `InvalidInjectionException` |
+| 兼容渲染层 | ✅ `Krs legacy UI compatibility renderer enabled for graphics backend Vulkan` |
+| NanoVG HUD | ✅ `nano hud frame started=true, available=true` |
+| 主菜单渲染 | ✅ 完整显示（立绘 / Lv 120 / 325 终端 / 单人游戏 / 多人游戏 / 选项 / 模组） |
+| 运行稳定性 | ✅ 连续运行至超时退出，无崩溃 |
+
+### 6.3 本轮修复的四个硬伤
+
+移植版此前「启动不了」，根因有四处，全部已修：
+
+**① `MinecraftClientMixin` 完全缺失**（最严重）
+
+KRS 原版 91 个 mixin，移植版只有 87 个，缺的正是这个。后果是双层的：
+
+- `GraphicsApiCompatibility.initialize()` 全库无调用点 → `initialized` 恒为 false →
+  `usesCompatibilityRenderer()` 恒为 false → Vulkan 后端下 ImGui / NanoVG 直接对
+  无 GL 上下文的设备发 GL 调用 → JVM abort（`No context is current`）；
+- `TickEvent` / `WorldEvent` / `HandleInputEvent` 三个事件**没有任何派发点**，
+  依赖它们的模块全部静默失效。
+
+现在 `RenderSystem.initRenderer` 之后初始化兼容层，并在 `tick` / `setLevel` /
+`Gui.overlay` / `continueAttack` / `startUseItem` / `stop` 等处补齐派发点。
+
+**② `GlBackendMixin` 的 `@ModifyVariable` 不生效**
+
+`createWindow` 的字节码是 `ldc2_w 2L` + `lload` + `lor`，flags 由位运算合并而来，
+不是局部变量直传。改用 `@WrapOperation` 拦截 `SDL_CreateWindow` 调用本身，
+同时剥离与 OpenGL 互斥的 `VULKAN` 标志位并要求 8 位 stencil。
+
+**③ `Initializer` 放错了包**
+
+它被放在已声明的 mixin 包 `com.dioxideliteng.mixin.krs` 下，但自身不是 `@Mixin`，
+Mixin 框架拒绝直接引用（`IllegalClassLoadError`）。已迁至
+`com.dioxideliteng.krs.render.Initializer`。
+
+**④ `TimerUtil` 与 NG 的计时器注入冲突**
+
+NG 自己的 `MixinTimer` 用 `@Overwrite` 重写了 `advanceGameTime`，KRS 的
+`@At("FIELD")` 注入必然失败（原 `RenderTickCounterDynamicMixin` 已删除）。
+改为每刻把 `TimerUtil.timerSpeed` 桥接到 NG 的 `TimerController`，
+`Timer` / `Spider` / `LongJump` / `TuckMod` 的倍速行为保持一致。
+
+### 6.4 关于 OpenGL 后端
+
+在本沙箱的 Xvfb + llvmpipe 软件渲染环境下，**OpenGL 后端无法创建 GLX visual**：
+
+```
+BackendCreationException: Failed to create window for OpenGL context:
+Couldn't find matching GLX visual
+```
+
+这**不是移植问题** —— 不带任何 mod 的原版 MC 26.3 在此环境同样失败。
+我用 T7~T15 十余个独立 SDL 测试程序逐个排查了 stencil、srgb、depth、multisample、
+`SDL_Init` flags、Vulkan→GL 调用顺序、各种窗口标志组合，SDL 层全部成功，
+问题出在更上层的 GLX visual 匹配，属环境限制。
+
+MC 26.3 会在此后自动回落到 Vulkan 后端并正常初始化，上面所有验证都是在
+**Vulkan 后端**下完成的。
+
+### 6.5 关于 Sodium / Iris
+
+jar **默认不内嵌** Sodium / Iris，需自己放进 `mods/`。原因是 Iris 不支持 Vulkan：
+`IrisRenderSystem` 的静态块会无条件调用 `glGetInteger` 查询采样器上限，
+在 Vulkan 后端下没有当前 GL 上下文，会直接让 JVM abort。
+
+这与 KRS 原版策略一致 —— KRS 也没把这两个当内嵌件。移植的 7 个针对
+Sodium / Iris / Indigo 的 Mixin 在缺席时只会打 `ClassNotFoundException` WARN，
+自动跳过，不影响任何其他功能。
+
+如需内嵌，构建时加 `-PembedGraphicsMods=true`（但请确保跑 OpenGL 后端）。
+
+---
+
+## 七、安装与使用
+
+```bash
+# 1. 放进 mods/
+dioxideliteng-b13.jar
+
+# 2. 必需前置（已内嵌 39 个库，但以下仍需自备）
+Fabric Loader >= 0.19.5
+Fabric API
+MixinExtras >= 0.4.1
+Java >= 25
+
+# 3. 可选（相关 Mixin 才会生效）
+Sodium 0.9.x+mc26.3
+Iris 1.11.x+mc26.3
+```
+
+**模块全部默认关闭**，需要在 ClickGui 里手动开启。
+
+KRS 模块在 NG 的 ClickGui 里按分类排列；同名模块带 `2` 后缀
+（如 `KillAura2`），共 22 个。KRS 自己的聊天命令系统也保留了（约 396 行）。
+
+---
