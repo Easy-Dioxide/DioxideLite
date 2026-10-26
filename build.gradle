@@ -10,6 +10,11 @@ base {
     archivesName = project.archives_base_name
 }
 
+// KRS 移植带来的 accesswidener（官方命名）。NG 自身不使用 AW。
+loom {
+    accessWidenerPath = file('src/main/resources/krs.accesswidener')
+}
+
 repositories {
     maven {
         name = 'Fabric'
@@ -23,6 +28,8 @@ repositories {
 dependencies {
     minecraft "com.mojang:minecraft:${project.minecraft_version}"
     implementation "net.fabricmc:fabric-loader:${project.loader_version}"
+    // KRS 移植：IndigoXrayBlockRendererMixin 使用 Fabric 渲染 API。
+    implementation "net.fabricmc.fabric-api:fabric-api:${project.fabric_api_version}"
     testImplementation platform('org.junit:junit-bom:5.13.4')
     testImplementation 'org.junit.jupiter:junit-jupiter'
     testRuntimeOnly 'org.junit.platform:junit-platform-launcher'
@@ -52,6 +59,27 @@ dependencies {
     runtimeOnly include("org.lwjgl:lwjgl-nanovg:${extraLwjglVersion}:natives-windows-arm64")
     runtimeOnly include("org.lwjgl:lwjgl-nanovg:${extraLwjglVersion}:natives-macos")
     runtimeOnly include("org.lwjgl:lwjgl-nanovg:${extraLwjglVersion}:natives-macos-arm64")
+
+    // ---- KRS 移植所需的运行时库 ----
+    // ImGui 绑定：KRS 的 imguimc 界面框架（模块渲染窗口、按键监听）依赖它。
+    def imguiVersion = '1.86.11'
+    implementation include("io.github.spair:imgui-java-binding:${imguiVersion}")
+    implementation(include("io.github.spair:imgui-java-lwjgl3:${imguiVersion}")) { exclude group: 'org.lwjgl' }
+    runtimeOnly include("io.github.spair:imgui-java-natives-windows:${imguiVersion}")
+    runtimeOnly include("io.github.spair:imgui-java-natives-linux:${imguiVersion}")
+    runtimeOnly include("io.github.spair:imgui-java-natives-macos:${imguiVersion}")
+    // 网络/JSON/音频/WebP 解码：由 KRS 的 utils.network、utils.audio、custommodel 使用。
+    implementation include("org.apache.httpcomponents:httpclient:4.5.14")
+    implementation include("javazoom:jlayer:1.0.1")
+    implementation include("com.twelvemonkeys.imageio:imageio-webp:3.12.0")
+    // KRS 的 NanoVG 字体加载（NVGFont / NanoVGManager）走 STB。
+    implementation include("org.lwjgl:lwjgl-stb:${extraLwjglVersion}")
+    runtimeOnly include("org.lwjgl:lwjgl-stb:${extraLwjglVersion}:natives-linux")
+    runtimeOnly include("org.lwjgl:lwjgl-stb:${extraLwjglVersion}:natives-linux-arm64")
+    runtimeOnly include("org.lwjgl:lwjgl-stb:${extraLwjglVersion}:natives-windows")
+    runtimeOnly include("org.lwjgl:lwjgl-stb:${extraLwjglVersion}:natives-windows-arm64")
+    runtimeOnly include("org.lwjgl:lwjgl-stb:${extraLwjglVersion}:natives-macos")
+    runtimeOnly include("org.lwjgl:lwjgl-stb:${extraLwjglVersion}:natives-macos-arm64")
     runtimeOnly include("org.lwjgl:lwjgl-glfw:${extraLwjglVersion}:natives-windows")
     runtimeOnly include("org.lwjgl:lwjgl-glfw:${extraLwjglVersion}:natives-windows-arm64")
     runtimeOnly include("org.lwjgl:lwjgl-glfw:${extraLwjglVersion}:natives-linux")
@@ -103,5 +131,14 @@ tasks.named('test', Test) {
     useJUnitPlatform()
     javaLauncher = javaToolchains.launcherFor {
         languageVersion = JavaLanguageVersion.of(25)
+    }
+}
+
+// 临时任务：导出编译期完整 classpath，供无头验证使用
+tasks.register('dumpCp') {
+    doLast {
+        def all = (sourceSets.main.runtimeClasspath + sourceSets.main.compileClasspath).files.collect { it.absolutePath }.unique()
+        new File('/tmp/harness/cp.txt').text = all.join(':')
+        println "classpath entries: ${all.size()}"
     }
 }

@@ -1,0 +1,86 @@
+package com.dioxideliteng.krs.hacks.features.combat;
+
+import com.dioxideliteng.krs.events.features.AttackEvent;
+import com.dioxideliteng.krs.events.features.SendPacketEvent;
+import com.dioxideliteng.krs.hacks.Module;
+import com.dioxideliteng.krs.hacks.ModuleCategory;
+import com.dioxideliteng.krs.hacks.ModuleManager;
+import com.dioxideliteng.krs.hacks.features.movement.fly.FlyModule;
+import com.dioxideliteng.krs.utils.ChatUtil;
+import com.dioxideliteng.krs.utils.packet.PacketUtil;
+import com.dioxideliteng.krs.utils.value.BooleanValue;
+import com.dioxideliteng.krs.utils.value.ListValue;
+import net.minecraft.network.protocol.Packet;
+import net.minecraft.network.protocol.game.ServerboundMovePlayerPacket;
+import net.minecraft.world.item.MaceItem;
+import net.minecraft.world.phys.Vec3;
+import com.dioxideliteng.krs.utils.input.Keys;
+
+public class Criticals extends Module {
+    @Setting
+    private final ListValue mode = new ListValue("Mode", new String[]{"Packet", "Less Packet"}, "Packet");
+
+    @Setting
+    private final BooleanValue cooldownCheck = new BooleanValue("Cooldown Check", false);
+
+    private final double[] packetValues = new double[]{0.0625D, 0.0D, 0.05D, 0.0D};
+    private final double[] lessPacketValues = new double[]{0.0625D, 0.0D};
+
+    public Criticals() {
+        super("Criticals", ModuleCategory.Combat, Keys.KEY_UNKNOWN, false, true);
+    }
+
+    @Override
+    public String tag() {
+        return mode.get();
+    }
+
+    @Override
+    public void onDisable() {
+    }
+
+    @Override
+    public void onEnable() {
+    }
+
+    @Override
+    public void onSendPacket(SendPacketEvent event) {
+        if (mc.player == null) return;
+
+        Packet<?> packet = event.packet;
+
+    }
+
+    @Override
+    public void onAttack(AttackEvent event) {
+        var player = mc.player;
+        if (player == null) return;
+        if (!player.onGround()
+                || player.getMainHandItem().getItem() instanceof MaceItem
+                || ModuleManager.getModuleState(FlyModule.class)
+                || (ModuleManager.getModuleState(KillAura.class)
+                && KillAura.closestEntity != null
+                && (KillAura.randomTp.get()
+                || (KillAura.tpReach.get()
+                && mc.player.distanceTo(KillAura.closestEntity) >= KillAura.attackRange.get()))))
+            return;
+        if (cooldownCheck.get() && player.getAttackStrengthScale(0f) < 0.8) return;
+
+        Vec3 pos = player.position();
+        boolean horizontalCollision = player.horizontalCollision;
+
+        switch (mode.get().toLowerCase()) {
+            case "packet":
+                for (double critY : packetValues) {
+                    PacketUtil.sendPacket(new ServerboundMovePlayerPacket.Pos(pos.x, pos.y + critY, pos.z, false, horizontalCollision));
+                }
+                break;
+
+            case "less packet":
+                for (double critY : lessPacketValues) {
+                    PacketUtil.sendPacket(new ServerboundMovePlayerPacket.Pos(pos.x, pos.y + critY, pos.z, false, horizontalCollision));
+                }
+                break;
+        }
+    }
+}

@@ -151,6 +151,30 @@ public class FeatureManager {
       modules.add(new Disabler());
       modules.add(whitelist = new Whitelist());
       modules.add(new WindCharge());
+      registerKrsModules();
+   }
+
+   /**
+    * 注册 KRS 移植模块。
+    *
+    * <p>KRS 模块是另一套独立框架（自己的事件总线、反射式设置），无法直接继承 NG 的
+    * {@code Feature}，因此统一用 {@code KrsModuleAdapter} 包装后再进 NG 的模块表：
+    * ClickGui 能照常列出、开关、调参，而模块内部逻辑完全沿用 KRS 原实现。</p>
+    *
+    * <p>重名处理（NG 已有同名模块时追加 2）由 {@code KrsModuleRegistry} 负责。</p>
+    */
+   private static void registerKrsModules() {
+      try {
+         com.dioxideliteng.krs.KrsClient.init();
+         for (com.dioxideliteng.module.krs.KrsModuleAdapter adapter
+                 : com.dioxideliteng.module.krs.KrsModuleRegistry.createAdapters()) {
+            modules.add(adapter);
+         }
+      } catch (Throwable failure) {
+         // KRS 体系初始化失败不能连累 NG 本体启动，只记录日志。
+         org.slf4j.LoggerFactory.getLogger(FeatureManager.class)
+                 .error("KRS modules failed to register", failure);
+      }
    }
 
    public static List<Feature> getModulesByCategory(Category category) {

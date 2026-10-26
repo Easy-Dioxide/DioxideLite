@@ -1,0 +1,51 @@
+package com.dioxideliteng.krs.hacks.features.level;
+
+import com.dioxideliteng.krs.events.features.TickEvent;
+import com.dioxideliteng.krs.hacks.Module;
+import com.dioxideliteng.krs.hacks.ModuleCategory;
+import com.dioxideliteng.krs.utils.math.TimerUtil;
+import com.dioxideliteng.krs.utils.move.MovementUtil;
+import com.dioxideliteng.krs.utils.value.BooleanValue;
+import com.dioxideliteng.krs.utils.value.FloatValue;
+import com.dioxideliteng.krs.utils.value.ListValue;
+import com.dioxideliteng.krs.utils.input.Keys;
+
+import java.util.Locale;
+
+public class Timer extends Module {
+
+    @Setting
+    public static final ListValue mode = new ListValue("Mode", new String[]{"Vanilla", "Rounding Error"}, "Vanilla");
+
+    @Setting
+    private static final FloatValue speed = new FloatValue("Speed", 1.5f, 0.1f, 10f, "x", () -> mode.get().equalsIgnoreCase("vanilla"));
+
+    @Setting
+    private static final BooleanValue moveOnly = new BooleanValue("Move Only", false, () -> mode.get().equalsIgnoreCase("vanilla"));
+
+    public Timer() {
+        super("Timer", ModuleCategory.Level, Keys.KEY_UNKNOWN, false, true);
+    }
+
+    @Override
+    public void onDisable() {
+        TimerUtil.reset();
+    }
+
+    @Override
+    public void onEnable() {
+    }
+
+    @Override
+    public void onTick(TickEvent event) {
+        if (mode.get().toLowerCase(Locale.ROOT).equals("vanilla")) {
+            if (moveOnly.get() && !MovementUtil.isMoving())
+                TimerUtil.reset();
+            else TimerUtil.timerSpeed = speed.get();
+        }
+
+        if (mode.get().toLowerCase(Locale.ROOT).equals("rounding error")) {
+            TimerUtil.timerSpeed = 1.0075f;
+        }
+    }
+}

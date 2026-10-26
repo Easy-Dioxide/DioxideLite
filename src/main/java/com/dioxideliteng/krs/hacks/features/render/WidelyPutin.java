@@ -1,0 +1,19 @@
+package com.dioxideliteng.krs.hacks.features.render;
+
+import com.dioxideliteng.krs.hacks.Module;
+import com.dioxideliteng.krs.hacks.ModuleCategory;
+import com.dioxideliteng.krs.utils.input.Keys;
+
+public class WidelyPutin extends Module {
+    public WidelyPutin() {
+        super("Widely Putin", ModuleCategory.Render, Keys.KEY_UNKNOWN, false, true);
+    }
+
+    @Override
+    public void onDisable() {
+    }
+
+    @Override
+    public void onEnable() {
+    }
+}
