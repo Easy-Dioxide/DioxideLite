@@ -1,4 +1,4 @@
-package com.dioxideliteng.mixin.krs;
+package com.dioxideliteng.krs.render;
 
 import com.dioxideliteng.krs.imguimc.interfaces.Renderable;
 import imgui.ImGui;

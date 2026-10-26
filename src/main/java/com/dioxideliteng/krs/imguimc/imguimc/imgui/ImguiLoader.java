@@ -1,6 +1,6 @@
 package com.dioxideliteng.krs.imguimc.imgui;
 
-import com.dioxideliteng.mixin.krs.Initializer;
+import com.dioxideliteng.krs.render.Initializer;
 import com.dioxideliteng.krs.utils.render.GraphicsApiCompatibility;
 import com.mojang.logging.LogUtils;
 import imgui.*;

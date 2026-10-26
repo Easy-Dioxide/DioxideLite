@@ -89,7 +89,8 @@
     "WorldMixin",
     "XrayBlockStateBaseMixin",
     "XrayModelBlockRendererMixin",
-    "EntityRenderStateMixin"
+    "EntityRenderStateMixin",
+    "MinecraftClientMixin"
   ],
   "injectors": {
     "defaultRequire": 1

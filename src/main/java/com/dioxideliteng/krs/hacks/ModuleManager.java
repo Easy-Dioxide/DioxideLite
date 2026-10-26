@@ -20,9 +20,10 @@ import com.dioxideliteng.krs.utils.ChatUtil;
 import com.dioxideliteng.krs.utils.GuiInputBlocker;
 import com.dioxideliteng.krs.utils.entity.PlayerUtil;
 import com.dioxideliteng.krs.utils.math.BehaviorUtils;
+import com.dioxideliteng.krs.utils.math.TimerUtil;
 import com.dioxideliteng.krs.utils.packet.BlinkUtil;
 import com.dioxideliteng.krs.utils.render.RenderUtil;
-import com.dioxideliteng.mixin.krs.Initializer;
+import com.dioxideliteng.krs.render.Initializer;
 import com.dioxideliteng.krs.utils.math.Tuple;
 import com.dioxideliteng.krs.screen.NanoVGClickGuiScreen;
 import net.minecraft.network.protocol.Packet;
@@ -337,6 +338,11 @@ public class ModuleManager implements EventListener {
 
     @Override
     public void onTick(TickEvent event) {
+        // KRS 的 Timer / Spider / LongJump / TuckMod 通过直接写 TimerUtil.timerSpeed 改倍速，
+        // 移植版不再重复注入 DeltaTracker（NG 的 MixinTimer 已 @Overwrite 该方法），
+        // 而是每刻把该字段桥接到 NG 的 TimerController，让 KRS 模块行为保持一致。
+        TimerUtil.applyToGameTimer();
+
         if (mc.level == null) return;
 
         Queue<Tuple<Integer, Integer>> pending = RenderUtil.getPending();
