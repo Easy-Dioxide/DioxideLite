@@ -131,6 +131,8 @@ public final class GraphicsApiCompatibility {
 
     private static boolean initialized;
     private static boolean compatibilityRenderer;
+    private static volatile String disabledReason;
+    private static volatile String backendName;
     private static boolean layerActive;
     private static int activeLayerWidth;
     private static int activeLayerHeight;
@@ -149,7 +151,7 @@ public final class GraphicsApiCompatibility {
     // Synchronous frames whose GPU upload is already recorded but whose staging data is still
     // being read back by OpenGL. They are filled right before Minecraft submits the frame.
     private static final List<TransferSlot> PENDING_FILLS = new ArrayList<>();
-    private static ExecutorService transferExecutor;
+    private static volatile ExecutorService transferExecutor;
     private static long lastTransferFailureLogNanos;
     private static long refreshRateCacheExpiresNanos;
     private static int cachedRefreshRate = FALLBACK_REFRESH_RATE;
@@ -161,20 +163,79 @@ public final class GraphicsApiCompatibility {
         if (initialized)
             return;
 
-        GpuDevice device = RenderSystem.getDevice();
-        compatibilityRenderer = !"OpenGL".equals(device.getDeviceInfo().backendName());
-        if (compatibilityRenderer) {
+        // 先置位，确保任何失败路径都不会把 initialized 留在 false 上导致重复尝试。
+        initialized = true;
+
+        try {
+            GpuDevice device = RenderSystem.getDevice();
+            String backend = device == null ? "unknown" : device.getDeviceInfo().backendName();
+            backendName = backend;
+            compatibilityRenderer = !"OpenGL".equals(backend);
+            if (!compatibilityRenderer)
+                return;
+
             createOffscreenContext();
             transferExecutor = Executors.newFixedThreadPool(2, task -> {
                 Thread thread = new Thread(task, "Krs compatibility transfer");
                 thread.setDaemon(true);
                 return thread;
             });
-            LOGGER.info("Krs legacy UI compatibility renderer enabled for graphics backend {}",
-                    device.getDeviceInfo().backendName());
+            LOGGER.info("Krs legacy UI compatibility renderer enabled for graphics backend {}", backend);
+            // 主动落一份环境 + 成功状态到诊断文件：用户反馈「崩了但没日志」时，
+            // 这个文件是唯一能拿到 GPU 后端 / GL 版本 / 上下文创建结果的来源。
+            CompatibilityDiagnostics.reportEnvironment();
+        } catch (Throwable failure) {
+            // 兼容层只是为了让 NanoVG / ImGui 这套旧式 OpenGL UI 能在 Vulkan 后端下继续显示，
+            // 不属于游戏启动的必需环节。任何环节失败（驱动不支持、SDL_GL 装载失败、
+            // 隐藏上下文创建失败……）都必须降级为「关闭旧式 UI」，绝不能让整个游戏崩溃。
+            compatibilityRenderer = false;
+            disabledReason = failure.toString();
+            destroyOffscreenContext();
+            shutdownTransferExecutor();
+            LOGGER.error("Krs legacy UI compatibility renderer disabled after a failure; "
+                    + "the client keeps running without the legacy OpenGL overlays", failure);
+            CompatibilityDiagnostics.report("initialize", failure);
         }
+    }
 
-        initialized = true;
+    /**
+     * 运行期降级：把兼容层彻底关掉，后续所有旧式 OpenGL UI 绘制都走「直接跳过」分支。
+     *
+     * <p>只在真正不可用的场合调用（上下文失效、驱动拒绝）。设计上宁可不画，
+     * 也不能让一块 HUD 把整个客户端带下去。</p>
+     */
+    public static void disableCompatibilityRenderer(String reason) {
+        if (!compatibilityRenderer)
+            return;
+        compatibilityRenderer = false;
+        disabledReason = reason;
+        LOGGER.warn("Krs legacy UI compatibility renderer disabled at runtime: {}", reason);
+        CompatibilityDiagnostics.report("runtime", new IllegalStateException(reason));
+    }
+
+    /** 兼容层被禁用时的原因，供诊断与界面提示使用；正常启用时为 {@code null}。 */
+    public static String getDisabledReason() {
+        return disabledReason;
+    }
+
+    /** 隐藏 OpenGL 上下文的能力表，供诊断输出；未启用兼容层时为 {@code null}。 */
+    static GLCapabilities getOffscreenCapabilities() {
+        return offscreenCapabilities;
+    }
+
+    /**
+     * 当前游戏是否运行在 OpenGL 后端上。
+     *
+     * <p>只有在这种情况下，渲染线程本身就持有 GL 上下文，旧式 OpenGL UI（NanoVG / ImGui）
+     * 才能直接绘制。</p>
+     */
+    public static boolean isOpenGlBackend() {
+        return "OpenGL".equals(backendName);
+    }
+
+    /** 当前图形后端名，用于日志与诊断。 */
+    public static String getBackendName() {
+        return backendName == null ? "unknown" : backendName;
     }
 
     public static boolean usesCompatibilityRenderer() {
@@ -287,8 +348,12 @@ public final class GraphicsApiCompatibility {
             action.run();
             return;
         }
-        if (offscreenWindow == 0L || offscreenContext == 0L || offscreenCapabilities == null)
-            throw new IllegalStateException("The Krs OpenGL compatibility context is not available");
+        if (offscreenWindow == 0L || offscreenContext == 0L || offscreenCapabilities == null) {
+            // 上下文已不可用（初始化残缺，或驱动在运行期回收了资源）。
+            // 旧式 UI 画不出来可以接受，让游戏因为一块 HUD 崩掉不行。
+            disableCompatibilityRenderer("runWithOpenGlContext: offscreen context is not available");
+            return;
+        }
 
         long previousContext = SDLVideo.SDL_GL_GetCurrentContext();
         if (previousContext == offscreenContext) {
@@ -361,6 +426,18 @@ public final class GraphicsApiCompatibility {
             renderer.run();
             return;
         }
+        try {
+            renderOffscreenLayerUnsafe(layer, renderer, skipped, synchronous);
+        } catch (Throwable failure) {
+            // 这一层是每帧都会走的路径，任何一次越界 / 驱动拒绝都会在首帧把游戏带走。
+            // 做法是就地降级：关掉兼容层（此后不再尝试），并留下可回传的诊断日志。
+            disableCompatibilityRenderer("renderOffscreenLayer failed: " + failure);
+            CompatibilityDiagnostics.report("renderOffscreenLayer", failure);
+        }
+    }
+
+    private static void renderOffscreenLayerUnsafe(Layer layer, Runnable renderer, Runnable skipped,
+                                                   boolean synchronous) {
         if (layerActive) {
             renderer.run();
             return;
@@ -690,24 +767,15 @@ public final class GraphicsApiCompatibility {
             throw new IllegalStateException("Could not load OpenGL for the Krs compatibility context: " + SDLError.SDL_GetError());
         offscreenLibraryLoaded = true;
 
-        SDLVideo.SDL_GL_ResetAttributes();
-        SDLVideo.SDL_GL_SetAttribute(SDLVideo.SDL_GL_CONTEXT_MAJOR_VERSION, 3);
-        SDLVideo.SDL_GL_SetAttribute(SDLVideo.SDL_GL_CONTEXT_MINOR_VERSION, 3);
-        SDLVideo.SDL_GL_SetAttribute(SDLVideo.SDL_GL_CONTEXT_PROFILE_MASK, SDLVideo.SDL_GL_CONTEXT_PROFILE_CORE);
-        SDLVideo.SDL_GL_SetAttribute(SDLVideo.SDL_GL_CONTEXT_FLAGS, SDLVideo.SDL_GL_CONTEXT_FORWARD_COMPATIBLE_FLAG);
-
         long previousWindow = SDLVideo.SDL_GL_GetCurrentWindow();
         long previousContext = SDLVideo.SDL_GL_GetCurrentContext();
         GLCapabilities previousCapabilities = currentCapabilitiesOrNull();
         try {
-            offscreenWindow = SDLVideo.SDL_CreateWindow("Krs OpenGL compatibility renderer", 1, 1,
-                    SDLVideo.SDL_WINDOW_OPENGL | SDLVideo.SDL_WINDOW_HIDDEN);
-            if (offscreenWindow == 0L)
-                throw new IllegalStateException("Could not create the Krs OpenGL compatibility window: " + SDLError.SDL_GetError());
-
-            offscreenContext = SDLVideo.SDL_GL_CreateContext(offscreenWindow);
-            if (offscreenContext == 0L)
-                throw new IllegalStateException("Could not create the Krs OpenGL compatibility context: " + SDLError.SDL_GetError());
+            // 不同驱动给出的最高 core profile 差别很大：独显通常 4.5+，但核显、
+            // 远程桌面（RDP 透传）、虚拟机 GPU 常常只到 3.1/3.0。原先死磕 3.3 Core，
+            // 这些环境会连窗口都建不出来，进而把整个客户端带走。这里按 3.3 → 3.2 → 3.1 → 3.0
+            // 依次降级，取驱动能给的最高版本。
+            createOffscreenWindowAndContext();
         } catch (RuntimeException | Error failure) {
             destroyOffscreenContext();
             throw failure;
@@ -732,6 +800,52 @@ public final class GraphicsApiCompatibility {
         GL.setCapabilities(previousCapabilities);
     }
 
+    /**
+     * 依次尝试可用的 OpenGL core profile 版本，返回驱动接受的那一个。
+     * 全部失败时抛出最后一次的错误，并带上每一次尝试的 SDL 错误串便于定位。
+     */
+    private static void createOffscreenWindowAndContext() {
+        int[][] attempts = {{3, 3}, {3, 2}, {3, 1}, {3, 0}};
+        StringBuilder errors = new StringBuilder();
+
+        for (int[] version : attempts) {
+            SDLVideo.SDL_GL_ResetAttributes();
+            SDLVideo.SDL_GL_SetAttribute(SDLVideo.SDL_GL_CONTEXT_MAJOR_VERSION, version[0]);
+            SDLVideo.SDL_GL_SetAttribute(SDLVideo.SDL_GL_CONTEXT_MINOR_VERSION, version[1]);
+            if (version[1] >= 2) {
+                SDLVideo.SDL_GL_SetAttribute(SDLVideo.SDL_GL_CONTEXT_PROFILE_MASK, SDLVideo.SDL_GL_CONTEXT_PROFILE_CORE);
+                SDLVideo.SDL_GL_SetAttribute(SDLVideo.SDL_GL_CONTEXT_FLAGS, SDLVideo.SDL_GL_CONTEXT_FORWARD_COMPATIBLE_FLAG);
+            } else {
+                // 3.0/3.1 时代还没有统一的 core profile 语义，按兼容模式申请反而更容易成功。
+                SDLVideo.SDL_GL_SetAttribute(SDLVideo.SDL_GL_CONTEXT_PROFILE_MASK, 0);
+            }
+
+            offscreenWindow = SDLVideo.SDL_CreateWindow("Krs OpenGL compatibility renderer", 1, 1,
+                    SDLVideo.SDL_WINDOW_OPENGL | SDLVideo.SDL_WINDOW_HIDDEN);
+            if (offscreenWindow == 0L) {
+                errors.append("window ").append(version[0]).append('.').append(version[1])
+                        .append(": ").append(SDLError.SDL_GetError()).append("; ");
+                continue;
+            }
+
+            offscreenContext = SDLVideo.SDL_GL_CreateContext(offscreenWindow);
+            if (offscreenContext == 0L) {
+                errors.append("context ").append(version[0]).append('.').append(version[1])
+                        .append(": ").append(SDLError.SDL_GetError()).append("; ");
+                SDLVideo.SDL_DestroyWindow(offscreenWindow);
+                offscreenWindow = 0L;
+                continue;
+            }
+
+            LOGGER.info("Krs compatibility OpenGL context created with core profile {}.{}",
+                    version[0], version[1]);
+            return;
+        }
+
+        throw new IllegalStateException("Could not create the Krs OpenGL compatibility context. "
+                + "Attempts: " + errors);
+    }
+
     private static void destroyOffscreenContext() {
         if (offscreenContext != 0L) {
             SDLVideo.SDL_GL_DestroyContext(offscreenContext);
@@ -753,6 +867,18 @@ public final class GraphicsApiCompatibility {
         } catch (IllegalStateException ignored) {
             return null;
         }
+    }
+
+    /**
+     * 关闭传输线程池。兼容层初始化失败时需要调用，避免留下两个永不退出的守护线程；
+     * 让关服路径也复用同一份关闭逻辑。
+     */
+    private static void shutdownTransferExecutor() {
+        ExecutorService executor = transferExecutor;
+        transferExecutor = null;
+        if (executor == null)
+            return;
+        executor.shutdownNow();
     }
 
     private static boolean advanceReadbackPipeline(OpenGlFramebuffer target, LayerCache cache,

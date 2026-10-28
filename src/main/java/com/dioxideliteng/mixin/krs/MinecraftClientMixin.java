@@ -77,8 +77,18 @@ public abstract class MinecraftClientMixin implements IMinecraft {
 
     @Inject(method = "<init>", at = @At(value = "INVOKE", target = "Lcom/mojang/blaze3d/systems/RenderSystem;initRenderer(Lcom/mojang/renderpearl/api/device/GpuDevice;)V", shift = At.Shift.AFTER))
     private void krs$initNanoVG(CallbackInfo ci) {
+        // initialize() 内部已经全兜底（失败即关闭兼容层，不再抛异常）。
         GraphicsApiCompatibility.initialize();
-        GraphicsApiCompatibility.runWithOpenGlContext(NVGU.INSTANCE::create);
+
+        // NanoVG 的 GL 资源创建同样发生在 Minecraft 构造期：这一步失败会让游戏在
+        // 「窗口刚出来」时直接崩溃。NanoVG 只服务于旧式 UI，画不出来可以接受，
+        // 不能因此让整个客户端起不来，所以这里单独兜一层并记录原因。
+        try {
+            GraphicsApiCompatibility.runWithOpenGlContext(NVGU.INSTANCE::create);
+        } catch (Throwable failure) {
+            GraphicsApiCompatibility.disableCompatibilityRenderer("NanoVG initialisation failed: " + failure);
+            com.dioxideliteng.krs.utils.render.CompatibilityDiagnostics.report("nvgInit", failure);
+        }
     }
 
     @Inject(method = "<init>", at = @At("TAIL"))

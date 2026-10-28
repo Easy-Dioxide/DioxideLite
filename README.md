@@ -1,20 +1,20 @@
-# DioxideLiteNG b13 — KRS 全量模块移植说明
+# DioxideLiteNG b14 — KRS 全量模块移植说明
 
 ## 一、交付物
 
 | 文件 | 说明 |
 |---|---|
-| `dioxideliteng-b13.jar` | 成品 mod（83.8 MB，直接放进 `mods/`） |
-| `dioxideliteng-b13-sources.jar` | 源码 jar，便于对照阅读 |
+| `dioxideliteng-b14.jar` | 成品 mod（83.8 MB，直接放进 `mods/`） |
+| `dioxideliteng-b14-sources.jar` | 源码 jar，便于对照阅读 |
 
 校验值：
 
 ```
-3032b5cfd974c0fef60a5378fc15251b54abb555f27e01363365da46cd956aa2  dioxideliteng-b13.jar
-2981e0ab81d2a3b235dad9fff52832ff5129c6b2eab04cf65fde53c835b46d86  dioxideliteng-b13-sources.jar
+12ab27c287d66d19bc26ed68e9d431a47b883ed19ac5facbe95b7308bd785f27  dioxideliteng-b14.jar
+9dc468f69d14aeaeae32f15f5e5f02537af1b2a16761b0e66bb28662cdd89e79  dioxideliteng-b14-sources.jar
 ```
 
-**版本号**：`mod_version` 已从 `b3` 改为 `b13`，`fabric.mod.json` 中 `version: "b13"`。
+**版本号**：`fabric.mod.json` 中 `version: "b14"`。
 
 ---
 
@@ -297,12 +297,91 @@ KRS 的聊天命令系统保留（`KrsCommands`，约 396 行）。
 
 ---
 
-## 六、验证结果（本地实跑）
+## 六、b14：渲染崩溃修复
+
+### 6.1 症状与根因
+
+**症状**：游戏窗口刚出来就崩溃，日志提示渲染器问题。装不装 Sodium 都会崩，OpenGL / Vulkan 两个后端都试过。
+
+**根因（已在本地复现并取得完整堆栈）**：
+
+```
+FATAL ERROR in native method: Thread[#3,Render thread]:
+No context is current ... The JVM will abort execution.
+    at org.lwjgl.opengl.GL15C.nglDeleteBuffers(Native Method)
+    at imgui.gl3.ImGuiImplGl3.dispose(ImGuiImplGl3.java:211)
+    at ImguiLoader.shutdownInternal(ImguiLoader.java:378)
+    at ImguiLoader.initialize(ImguiLoader.java:79)
+    at KeyboardHandler.<init>
+    at Minecraft.<init>
+```
+
+链条是这样的：
+
+1. `Minecraft.<init>` 构造期间创建隐藏 OpenGL 上下文，用于兼容渲染层；
+2. 这一步因驱动限制失败（或被禁用）；
+3. `ImguiLoader.initialize()` 进入 `catch` 分支，调用 `shutdown()` 做清理；
+4. **清理时会直接 `glDeleteBuffers`**，但此时线程上没有 GL 上下文；
+5. LWJGL 对「无上下文的 GL 调用」是**直接 JVM abort**，属于原生崩溃，`try/catch` 根本接不住。
+
+这也是为什么窗口已经出现、随后瞬间消失 —— 崩溃点就在构造期，窗口对象建好了但主循环还没开始。
+
+### 6.2 b14 的修复
+
+| # | 改动 | 作用 |
+|---|---|---|
+| 1 | `GraphicsApiCompatibility.initialize()` 全量兜底 | 兼容层初始化任何一步失败都降级为「关闭旧式 UI」，不再抛出 |
+| 2 | 隐藏上下文**版本回退** 3.3 → 3.2 → 3.1 → 3.0 | 核显 / 远程桌面 / 虚拟机的驱动常常只给 3.1，原先死磕 3.3 Core 必然失败 |
+| 3 | `runWithOpenGlContext` 不再抛异常 | 上下文不可用时跳过绘制，而不是让调用方崩 |
+| 4 | `renderOffscreenLayer` / 旧式 overlay 整体兜底 | 每帧路径上的任何异常都就地降级，不留到下一帧 |
+| 5 | **修复 ImGui 清理路径（本次核心）** | `imGuiGl3` 存在时强制在 GL 上下文内 dispose；拿不到上下文就跳过 GL 释放，绝不在无上下文时调 GL |
+| 6 | `onWindowInit` 增加后端校验 | Vulkan 后端 + 兼容层已禁用时直接跳过 ImGui，避免在 `glGenBuffers` 上 abort |
+| 7 | 新增诊断文件 `DioxideLiteNG-krs-render.log` | 记录 GPU 后端、GL 能力、SDL 错误与完整堆栈，方便回传定位 |
+
+**设计原则**：旧式 OpenGL UI（NanoVG / ImGui）只是显示层，画不出来可以接受；绝不能因为它把整个客户端带崩。
+
+### 6.3 双路径实测
+
+**正常路径**（兼容层可用）：
+
+```
+[INFO] Krs compatibility OpenGL context created with core profile 3.3
+[INFO] Krs legacy UI compatibility renderer enabled for graphics backend Vulkan
+FATAL ERROR = 0        纹理图集加载 = 12/12        主菜单完整显示
+```
+
+**降级路径**（用故障注入强制让隐藏上下文创建失败）：
+
+```
+[ERROR] Krs legacy UI compatibility renderer disabled after a failure;
+        the client keeps running without the legacy OpenGL overlays
+[WARN ] ImGui skipped: the Vulkan backend has no OpenGL context and the
+        compatibility renderer is disabled
+FATAL ERROR = 0        纹理图集加载 = 12/12        主菜单完整显示
+```
+
+两条路径都截图确认过：**b14 不会再出现「窗口刚出来就崩」**。
+
+### 6.4 如果还崩，把这个文件发我
+
+游戏目录下会生成 **`DioxideLiteNG-krs-render.log`**，里面有：
+
+- `gpu.backend` —— 实际用的渲染后端
+- `gl.version` / `gl.compute` —— 隐藏上下文拿到的 GL 能力
+- `sdl.last_error` —— SDL 层的原始错误串
+- `compat.enabled` / `compat.disabled` —— 兼容层状态与禁用原因
+- 完整异常堆栈
+
+直接把这个文件（或 `logs/latest.log`）发给我，就能精确定位。
+
+---
+
+## 七、验证结果（b13 基线，b14 沿用）
 
 全部结论来自 Minecraft 26.3 + Fabric Loader 0.19.5 的 `runClient` 真实启动，
 不是静态检查。
 
-### 6.1 端到端自检
+### 7.1 端到端自检
 
 启动时输出的自检结果：
 
@@ -326,19 +405,19 @@ KRS 的聊天命令系统保留（`KrsCommands`，约 396 行）。
 > （`BlockBreakSimulator2` / `Debugga` / `NoMoreAutism` / `ChatExcepChecker` /
 > `MovementUtilTest` / `TuckMod` / `Sex`）属纯调试用途，不暴露给界面。
 
-### 6.2 启动与渲染
+### 7.2 启动与渲染
 
 | 项目 | 结果 |
 |---|---|
 | `./gradlew clean build` | ✅ BUILD SUCCESSFUL |
-| 加载 mod 数 | ✅ `Loading 52 mods`，含 `dioxideliteng b13` |
+| 加载 mod 数 | ✅ `Loading 52 mods`，含 `dioxideliteng b14` |
 | Mixin 应用错误 | ✅ 0 条 `InvalidInjectionException` |
 | 兼容渲染层 | ✅ `Krs legacy UI compatibility renderer enabled for graphics backend Vulkan` |
 | NanoVG HUD | ✅ `nano hud frame started=true, available=true` |
 | 主菜单渲染 | ✅ 完整显示（立绘 / Lv 120 / 325 终端 / 单人游戏 / 多人游戏 / 选项 / 模组） |
 | 运行稳定性 | ✅ 连续运行至超时退出，无崩溃 |
 
-### 6.3 本轮修复的四个硬伤
+### 7.3 b13 修复的四个硬伤
 
 移植版此前「启动不了」，根因有四处，全部已修：
 
@@ -374,7 +453,7 @@ NG 自己的 `MixinTimer` 用 `@Overwrite` 重写了 `advanceGameTime`，KRS 的
 改为每刻把 `TimerUtil.timerSpeed` 桥接到 NG 的 `TimerController`，
 `Timer` / `Spider` / `LongJump` / `TuckMod` 的倍速行为保持一致。
 
-### 6.4 关于 OpenGL 后端
+### 7.4 关于 OpenGL 后端
 
 在本沙箱的 Xvfb + llvmpipe 软件渲染环境下，**OpenGL 后端无法创建 GLX visual**：
 
@@ -391,7 +470,7 @@ Couldn't find matching GLX visual
 MC 26.3 会在此后自动回落到 Vulkan 后端并正常初始化，上面所有验证都是在
 **Vulkan 后端**下完成的。
 
-### 6.5 关于 Sodium / Iris
+### 7.5 关于 Sodium / Iris
 
 jar **默认不内嵌** Sodium / Iris，需自己放进 `mods/`。原因是 Iris 不支持 Vulkan：
 `IrisRenderSystem` 的静态块会无条件调用 `glGetInteger` 查询采样器上限，
@@ -405,11 +484,11 @@ Sodium / Iris / Indigo 的 Mixin 在缺席时只会打 `ClassNotFoundException` 
 
 ---
 
-## 七、安装与使用
+## 八、安装与使用
 
 ```bash
 # 1. 放进 mods/
-dioxideliteng-b13.jar
+dioxideliteng-b14.jar
 
 # 2. 必需前置（已内嵌 39 个库，但以下仍需自备）
 Fabric Loader >= 0.19.5

@@ -44,9 +44,24 @@ public class ImguiLoader {
         if (initialized)
             return;
 
+        // ImGui 的渲染后端（imgui.gl3）是纯 OpenGL 实现。在 Vulkan 后端下如果没有
+        // 兼容层的离屏上下文，直接走 initialize() 会在 glGenBuffers 上 JVM abort。
+        // 兼容层已被禁用时宁可不开 ImGui，也不能让客户端崩在这里。
+        if (!GraphicsApiCompatibility.isOpenGlBackend() && !GraphicsApiCompatibility.usesCompatibilityRenderer()) {
+            LOGGER.warn("ImGui skipped: the {} backend has no OpenGL context and the "
+                    + "compatibility renderer is disabled", GraphicsApiCompatibility.getBackendName());
+            return;
+        }
+
         if (GraphicsApiCompatibility.usesCompatibilityRenderer()
                 && !GraphicsApiCompatibility.isLayerActive()) {
-            GraphicsApiCompatibility.runWithOpenGlContext(() -> initialize(handle));
+            try {
+                GraphicsApiCompatibility.runWithOpenGlContext(() -> initialize(handle));
+            } catch (Throwable failure) {
+                // ImGui 初始化失败（含隐藏上下文不可用）不应阻止游戏启动。
+                LOGGER.warn("ImGui initialisation failed; the ImGui based UI will stay disabled", failure);
+                com.dioxideliteng.krs.utils.render.CompatibilityDiagnostics.report("imguiInit", failure);
+            }
             return;
         }
 
@@ -351,16 +366,72 @@ public class ImguiLoader {
     }
 
     public static void shutdown() {
-        if (GraphicsApiCompatibility.usesCompatibilityRenderer()
-                && !GraphicsApiCompatibility.isLayerActive()) {
-            GraphicsApiCompatibility.runWithOpenGlContext(ImguiLoader::shutdownInternal);
-            return;
+        // GL 资源（ImGui 的 VAO/VBO/纹理）只能在当前线程持有 OpenGL 上下文时释放。
+        // 反过来说：只要 imGuiGl3 曾经创建成功，就必须在 GL 上下文里 dispose；
+        // 在 Vulkan 后端下调 glDeleteBuffers 会让 LWJGL 直接 JVM abort ——
+        // 这是原生崩溃，try/catch 接不住，表现为「窗口刚出来就没了」。
+        if (imGuiGl3 != null) {
+            if (GraphicsApiCompatibility.usesCompatibilityRenderer()
+                    && !GraphicsApiCompatibility.isLayerActive()) {
+                try {
+                    GraphicsApiCompatibility.runWithOpenGlContext(ImguiLoader::shutdownInternal);
+                    return;
+                } catch (Throwable failure) {
+                    // 兜底：上下文实在拿不到就别碰 GL。这些句柄会随进程退出被驱动回收，
+                    // 泄漏一点点显存远好过让客户端崩掉。
+                    LOGGER.warn("Skipping the ImGui OpenGL resource release: "
+                            + "no OpenGL context is available", failure);
+                    com.dioxideliteng.krs.utils.render.CompatibilityDiagnostics.report("imguiShutdown", failure);
+                    disableGlBackendWithoutRelease();
+                    shutdownNonGlResources();
+                    return;
+                }
+            }
+
+            // 非兼容层分支：说明当前用的是 OpenGL 后端，线程本身就持有上下文，可以直接释放。
+            // 但初始化失败时可能根本没拿到上下文，所以仍然要能降级。
+            if (!hasCurrentOpenGlContext()) {
+                LOGGER.warn("Skipping the ImGui OpenGL resource release: "
+                        + "no OpenGL context is current on this thread");
+                disableGlBackendWithoutRelease();
+                shutdownNonGlResources();
+                return;
+            }
         }
 
         shutdownInternal();
     }
 
+    private static boolean hasCurrentOpenGlContext() {
+        try {
+            org.lwjgl.opengl.GL.getCapabilities();
+            return true;
+        } catch (Throwable ignored) {
+            return false;
+        }
+    }
+
+    /** 丢弃 ImGui 的 GL 后端引用但不调用任何 GL 函数。 */
+    private static void disableGlBackendWithoutRelease() {
+        imGuiGl3 = null;
+    }
+
     private static void shutdownInternal() {
+        if (imGuiGl3 != null) {
+            try {
+                imGuiGl3.dispose();
+            } catch (Throwable exception) {
+                LOGGER.warn("Failed to dispose the ImGui OpenGL backend", exception);
+            } finally {
+                imGuiGl3 = null;
+            }
+        }
+
+        shutdownNonGlResources();
+    }
+
+    /** 释放与 OpenGL 无关的 ImGui 资源；GL 后端由调用方在上下文内先行释放。 */
+    private static void shutdownNonGlResources() {
         initialized = false;
         fontLoaded = false;
         customFontAvailable = false;
@@ -372,16 +443,6 @@ public class ImguiLoader {
         lastFrameFailureLogNanos = 0L;
         componentFailureLogTimes.clear();
         windowHandle = 0L;
-
-        if (imGuiGl3 != null) {
-            try {
-                imGuiGl3.dispose();
-            } catch (Throwable exception) {
-                LOGGER.warn("Failed to dispose the ImGui OpenGL backend", exception);
-            } finally {
-                imGuiGl3 = null;
-            }
-        }
 
         if (imGuiSdl != null) {
             try {

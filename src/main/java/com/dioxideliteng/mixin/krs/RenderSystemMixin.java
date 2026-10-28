@@ -42,6 +42,17 @@ public abstract class RenderSystemMixin implements IMinecraft {
     }
 
     private static void krs$renderLegacyOverlays() {
+        // 这段跑在 Minecraft.<init> 的首帧渲染里：任何未捕获异常都会让游戏在
+        // 「窗口刚出来」时直接崩掉。包一层兜底，出错就整体降级，不影响进游戏。
+        try {
+            krs$renderLegacyOverlaysUnsafe();
+        } catch (Throwable failure) {
+            GraphicsApiCompatibility.disableCompatibilityRenderer("legacy overlay render failed: " + failure);
+            com.dioxideliteng.krs.utils.render.CompatibilityDiagnostics.report("legacyOverlay", failure);
+        }
+    }
+
+    private static void krs$renderLegacyOverlaysUnsafe() {
         NanoVGClickGuiScreen.renderDetachedIfNeeded();
 
         if (GraphicsApiCompatibility.usesCompatibilityRenderer()) {
