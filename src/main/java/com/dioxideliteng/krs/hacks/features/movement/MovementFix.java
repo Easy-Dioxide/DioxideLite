@@ -1,6 +1,6 @@
 package com.dioxideliteng.krs.hacks.features.movement;
 
-import com.dioxideliteng.krs.KrsClient;
+import com.dioxideliteng.krs.Client;
 import com.dioxideliteng.krs.hacks.Module;
 import com.dioxideliteng.krs.hacks.ModuleCategory;
 import com.dioxideliteng.krs.hacks.ModuleManager;
@@ -36,14 +36,14 @@ public class MovementFix extends Module {
         if (!shouldFixMovement())
             return mc.player != null ? mc.player.getYRot() : 0.0f;
 
-        return KrsClient.rotationManager.getRotationYaw();
+        return Client.rotationManager.getRotationYaw();
     }
 
     public static float getMovementPitch() {
         if (!shouldFixMovement())
             return mc.player != null ? mc.player.getXRot() : 0.0f;
 
-        return KrsClient.rotationManager.getRotationPitch();
+        return Client.rotationManager.getRotationPitch();
     }
 
     public static Vec3 getMovementLookVector() {
@@ -66,7 +66,7 @@ public class MovementFix extends Module {
         sprintConditionOverridden = false;
 
         if (shouldUseRotationFix()) {
-            float rotationYaw = KrsClient.rotationManager.getRotationYaw();
+            float rotationYaw = Client.rotationManager.getRotationYaw();
 
             movementInput = fixStrafeInput(rawInput, rotationYaw);
 
@@ -104,7 +104,7 @@ public class MovementFix extends Module {
     }
 
     private static boolean shouldUseRotationFix() {
-        return ModuleManager.getModuleState(MovementFix.class) && KrsClient.rotationManager != null && KrsClient.rotationManager.isRotating() && mc.player != null;
+        return ModuleManager.getModuleState(MovementFix.class) && Client.rotationManager != null && Client.rotationManager.isRotating() && mc.player != null;
     }
 
     private static boolean isSprintCorrectionEnabled() {

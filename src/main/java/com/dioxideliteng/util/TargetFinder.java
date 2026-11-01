@@ -11,7 +11,7 @@ public class TargetFinder implements Wrapper {
    public static LivingEntity nearestTarget(double range, boolean checkBots) { return nearest(range, checkBots, false, entity -> true); }
 
    public static LivingEntity nearest(double range, boolean checkBots, boolean ignoreTeammates, Predicate<LivingEntity> eligible) {
-      if (mc.player == null || mc.level == null || FeatureManager.scaffold.isEnabled()) return null;
+      if (mc.player == null || mc.level == null || FeatureManager.scaffoldActive()) return null;
       LivingEntity nearest = null;
       double best = range * range;
       for (Entity entity : mc.level.entitiesForRendering()) {
@@ -42,7 +42,7 @@ public class TargetFinder implements Wrapper {
    }
 
    public static LivingEntity farthestDistantPlayer(boolean checkBots) {
-      if (mc.player == null || mc.level == null || FeatureManager.scaffold.isEnabled()) return null;
+      if (mc.player == null || mc.level == null || FeatureManager.scaffoldActive()) return null;
       LivingEntity farthest = null;
       double best = 11;
       for (Entity entity : mc.level.entitiesForRendering()) {

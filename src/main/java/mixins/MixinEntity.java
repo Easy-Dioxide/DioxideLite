@@ -17,10 +17,13 @@ public abstract class MixinEntity {
    @Overwrite
    public void moveRelative(float speed, Vec3 input) {
       Entity entity = (Entity)(Object)this;
-      Vec3 movement = getInputVector(input, speed, entity.getYRot());
+      float yaw = entity.getYRot();
       if (entity == Minecraft.getInstance().player && Events.ROTATION.hasMovementCorrection()) {
-         movement = getInputVector(input, speed, Events.ROTATION.getYaw());
+         yaw = Events.ROTATION.getYaw();
       }
+      // Ported KRS modules (MovementFix, TargetStrafe) may override the yaw; returns it unchanged otherwise.
+      yaw = com.dioxideliteng.krs.KrsHooks.moveRelativeYaw(entity, yaw);
+      Vec3 movement = getInputVector(input, speed, yaw);
 
       entity.setDeltaMovement(entity.getDeltaMovement().add(movement));
    }

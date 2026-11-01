@@ -47,6 +47,7 @@ public class Events {
 
    public static void initializeListeners() {
       BUS.refresh(FeatureManager.getModules());
+      com.dioxideliteng.krs.KrsBridge.refresh();
    }
 
    public static void refreshListeners() {

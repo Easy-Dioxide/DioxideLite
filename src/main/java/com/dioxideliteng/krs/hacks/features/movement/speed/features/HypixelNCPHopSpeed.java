@@ -2,8 +2,6 @@ package com.dioxideliteng.krs.hacks.features.movement.speed.features;
 
 import com.dioxideliteng.krs.events.features.*;
 import com.dioxideliteng.krs.hacks.ModuleManager;
-import com.dioxideliteng.krs.hacks.features.exploit.disabler.DisablerModule;
-import com.dioxideliteng.krs.hacks.features.exploit.disabler.features.HypixelDisabler;
 import com.dioxideliteng.krs.hacks.features.movement.speed.SpeedEvent;
 import com.dioxideliteng.krs.hacks.features.player.Scaffold;
 import com.dioxideliteng.krs.utils.move.MovementUtil;
@@ -76,8 +74,8 @@ public class HypixelNCPHopSpeed implements SpeedEvent {
             return;
         }
 
-        if (ModuleManager.getModuleState(DisablerModule.class) && DisablerModule.hypixelMotion.get()) {
-            if (HypixelDisabler.watchDogDisabled) {
+        if (false) {
+            if (false) {
                 if (player.onGround()) {
                     if (MovementUtil.isMoving())
                         player.jumpFromGround();
@@ -167,7 +165,7 @@ public class HypixelNCPHopSpeed implements SpeedEvent {
         LocalPlayer player = mc.player;
         if (player == null) return;
 
-        if (player.onGround() && MovementUtil.isMoving() && (!ModuleManager.getModuleState(DisablerModule.class) || (!DisablerModule.hypixelMotion.get() || HypixelDisabler.watchDogDisabled)))
+        if (player.onGround() && MovementUtil.isMoving() && true)
             mc.options.keyJump.setDown(false);
     }
 

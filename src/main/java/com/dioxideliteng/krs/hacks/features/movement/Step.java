@@ -2,7 +2,7 @@ package com.dioxideliteng.krs.hacks.features.movement;
 
 
 
-import com.dioxideliteng.krs.KrsClient;
+import com.dioxideliteng.krs.Client;
 import com.dioxideliteng.krs.events.features.UpdateEvent;
 import com.dioxideliteng.krs.hacks.Module;
 import com.dioxideliteng.krs.hacks.ModuleCategory;
@@ -87,7 +87,7 @@ public class Step extends Module {
 
                 if (mode.get().equalsIgnoreCase("hypixel")) {
                     BlockPos above = mc.player.blockPosition().above(3);
-                    if (!KrsClient.rotationManager.isRotating()
+                    if (!Client.rotationManager.isRotating()
                             && mc.level.getBlockState(above).isAir()
                             && mc.level.getBlockState(above.east()).isAir()
                             && mc.level.getBlockState(above.south()).isAir()

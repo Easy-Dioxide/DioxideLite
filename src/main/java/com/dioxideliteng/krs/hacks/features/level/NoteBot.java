@@ -1,6 +1,6 @@
 package com.dioxideliteng.krs.hacks.features.level;
 
-import com.dioxideliteng.krs.KrsClient;
+import com.dioxideliteng.krs.Client;
 import com.dioxideliteng.krs.events.features.TickEvent;
 import com.dioxideliteng.krs.events.features.WorldEvent;
 import com.dioxideliteng.krs.hacks.Module;
@@ -158,8 +158,8 @@ public class NoteBot extends Module {
         boolean shouldReleaseRotation = controllingRotation;
         resetRuntime();
         BehaviorUtils.noKillAura = false;
-        if (shouldReleaseRotation && KrsClient.rotationManager != null)
-            KrsClient.rotationManager.stopRotation();
+        if (shouldReleaseRotation && Client.rotationManager != null)
+            Client.rotationManager.stopRotation();
     }
 
     @Override
@@ -177,7 +177,7 @@ public class NoteBot extends Module {
 
         BehaviorUtils.noKillAura = true;
         if (!autoRotate.get() && controllingRotation) {
-            KrsClient.rotationManager.stopRotation();
+            Client.rotationManager.stopRotation();
             controllingRotation = false;
         }
 
@@ -559,12 +559,12 @@ public class NoteBot extends Module {
     }
 
     private void rotateTo(BlockPos pos) {
-        float[] rotations = KrsClient.rotationManager.getRotationsTo(
+        float[] rotations = Client.rotationManager.getRotationsTo(
                 pos.getX() + 0.5,
                 pos.getY() + 0.5,
                 pos.getZ() + 0.5
         );
-        KrsClient.rotationManager.startRotation(rotations[0], rotations[1], 180.0f);
+        Client.rotationManager.startRotation(rotations[0], rotations[1], 180.0f);
         controllingRotation = true;
         PacketUtil.sendPacket(new ServerboundMovePlayerPacket.Rot(
                 rotations[0],

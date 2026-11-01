@@ -4,7 +4,7 @@ import com.dioxideliteng.event.Event;
 import net.minecraft.network.protocol.Packet;
 
 public final class EventPacketSend extends Event {
-   private final Packet<?> packet;
+   private Packet<?> packet;
 
    public EventPacketSend() {
       this.packet = null;
@@ -16,5 +16,10 @@ public final class EventPacketSend extends Event {
 
    public Packet<?> getPacket() {
       return this.packet;
+   }
+
+   /** Swaps the outgoing packet; the connection sends the replacement instead (ported KRS modules rely on this). */
+   public void replace(Packet<?> replacement) {
+      this.packet = replacement;
    }
 }

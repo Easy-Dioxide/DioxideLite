@@ -12,7 +12,6 @@ import com.dioxideliteng.krs.utils.value.IntValue;
 import com.dioxideliteng.krs.utils.value.ListValue;
 import com.dioxideliteng.krs.utils.value.TextValue;
 import com.dioxideliteng.krs.utils.input.Keys;
-import com.dioxideliteng.krs.imguimc.customwindow.ModuleRenderable;
 
 public class Spammer extends Module {
     @Setting
@@ -74,7 +73,7 @@ public class Spammer extends Module {
         } else {
             if (ModuleManager.getModuleState(ChatCommands.class) && message.startsWith(ChatCommands.prefix.get())) {
                 String clearMessage = message.substring(ChatCommands.prefix.get().length());
-                ModuleRenderable.executeCommand(clearMessage, true);
+                com.dioxideliteng.krs.utils.ChatUtil.printChat(clearMessage);
             } else if (message.startsWith("/")) {
                 String clearMessage = message.substring(1);
                 if (randomize)

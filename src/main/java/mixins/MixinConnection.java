@@ -11,12 +11,16 @@ import net.minecraft.network.protocol.Packet;
 import net.minecraft.network.protocol.common.ClientboundDisconnectPacket;
 import net.minecraft.network.protocol.game.ClientboundStartConfigurationPacket;
 import org.spongepowered.asm.mixin.Mixin;
+import org.spongepowered.asm.mixin.Shadow;
 import org.spongepowered.asm.mixin.injection.At;
 import org.spongepowered.asm.mixin.injection.Inject;
 import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
 
 @Mixin({Connection.class})
-public class MixinConnection {
+public abstract class MixinConnection {
+   @Shadow
+   public abstract void send(Packet<?> packet, ChannelFutureListener listener);
+
    @Inject(
       method = {"send(Lnet/minecraft/network/protocol/Packet;Lio/netty/channel/ChannelFutureListener;Z)V"},
       at = {@At("HEAD")},
@@ -27,6 +31,11 @@ public class MixinConnection {
       packetSendEvent.call();
       if (packetSendEvent.isCancelled()) {
          callback.cancel();
+      } else if (packetSendEvent.getPacket() != packet) {
+         // A ported KRS module replaced the packet. Re-send the replacement as a silent packet: it is offered to
+         // DioxideLiteNG listeners again, but never to the KRS listeners that produced it, so it cannot loop.
+         callback.cancel();
+         com.dioxideliteng.krs.utils.packet.PacketUtil.sendReplacement(packetSendEvent.getPacket(), (Connection) (Object) this);
       } else {
          if (PacketBlinkQueue.enqueue(packetSendEvent.getPacket())) {
             callback.cancel();

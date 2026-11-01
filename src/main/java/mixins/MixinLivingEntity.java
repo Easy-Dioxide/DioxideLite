@@ -16,10 +16,11 @@ public class MixinLivingEntity {
       )}
    )
    private float dioxideliteng$jumpYaw(float originalYaw) {
+      float yaw = originalYaw;
       if (Events.ROTATION.hasMovementCorrection()) {
-         return Events.ROTATION.usesClientRotation() ? Events.ROTATION.getYaw() : Events.PRE_MOTION.getYaw();
-      } else {
-         return originalYaw;
+         yaw = Events.ROTATION.usesClientRotation() ? Events.ROTATION.getYaw() : Events.PRE_MOTION.getYaw();
       }
+      // Ported KRS modules (MovementFix, TargetStrafe, Sprint) may override the yaw; returns it unchanged otherwise.
+      return com.dioxideliteng.krs.KrsHooks.jumpYaw((net.minecraft.world.entity.Entity)(Object)this, yaw);
    }
 }

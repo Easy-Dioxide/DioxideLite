@@ -15,7 +15,7 @@ import java.util.Locale;
 
 public class AutoRespawn extends Module {
     @Setting
-    private final ListValue mode = new ListValue("Mode", new String[]{"Packet", "KrsClient", "Both"}, "Packet");
+    private final ListValue mode = new ListValue("Mode", new String[]{"Packet", "Client", "Both"}, "Packet");
 
     @Setting
     private final IntValue delay = new IntValue("Delay", 0, 0, 20, "t");

@@ -2,19 +2,18 @@ package com.dioxideliteng.krs.hacks.features.level;
 
 import com.dioxideliteng.krs.hacks.Module;
 import com.dioxideliteng.krs.hacks.ModuleCategory;
-import com.dioxideliteng.krs.utils.render.GraphicsApiCompatibility;
-import com.mojang.renderpearl.api.pipeline.RenderPipeline;
-import com.dioxideliteng.mixin.krs.PipelineCacheAccessor;
-import com.dioxideliteng.mixin.krs.RenderSystemAccessor;
-import com.mojang.blaze3d.pipeline.PipelineCache;
-import com.mojang.blaze3d.systems.RenderSystem;
-import com.mojang.renderpearl.api.pipeline.CompiledRenderPipeline;
-
-import java.util.Iterator;
-import java.util.Map;
+import net.minecraft.client.multiplayer.ClientLevel;
+import net.minecraft.client.renderer.block.BlockAndTintGetter;
+import net.minecraft.core.BlockPos;
+import net.minecraft.core.Direction;
+import net.minecraft.world.level.LightLayer;
+import net.minecraft.world.level.block.state.BlockState;
+import net.minecraft.world.level.levelgen.Heightmap;
 import com.dioxideliteng.krs.utils.input.Keys;
 
 public class CaveFinder extends Module {
+    private static final Direction[] DIRECTIONS = Direction.values();
+    private static final ThreadLocal<BlockPos.MutableBlockPos> NEIGHBOUR_POS = ThreadLocal.withInitial(BlockPos.MutableBlockPos::new);
     private static volatile boolean active;
 
     public CaveFinder() {
@@ -24,14 +23,12 @@ public class CaveFinder extends Module {
     @Override
     public void onEnable() {
         active = true;
-        reloadVulkanPipelines();
         reloadChunks();
     }
 
     @Override
     public void onDisable() {
         active = false;
-        reloadVulkanPipelines();
         reloadChunks();
     }
 
@@ -39,57 +36,39 @@ public class CaveFinder extends Module {
         return active;
     }
 
-    public static boolean shouldCullFront(RenderPipeline pipeline) {
-        if (pipeline == null || pipeline.getLocation() == null)
+    public static Boolean shouldDrawFace(BlockAndTintGetter level, BlockState state, BlockPos pos, Direction face) {
+        if (!active || level == null || state == null || pos == null || state.isAir())
+            return null;
+
+        if (!state.canOcclude())
+            return isCaveSpace(level, pos) ? null : Boolean.FALSE;
+
+        BlockPos.MutableBlockPos neighbourPos = NEIGHBOUR_POS.get();
+        if (face != null)
+            return isCaveSpace(level, neighbourPos.setWithOffset(pos, face)) ? null : Boolean.FALSE;
+
+        for (Direction direction : DIRECTIONS) {
+            if (isCaveSpace(level, neighbourPos.setWithOffset(pos, direction)))
+                return null;
+        }
+        return Boolean.FALSE;
+    }
+
+    private static boolean isCaveSpace(BlockAndTintGetter level, BlockPos pos) {
+        BlockState state = level.getBlockState(pos);
+        if (state.canOcclude())
             return false;
 
-        return shouldCullFront(pipeline.getLocation().getPath());
+        return level.getBrightness(LightLayer.SKY, pos) == 0 || state.getFluidState().isEmpty() && isBelowSurface(pos);
     }
 
-    public static boolean shouldCullFront(String location) {
-        return active && isTerrainPipeline(location);
-    }
-
-    public static boolean isTerrainPipeline(String location) {
-        return location != null
-                && (location.endsWith("pipeline/solid_terrain")
-                || location.endsWith("pipeline/cutout_terrain"));
+    private static boolean isBelowSurface(BlockPos pos) {
+        ClientLevel world = mc.level;
+        return world != null && pos.getY() < world.getHeight(Heightmap.Types.MOTION_BLOCKING_NO_LEAVES, pos.getX(), pos.getZ());
     }
 
     private void reloadChunks() {
         if (mc.level != null)
             mc.levelExtractor.allChanged();
-    }
-
-    private static void reloadVulkanPipelines() {
-        // Vulkan bakes the cull mode into the compiled pipeline, so drop the cached terrain pipelines and let
-        // RenderSystem recompile them with the new cull mode on next use. OpenGL applies it on every bind instead.
-        if (!GraphicsApiCompatibility.usesCompatibilityRenderer())
-            return;
-
-        if (!RenderSystem.isOnRenderThread()) {
-            mc.execute(CaveFinder::reloadVulkanPipelines);
-            return;
-        }
-
-        invalidateTerrainPipelines(RenderSystemAccessor.krs$getCurrentPipelineCache());
-        invalidateTerrainPipelines(RenderSystemAccessor.krs$getFallbackPipelineCache());
-    }
-
-    private static void invalidateTerrainPipelines(PipelineCache pipelineCache) {
-        if (pipelineCache == null)
-            return;
-
-        Iterator<Map.Entry<RenderPipeline, CompiledRenderPipeline>> iterator =
-                ((PipelineCacheAccessor) pipelineCache).krs$getCache().entrySet().iterator();
-        while (iterator.hasNext()) {
-            Map.Entry<RenderPipeline, CompiledRenderPipeline> entry = iterator.next();
-            RenderPipeline pipeline = entry.getKey();
-            if (pipeline == null || pipeline.getLocation() == null || !isTerrainPipeline(pipeline.getLocation().getPath()))
-                continue;
-
-            iterator.remove();
-            entry.getValue().close();
-        }
     }
 }

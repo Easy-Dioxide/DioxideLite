@@ -83,6 +83,10 @@ public class FeatureManager {
    private static List<Feature> sortedModules;
 
    public static void loadEnabled() {
+      // Modules ported from KRS (names that clash with the ones above get a "2" suffix). They are created here, not in
+      // registerModules(): this runs once resources are loaded, so options, fonts and the window already exist, and it
+      // is still before ConfigManager.loadState() restores module state.
+      com.dioxideliteng.krs.KrsModules.registerAll(modules);
       sortedModules = new ArrayList<>(modules);
       sortModules();
    }
@@ -90,6 +94,9 @@ public class FeatureManager {
    public static void clientTick() {
       for (Feature feature : modules) feature.initializeWorldState();
       for (Feature feature : modules) feature.clientTick();
+      resolveRestoredConflicts();
+      // Picks up modules enabled by config restore or world join, which never pass through Events.refreshListeners().
+      com.dioxideliteng.krs.KrsBridge.refresh();
    }
 
    public static void clientTickEnd() {
@@ -151,30 +158,58 @@ public class FeatureManager {
       modules.add(new Disabler());
       modules.add(whitelist = new Whitelist());
       modules.add(new WindCharge());
-      registerKrsModules();
+   }
+
+   /** Native modules whose ported KRS twin ("<name>2") must never run at the same time. */
+   private static final String[] EXCLUSIVE_WITH_TWIN = {"KillAura", "Scaffold"};
+
+   /** Returns the module that must be off while {@code feature} is on, or null when it has no twin. */
+   private static Feature exclusiveTwin(Feature feature) {
+      if (modules == null) return null;
+      String name = feature.getName();
+      for (String base : EXCLUSIVE_WITH_TWIN) {
+         String twin = name.equals(base) ? base + "2" : name.equals(base + "2") ? base : null;
+         if (twin == null) continue;
+         for (Feature candidate : modules) {
+            if (candidate != feature && candidate.getName().equals(twin)) return candidate;
+         }
+      }
+      return null;
+   }
+
+   /** Called when {@code enabled} was just switched on: switches its twin off and says so. */
+   static void resolveConflicts(Feature enabled) {
+      Feature twin = exclusiveTwin(enabled);
+      if (twin == null || !twin.isEnabled()) return;
+      twin.setEnabled(false);
+      com.dioxideliteng.ui.dynamicIsland.DynamicIslandManager.notifyWarning(twin.getName() + " disabled",
+         enabled.getName() + " cannot run together with it");
    }
 
    /**
-    * 注册 KRS 移植模块。
-    *
-    * <p>KRS 模块是另一套独立框架（自己的事件总线、反射式设置），无法直接继承 NG 的
-    * {@code Feature}，因此统一用 {@code KrsModuleAdapter} 包装后再进 NG 的模块表：
-    * ClickGui 能照常列出、开关、调参，而模块内部逻辑完全沿用 KRS 原实现。</p>
-    *
-    * <p>重名处理（NG 已有同名模块时追加 2）由 {@code KrsModuleRegistry} 负责。</p>
+    * Config restore enables modules without going through toggle(); if a saved config has both twins on, keep the
+    * native one. Runs every tick but only compares two flags per pair.
     */
-   private static void registerKrsModules() {
-      try {
-         com.dioxideliteng.krs.KrsClient.init();
-         for (com.dioxideliteng.module.krs.KrsModuleAdapter adapter
-                 : com.dioxideliteng.module.krs.KrsModuleRegistry.createAdapters()) {
-            modules.add(adapter);
+   private static void resolveRestoredConflicts() {
+      for (String base : EXCLUSIVE_WITH_TWIN) {
+         Feature native_ = null, twin = null;
+         for (Feature candidate : modules) {
+            if (candidate.getName().equals(base)) native_ = candidate;
+            else if (candidate.getName().equals(base + "2")) twin = candidate;
          }
-      } catch (Throwable failure) {
-         // KRS 体系初始化失败不能连累 NG 本体启动，只记录日志。
-         org.slf4j.LoggerFactory.getLogger(FeatureManager.class)
-                 .error("KRS modules failed to register", failure);
+         if (native_ != null && twin != null && native_.isEnabled() && twin.isEnabled()) resolveConflicts(native_);
       }
+   }
+
+   /** True while DioxideLiteNG's Scaffold or the ported KRS Scaffold ("Scaffold2") is running. */
+   public static boolean scaffoldActive() {
+      return scaffold != null && scaffold.isEnabled() || com.dioxideliteng.krs.KrsBridge.scaffoldEnabled();
+   }
+
+   /** The entity the active KillAura - native or the ported KRS "KillAura2" - is attacking right now, or null. */
+   public static net.minecraft.world.entity.Entity auraTarget() {
+      net.minecraft.world.entity.Entity own = killAura != null && killAura.isEnabled() ? killAura.getTarget() : null;
+      return own != null ? own : com.dioxideliteng.krs.KrsBridge.auraTarget();
    }
 
    public static List<Feature> getModulesByCategory(Category category) {

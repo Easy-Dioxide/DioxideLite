@@ -1,7 +1,7 @@
 package com.dioxideliteng.krs.hacks.features.player;
 
 import com.dioxideliteng.krs.utils.entity.PlayerUtil;
-import com.dioxideliteng.krs.KrsClient;
+import com.dioxideliteng.krs.Client;
 import com.dioxideliteng.krs.events.features.UpdateEvent;
 import com.dioxideliteng.krs.events.features.WorldEvent;
 import com.dioxideliteng.krs.hacks.Module;
@@ -124,8 +124,8 @@ public class AntiAFK extends Module {
             default -> swing();
         }
 
-        if (notifications.get() && KrsClient.notificationManager != null)
-            KrsClient.notificationManager.addNotification("Anti AFK", "Performed " + selectedAction);
+        if (notifications.get() && Client.notificationManager != null)
+            Client.notificationManager.addNotification("Anti AFK", "Performed " + selectedAction);
     }
 
     private void swing() {
@@ -142,8 +142,8 @@ public class AntiAFK extends Module {
         rotateRight = !rotateRight;
         float currentYaw = player.getYRot();
         float targetYaw = currentYaw + offset;
-        if (KrsClient.rotationManager != null)
-            targetYaw = KrsClient.rotationManager.normalizeRotation(
+        if (Client.rotationManager != null)
+            targetYaw = Client.rotationManager.normalizeRotation(
                     targetYaw,
                     player.getXRot(),
                     currentYaw,

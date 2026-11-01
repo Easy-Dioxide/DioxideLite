@@ -31,7 +31,22 @@ public abstract class MixinItemInHandRenderer {
       float partialTick, float pitch, InteractionHand hand, float swing, ItemStack item, float equip,
       PoseStack pose, SubmitNodeCollector collector, int light, CallbackInfo callback) {
       Animations animations = FeatureManager.animations;
-      if (animations == null || !animations.shouldBlock(hand, item) || hands.isScoping || player.avatarRenderState == null) return;
+      if (animations == null || !animations.shouldBlock(hand, item) || hands.isScoping || player.avatarRenderState == null) {
+         // Not a native blocking pose. The ported KRS OldHitting may still want to draw its sword-block animation:
+         // like KRS (and 1.8), the main hand is drawn blocking and the off hand is hidden while it does.
+         if (!hands.isScoping && player.avatarRenderState != null
+            && com.dioxideliteng.krs.hacks.features.render.OldHitting.shouldBlock()) {
+            if (hand == InteractionHand.MAIN_HAND) {
+               pose.pushPose();
+               try {
+                  com.dioxideliteng.krs.utils.render.OldHittingAnimation.transform(pose, player.avatarRenderState.mainArm, equip, swing);
+                  hands.mainHandRenderState.submit(pose, collector, light, OverlayTexture.NO_OVERLAY, 0);
+               } finally { pose.popPose(); }
+            }
+            callback.cancel();
+         }
+         return;
+      }
       HumanoidArm arm = player.avatarRenderState.mainArm;
       pose.pushPose();
       try {

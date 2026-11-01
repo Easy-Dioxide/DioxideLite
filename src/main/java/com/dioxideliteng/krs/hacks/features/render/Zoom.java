@@ -2,7 +2,7 @@ package com.dioxideliteng.krs.hacks.features.render;
 
 
 
-import com.dioxideliteng.krs.KrsClient;
+import com.dioxideliteng.krs.Client;
 import com.dioxideliteng.krs.events.features.KeyboardEvent;
 import com.dioxideliteng.krs.events.features.MouseScrollEvent;
 import com.dioxideliteng.krs.events.features.RenderHudEvent;
@@ -13,7 +13,6 @@ import com.dioxideliteng.krs.hacks.ModuleManager;
 import com.dioxideliteng.krs.utils.math.Interpolation;
 import com.dioxideliteng.krs.utils.value.KeyBindValue;
 import com.dioxideliteng.krs.utils.input.Keys;
-import com.dioxideliteng.krs.imguimc.customwindow.ModuleRenderable;
 
 public class Zoom extends Module {
 
@@ -55,12 +54,12 @@ public class Zoom extends Module {
 
     @Override
     public String tag() {
-        return ModuleRenderable.keyName(zoomKey.get());
+        return Keys.printableKeyName(zoomKey.get());
     }
 
     @Override
     public void onDisable() {
-        if (KrsClient.loaded)
+        if (Client.loaded)
             this.toggle();
     }
 

@@ -12,7 +12,7 @@ base {
 
 // KRS 移植带来的 accesswidener（官方命名）。NG 自身不使用 AW。
 loom {
-    accessWidenerPath = file('src/main/resources/krs.accesswidener')
+    accessWidenerPath = file('src/main/resources/dioxideliteng.accesswidener')
 }
 
 repositories {
@@ -23,9 +23,15 @@ repositories {
     mavenCentral()
     maven { url = 'https://maven.ccbluex.net/snapshots' }
     maven { url = 'https://maven.lenni0451.net/releases' }
+    // KRS 移植：Sodium / Iris 的本地内嵌件（从 Modrinth 下载后放在 libs/）。
+    flatDir { dirs 'libs' }
 }
 
 dependencies {
+    // KRS 移植：7 个 Mixin 直接 @Mixin 到 Sodium / Iris / Indigo 的类上。
+    // 编译期只需要符号可见（compileOnly）；运行时由下方 embedModJars 任务
+    // 把 jar 原样塞进 META-INF/jars/，走 Fabric 标准「嵌套 mod」机制加载。
+    compileOnly fileTree(dir: 'libs', include: ['*.jar'])
     minecraft "com.mojang:minecraft:${project.minecraft_version}"
     implementation "net.fabricmc:fabric-loader:${project.loader_version}"
     // KRS 移植：IndigoXrayBlockRendererMixin 使用 Fabric 渲染 API。
@@ -121,6 +127,18 @@ tasks.withType(JavaCompile).configureEach {
 
 processResources {
     from('LICENSE') { into 'META-INF' }
+    // KRS 移植：libs/ 下的 Sodium / Iris 不打进 jar。
+    //
+    // 原因：Iris 在渲染系统初始化阶段无条件调用 OpenGL（IrisRenderSystem 的静态块
+    // 会查询采样器上限），而 Minecraft 26.3 支持 Vulkan 后端——在 Vulkan 下这些
+    // GL 调用没有当前上下文，会直接让 JVM abort（No context is current）。
+    // KRS 原版同样把 Sodium / Iris 当作「用户自备的 mods」而非内嵌件，
+    // 这里保持同样策略：由用户按需放进 mods 目录，KRS 的 7 个相关 Mixin
+    // 在它们缺席时只是打一条 ClassNotFoundException WARN，不影响其余功能。
+    // 需要一并内置时，用 -PembedGraphicsMods=true 打开。
+    if (providers.gradleProperty('embedGraphicsMods').getOrElse('false') == 'true') {
+        from('libs') { into 'META-INF/jars' }
+    }
     inputs.property 'version', project.version
     filesMatching(['fabric.mod.json', 'dioxideliteng-version.properties']) {
         expand 'version': project.version

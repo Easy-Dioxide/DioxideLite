@@ -2,7 +2,7 @@ package com.dioxideliteng.krs.hacks.features.movement;
 
 
 
-import com.dioxideliteng.krs.KrsClient;
+import com.dioxideliteng.krs.Client;
 import com.dioxideliteng.krs.events.features.MotionEvent;
 import com.dioxideliteng.krs.events.features.TickEvent;
 import com.dioxideliteng.krs.events.features.UpdateEvent;
@@ -75,7 +75,7 @@ public class EntityFly extends Module {
         if (player.isPassenger() && InputConstants.isKeyDown(Keys.KEY_LEFT_ALT)) {
             player.stopRiding();
             PacketUtil.sendPacket(new ServerboundPlayerInputPacket(new Input(false, false, false, false, false, true, false)));
-            KrsClient.notificationManager.addNotification("Success", "Dismounted");
+            Client.notificationManager.addNotification("Success", "Dismounted");
             return;
         }
 

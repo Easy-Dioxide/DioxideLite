@@ -11,7 +11,6 @@ import net.minecraft.client.gui.screens.ChatScreen;
 import net.minecraft.client.gui.screens.Screen;
 import net.minecraft.client.gui.screens.inventory.InventoryScreen;
 import com.dioxideliteng.krs.utils.input.Keys;
-import com.dioxideliteng.krs.imguimc.screen.EmptyScreen;
 
 public class InventoryMove extends Module {
 
@@ -36,7 +35,6 @@ public class InventoryMove extends Module {
 
     public static boolean canMoveFreely(Screen screen) {
         return screen == null
-                || screen instanceof EmptyScreen
                 || ModuleManager.getModuleState(InventoryMove.class)
                 && (!inventoryOnly.get() || screen instanceof InventoryScreen)
                 && !(screen instanceof ChatScreen);

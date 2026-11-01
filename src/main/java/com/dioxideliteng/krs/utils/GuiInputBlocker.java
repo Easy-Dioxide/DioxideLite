@@ -1,62 +1,38 @@
 package com.dioxideliteng.krs.utils;
 
-import com.dioxideliteng.krs.hacks.ModuleManager;
-import com.dioxideliteng.krs.screen.NanoVGClickGuiScreen;
 import net.minecraft.client.KeyMapping;
 import net.minecraft.client.Options;
-import net.minecraft.client.gui.screens.ChatScreen;
-import com.dioxideliteng.krs.utils.input.Keys;
-import com.dioxideliteng.krs.imguimc.imgui.ImguiLoader;
 
+/**
+ * Slim replacement for KRS's input blocker. KRS used it to keep game input away from its ImGui debug window and
+ * NanoVG click GUI; DioxideLiteNG's GUIs are ordinary screens, so only the movement-key helpers are needed.
+ */
 public final class GuiInputBlocker implements IMinecraft {
-    private static boolean closingDebugScreen;
-
     private GuiInputBlocker() {
     }
 
-    public static boolean shouldBlockMinecraftMouse() {
-        return ModuleManager.isDebugRendering && (mc.gui.screen() == null || mc.gui.screen() instanceof ChatScreen || ImguiLoader.wantsCaptureMouse());
-    }
-
     public static boolean shouldAllowWorldHudOverlays() {
-        return ModuleManager.isDebugRendering;
+        return false;
     }
 
-    public static boolean shouldPreserveCursorOnMouseGrab() {
-        return ModuleManager.isDebugRendering && !closingDebugScreen;
-    }
-
-    public static boolean shouldPreserveCursorOnMouseRelease() {
-        return ModuleManager.isDebugRendering && mc.gui.screen() != null;
-    }
-
-    public static void setClosingDebugScreen(boolean closing) {
-        closingDebugScreen = closing;
+    public static boolean shouldBlockMinecraftMouse() {
+        return false;
     }
 
     public static boolean shouldBlockMinecraftKeyboard() {
-        return ModuleManager.isDebugRendering && ImguiLoader.wantsTextInput();
+        return false;
     }
 
     public static boolean shouldBlockGameMovement() {
-        return shouldBlockMinecraftKeyboard()
-                || mc.gui.screen() instanceof NanoVGClickGuiScreen screen && screen.shouldBlockGameMovement();
-    }
-
-    public static boolean shouldSyncNanoVGClickGuiMovementKeys() {
-        return mc.gui.screen() instanceof NanoVGClickGuiScreen screen && screen.shouldSyncGameMovementKeys();
-    }
-
-    public static boolean shouldBlockMinecraftKeyEvent(int keyCode) {
-        return shouldBlockMinecraftKeyboard() && keyCode != Keys.KEY_ESCAPE;
-    }
-
-    public static int sanitizeMouseCoordinate(int coordinate) {
-        return shouldBlockMinecraftMouse() ? -1_000_000 : coordinate;
+        return false;
     }
 
     public static boolean shouldBlockMovementKey(int keyCode) {
-        return shouldBlockGameMovement() && isMovementKey(keyCode);
+        return false;
+    }
+
+    public static int sanitizeMouseCoordinate(int coordinate) {
+        return coordinate;
     }
 
     public static void releaseMovementKeys() {
@@ -72,24 +48,7 @@ public final class GuiInputBlocker implements IMinecraft {
         release(options.keySprint);
     }
 
-    private static boolean isMovementKey(int keyCode) {
-        Options options = mc.options;
-        return options != null
-                && (matches(options.keyUp, keyCode)
-                || matches(options.keyDown, keyCode)
-                || matches(options.keyLeft, keyCode)
-                || matches(options.keyRight, keyCode)
-                || matches(options.keyJump, keyCode)
-                || matches(options.keyShift, keyCode)
-                || matches(options.keySprint, keyCode));
-    }
-
-    private static boolean matches(KeyMapping keyMapping, int keyCode) {
-        return keyMapping != null && keyMapping.key.getValue() == keyCode;
-    }
-
     private static void release(KeyMapping keyMapping) {
-        if (keyMapping != null)
-            keyMapping.setDown(false);
+        if (keyMapping != null) keyMapping.setDown(false);
     }
 }

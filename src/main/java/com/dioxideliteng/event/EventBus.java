@@ -33,5 +33,7 @@ public final class EventBus {
       for (Feature feature : this.listeners.getOrDefault(event.getClass(), List.of())) {
          feature.onEvent(event);
       }
+      // Ported KRS modules run after every native module, so a native cancel/rotation is visible to them.
+      com.dioxideliteng.krs.KrsBridge.dispatch(event);
    }
 }

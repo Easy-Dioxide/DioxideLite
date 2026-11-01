@@ -2,7 +2,7 @@ package com.dioxideliteng.krs.hacks.features.player;
 
 
 
-import com.dioxideliteng.krs.KrsClient;
+import com.dioxideliteng.krs.Client;
 import com.dioxideliteng.krs.events.features.UpdateEvent;
 import com.dioxideliteng.krs.events.features.WorldEvent;
 import com.dioxideliteng.krs.hacks.Module;
@@ -78,7 +78,7 @@ public class MurdererDetector extends Module {
                 if (chatAbuse.get() && !mc.player.getName().getString().equalsIgnoreCase(playerName)) {
                     mc.player.connection.sendChat(playerName + " is a murderer!!!!!!!!");
                 }
-                KrsClient.notificationManager.addNotification("Murderer detected!", "Murderer " + playerName + " was detected!");
+                Client.notificationManager.addNotification("Murderer detected!", "Murderer " + playerName + " was detected!");
                 ChatUtil.printChat("Murderer " + playerName + " was detected!");
             }
         }

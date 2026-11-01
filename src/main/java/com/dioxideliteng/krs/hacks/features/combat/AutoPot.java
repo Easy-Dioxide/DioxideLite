@@ -1,6 +1,6 @@
 package com.dioxideliteng.krs.hacks.features.combat;
 
-import com.dioxideliteng.krs.KrsClient;
+import com.dioxideliteng.krs.Client;
 import com.dioxideliteng.krs.events.features.UpdateEvent;
 import com.dioxideliteng.krs.hacks.Module;
 import com.dioxideliteng.krs.hacks.ModuleCategory;
@@ -59,7 +59,7 @@ public class AutoPot extends Module {
         if (mc.player == null) return;
         BehaviorUtils.noKillAura = false;
         PlayerUtil.INSTANCE.stopSpoof();
-        KrsClient.rotationManager.stopRotation();
+        Client.rotationManager.stopRotation();
         resetPotiHaveAEffect = false;
         potted = false;
         wasRotating = false;
@@ -82,7 +82,7 @@ public class AutoPot extends Module {
                 || ModuleManager.getModuleState(Scaffold.class)
                 || player.isUsingItem()) {
             if (wasRotating) {
-                KrsClient.rotationManager.stopRotation();
+                Client.rotationManager.stopRotation();
                 BehaviorUtils.noKillAura = false;
                 if (oldSlot != -1) {
                     if (player != null)
@@ -111,7 +111,7 @@ public class AutoPot extends Module {
 
         if (needPots.isEmpty()) {
             if (wasRotating) {
-                KrsClient.rotationManager.stopRotation();
+                Client.rotationManager.stopRotation();
                 BehaviorUtils.noKillAura = false;
                 if (oldSlot != -1) {
                     player.getInventory().setSelectedSlot(oldSlot);
@@ -160,10 +160,10 @@ public class AutoPot extends Module {
         PlayerUtil.INSTANCE.doSpoof(oldSlot);
         BehaviorUtils.noKillAura = true;
         if (!wasRotating) {
-            KrsClient.rotationManager.stopRotation();
+            Client.rotationManager.stopRotation();
             ModuleManager.rotTick = 0;
         }
-        KrsClient.rotationManager.startRotation(player.getYRot(), 90f, 180f);
+        Client.rotationManager.startRotation(player.getYRot(), 90f, 180f);
         wasRotating = true;
 
         if (ModuleManager.rotTick < 1) return;
@@ -171,8 +171,8 @@ public class AutoPot extends Module {
         PacketUtil.sendPacket(new ServerboundUseItemPacket(
                 InteractionHand.MAIN_HAND,
                 0,
-                KrsClient.rotationManager.getRotationYaw(),
-                KrsClient.rotationManager.getRotationPitch()
+                Client.rotationManager.getRotationYaw(),
+                Client.rotationManager.getRotationPitch()
         ));
 
         potTimer.reset();

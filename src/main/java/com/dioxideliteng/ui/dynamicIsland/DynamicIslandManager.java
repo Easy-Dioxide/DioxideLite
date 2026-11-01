@@ -74,9 +74,9 @@ public final class DynamicIslandManager {
       if (module == null) {
          return;
       }
-      if (module == FeatureManager.scaffold) {
+      if (module == FeatureManager.scaffold || com.dioxideliteng.krs.KrsBridge.isScaffold(module)) {
          SCAFFOLD_BPS.reset();
-         if (!module.isEnabled()) {
+         if (!FeatureManager.scaffoldActive()) {
             STATE.remove("scaffold");
          }
       }
@@ -275,7 +275,7 @@ public final class DynamicIslandManager {
    }
 
    private static void updateScaffold(long now) {
-      if (FeatureManager.scaffold == null || !FeatureManager.scaffold.isEnabled() || MC.player == null || MC.level == null) {
+      if (!FeatureManager.scaffoldActive() || MC.player == null || MC.level == null) {
          STATE.remove("scaffold");
          SCAFFOLD_BPS.reset();
          return;

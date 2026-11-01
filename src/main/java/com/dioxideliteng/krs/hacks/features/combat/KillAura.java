@@ -2,8 +2,10 @@ package com.dioxideliteng.krs.hacks.features.combat;
 
 
 
-import com.dioxideliteng.krs.KrsClient;
+import com.dioxideliteng.krs.utils.render.RenderColors;
+import com.dioxideliteng.krs.Client;
 import com.dioxideliteng.krs.events.features.HandleInputEvent;
+import com.dioxideliteng.krs.events.features.Render3DEvent;
 import com.dioxideliteng.krs.events.features.SendPacketEvent;
 import com.dioxideliteng.krs.hacks.Module;
 import com.dioxideliteng.krs.hacks.ModuleCategory;
@@ -36,12 +38,15 @@ import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.item.ItemUseAnimation;
 import net.minecraft.world.item.ShieldItem;
 import net.minecraft.world.level.GameType;
+import net.minecraft.world.level.ClipContext;
 import net.minecraft.world.phys.AABB;
 import net.minecraft.world.phys.BlockHitResult;
 import net.minecraft.world.phys.EntityHitResult;
 import net.minecraft.world.phys.HitResult;
 import net.minecraft.world.phys.Vec3;
 import com.dioxideliteng.krs.utils.input.Keys;
+import com.dioxideliteng.krs.utils.render.PathLines;
+import com.dioxideliteng.krs.utils.render.RenderUtil;
 
 import java.util.*;
 
@@ -141,26 +146,8 @@ public class KillAura extends Module {
     @Setting
     public static final ListValue autoBlockMode = new ListValue(
             "Auto Block Mode",
-            new String[]{"Vanilla", "Blink1", "Blink2", "Hypixel NCP", "Swap", "Legit", "Packet", "Interact1", "Interact2", "Basic", "Spoof", "Delayed", "Post Attack", "No Order"},
+            new String[]{"Vanilla", "Blink1", "Hypixel NCP", "Swap", "Legit", "Interact1", "Interact2", "Basic", "Spoof", "Delayed", "Post Attack", "No Order"},
             "No Order"
-    );
-
-    @Setting
-    private final FloatValue autoBlockCps = new FloatValue(
-            "Auto Block CPS",
-            8f,
-            1f,
-            10f,
-            () -> isAutoBlockMode(autoBlockMode.get())
-    );
-
-    @Setting
-    private final FloatValue autoBlockRange = new FloatValue(
-            "Auto Block Range",
-            6f,
-            3f,
-            8f,
-            () -> isAutoBlockMode(autoBlockMode.get())
     );
 
     @Setting
@@ -213,6 +200,18 @@ public class KillAura extends Module {
     );
 
     @Setting
+    private final BooleanValue additionalParticles = new BooleanValue(
+            "Additional Particles",
+            true
+    );
+
+    @Setting
+    private final BooleanValue targetPrediction = new BooleanValue(
+            "Target Prediction",
+            true
+    );
+
+    @Setting
     public static final BooleanValue tpReach = new BooleanValue(
             "TP Reach",
             false
@@ -262,6 +261,12 @@ public class KillAura extends Module {
     private final TextValue preferTargetId = new TextValue("Prefer Target ID", "1zun4");
 
     public static Entity closestEntity = null;
+    private static final Object PREDICTION_LINE = new Object();
+    private static final int PREDICTION_TICKS = 10;
+    private static final double PREDICTION_GRAVITY = 0.08D;
+    private static final double PREDICTION_VERTICAL_DRAG = 0.98D;
+    private static final double PREDICTION_MIN_DISTANCE_SQUARED = 0.15D * 0.15D;
+    private final ArrayList<Vec3> predictionPoints = new ArrayList<>(PREDICTION_TICKS + 1);
     public static final List<Entity> multiTargets = new ArrayList<>();
     private final ArrayList<TargetCandidate> targetCandidateBuffer = new ArrayList<>();
     private final ArrayList<TargetCandidate> targetCandidatePool = new ArrayList<>();
@@ -270,7 +275,6 @@ public class KillAura extends Module {
     private boolean sendingTeleportSequencePacket;
 
     private long lastAttackTime = 0;
-    private long lastOpenBlockTime = 0;
     private int randomDelay = 0;
     private int abTick = 0;
     private int blockTick = 0;
@@ -340,6 +344,7 @@ public class KillAura extends Module {
         private final boolean onGround;
         private final boolean horizontalCollision;
         private Vec3 lastSentPosition;
+        private Entity pathTarget;
         private int nextStep;
         private int sentMovePackets;
         private int elapsedTicks;
@@ -365,9 +370,6 @@ public class KillAura extends Module {
 
     private float getRealTargetReach() {
         float reach = targetRange.get();
-
-        if (isAutoBlockMode(autoBlockMode.get()))
-            reach = Math.max(reach, autoBlockRange.get());
 
         if (mc.player.isCreative() && reach <= 4.5f)
             reach += 1.5f;
@@ -406,6 +408,7 @@ public class KillAura extends Module {
     @Override
     public void onDisable() {
         cancelPendingTeleportSequence();
+        PathLines.hide(this, PREDICTION_LINE);
 
         if (mc.player != null)
             resetPacketUnblocking();
@@ -469,17 +472,20 @@ public class KillAura extends Module {
         boolean antiBotEnabled = ModuleManager.getModuleState(AntiBot.class);
         boolean teamsEnabled = ModuleManager.getModuleState(Teams.class);
 
+        boolean onlyPlayerTargets = onlyPlayers.get();
+        Vec3 playerEyePos = mc.player.getEyePosition();
+
         for (Entity entity : mc.level.entitiesForRendering()) {
             if (!(entity instanceof LivingEntity livingEntity)
                     || livingEntity.isDeadOrDying()
                     || entity instanceof ArmorStand
                     || entity instanceof LocalPlayer
-                    || BehaviorUtils.isBot(livingEntity, antiBotEnabled)
-                    || BehaviorUtils.isTeammate(livingEntity, teamsEnabled)
-                    || onlyPlayers.get() && !(entity instanceof Player)) continue;
+                    || onlyPlayerTargets && !(entity instanceof Player)) continue;
 
-            double squaredDistance = EntityExtension.squaredBoxedDistanceTo(entity, mc.player);
-            if (squaredDistance > realTargetReachSquared) continue;
+            double squaredDistance = EntityExtension.squaredBoxedDistanceTo(entity, playerEyePos);
+            if (squaredDistance > realTargetReachSquared
+                    || BehaviorUtils.isBot(livingEntity, antiBotEnabled)
+                    || BehaviorUtils.isTeammate(livingEntity, teamsEnabled)) continue;
 
             TargetCandidate candidate = acquireTargetCandidate(
                     entity,
@@ -532,34 +538,13 @@ public class KillAura extends Module {
 
         String currentAutoBlockMode = autoBlockMode.get().toLowerCase(Locale.ROOT);
         boolean autoBlock = isAutoBlockMode(currentAutoBlockMode);
-        float yaw = rotations.get() ? KrsClient.rotationManager.getRotationYaw() : mc.player.getYRot();
-        float pitch = rotations.get() ? KrsClient.rotationManager.getRotationPitch() : mc.player.getXRot();
+        float yaw = rotations.get() ? Client.rotationManager.getRotationYaw() : mc.player.getYRot();
+        float pitch = rotations.get() ? Client.rotationManager.getRotationPitch() : mc.player.getXRot();
         boolean hasTargetVisibility = mc.player.hasLineOfSight(closestEntity)
                 || canHitTargetAtRotation
-                || KrsClient.rotationManager.canHitEntityAtRotation(closestEntity, yaw, pitch, realTargetReach, false);
-        boolean canAutoBlock = canAutoBlock(currentAutoBlockMode, closest.squaredDistance(), canAttackThroughWalls || hasTargetVisibility);
-
-        if (!autoBlock && wasBlocking)
-            resetAutoBlock();
-
-        if (autoBlock) {
-            isBlocking = canAutoBlock || wasBlocking;
-
-            if (!canAutoBlock) {
-                resetAutoBlock();
-            } else if (wasBlocking) {
-                if (shouldFinishAutoBlock(currentAutoBlockMode)) {
-                    finishAutoBlock(currentAutoBlockMode, yaw, pitch);
-                } else {
-                    blockTick++;
-                }
-                return;
-            }
-        } else {
-            isBlocking = true;
-        }
-
-        boolean canHitVisibleAtRotation = KrsClient.rotationManager.canHitEntityAtRotation(
+                || Client.rotationManager.canHitEntityAtRotation(closestEntity, yaw, pitch, realTargetReach, false);
+        boolean canAutoBlock = canAutoBlock(currentAutoBlockMode, canAttackThroughWalls || hasTargetVisibility);
+        boolean canHitVisibleAtRotation = Client.rotationManager.canHitEntityAtRotation(
                 closestEntity,
                 yaw,
                 pitch,
@@ -568,6 +553,26 @@ public class KillAura extends Module {
         );
         boolean canAttackTarget = closest.squaredDistance() <= realAttackReachSquared
                 && (canAttackThroughWalls || hasTargetVisibility || canHitVisibleAtRotation);
+
+        if (!autoBlock && wasBlocking)
+            resetAutoBlock();
+
+        if (autoBlock) {
+            isBlocking = mc.player.isSwinging() && (canAutoBlock || wasBlocking);
+
+            if (!canAutoBlock) {
+                resetAutoBlock();
+            } else if (wasBlocking) {
+                if (!canAttackTarget || !shouldFinishAutoBlock(currentAutoBlockMode, closestEntity)) {
+                    blockTick++;
+                    return;
+                }
+
+                finishAutoBlock(currentAutoBlockMode, yaw, pitch);
+            }
+        } else {
+            isBlocking = mc.player.isSwinging();
+        }
 
         if (!canAttackTarget) {
             switch (currentAutoBlockMode) {
@@ -584,10 +589,8 @@ public class KillAura extends Module {
                     break;
 
                 case "hypixel ncp":
-                case "blink2":
                 case "swap":
                 case "legit":
-                case "packet":
                 case "interact1":
                 case "basic":
                 case "interact2":
@@ -605,7 +608,7 @@ public class KillAura extends Module {
         boolean canHitAtRotation = !rotations.get() || noHitCheck.get() || tpReach.get() || randomTp.get();
         if (!canHitAtRotation) {
             canHitAtRotation = canAttackThroughWalls
-                    ? KrsClient.rotationManager.canHitEntityAtRotation(closestEntity, yaw, pitch, realAttackReach, true)
+                    ? Client.rotationManager.canHitEntityAtRotation(closestEntity, yaw, pitch, realAttackReach, true)
                     : canHitVisibleAtRotation;
         }
 
@@ -615,9 +618,6 @@ public class KillAura extends Module {
         }
 
         if (canHitAtRotation) {
-            if (autoBlock && canAutoBlock && !canStartAutoBlockCycle())
-                return;
-
             if (attackReady) {
                 abTick++;
 
@@ -697,10 +697,8 @@ public class KillAura extends Module {
                 break;
 
             case "hypixel ncp":
-            case "blink2":
             case "swap":
             case "legit":
-            case "packet":
             case "interact1":
             case "basic":
             case "interact2":
@@ -756,21 +754,21 @@ public class KillAura extends Module {
     private boolean faceSmartRotation(Entity target, float rotationSpeed, double maxRange, boolean ignoreBlocks) {
         SmartRotationTarget rotationTarget = findSmartRotationTarget(target, maxRange, ignoreBlocks);
         if (rotationTarget == null) {
-            KrsClient.rotationManager.faceEntity(target, rotationSpeed, false, false, maxRange);
-            return KrsClient.rotationManager.canHitEntityAtRotation(
+            Client.rotationManager.faceEntity(target, rotationSpeed, false, false, maxRange);
+            return Client.rotationManager.canHitEntityAtRotation(
                     target,
-                    KrsClient.rotationManager.getRotationYaw(),
-                    KrsClient.rotationManager.getRotationPitch(),
+                    Client.rotationManager.getRotationYaw(),
+                    Client.rotationManager.getRotationPitch(),
                     maxRange,
                     ignoreBlocks
             );
         }
 
-        KrsClient.rotationManager.startRotation(rotationTarget.yaw(), rotationTarget.pitch(), rotationSpeed);
-        return KrsClient.rotationManager.canHitEntityAtRotation(
+        Client.rotationManager.startRotation(rotationTarget.yaw(), rotationTarget.pitch(), rotationSpeed);
+        return Client.rotationManager.canHitEntityAtRotation(
                 target,
-                KrsClient.rotationManager.getRotationYaw(),
-                KrsClient.rotationManager.getRotationPitch(),
+                Client.rotationManager.getRotationYaw(),
+                Client.rotationManager.getRotationPitch(),
                 maxRange,
                 ignoreBlocks
         );
@@ -781,8 +779,8 @@ public class KillAura extends Module {
         if (player == null || target == null)
             return null;
 
-        float currentYaw = KrsClient.rotationManager.getRotationYaw();
-        float currentPitch = KrsClient.rotationManager.getRotationPitch();
+        float currentYaw = Client.rotationManager.getRotationYaw();
+        float currentPitch = Client.rotationManager.getRotationPitch();
         Vec3 eyesPos = player.getEyePosition();
         double eyeX = eyesPos.x;
         double eyeY = eyesPos.y;
@@ -793,11 +791,11 @@ public class KillAura extends Module {
         double centerZ = (box.minZ + box.maxZ) * 0.5D;
         float centerYaw = rotationYawTo(centerX, centerZ, eyeX, eyeZ);
         float centerPitch = rotationPitchTo(centerX, centerY, centerZ, eyeX, eyeY, eyeZ);
-        boolean currentCanHit = KrsClient.rotationManager.canHitEntityAtRotation(target, currentYaw, currentPitch, maxRange, ignoreBlocks);
+        boolean currentCanHit = Client.rotationManager.canHitEntityAtRotation(target, currentYaw, currentPitch, maxRange, ignoreBlocks);
         if (currentCanHit && rotationScore(centerYaw, centerPitch, currentYaw, currentPitch) <= 6.0D)
             return new SmartRotationTarget(currentYaw, currentPitch);
 
-        if (KrsClient.rotationManager.canHitEntityAtRotation(target, centerYaw, centerPitch, maxRange, ignoreBlocks))
+        if (Client.rotationManager.canHitEntityAtRotation(target, centerYaw, centerPitch, maxRange, ignoreBlocks))
             return new SmartRotationTarget(centerYaw, centerPitch);
 
         float bestYaw = 0.0f;
@@ -823,7 +821,7 @@ public class KillAura extends Module {
                         currentCanHit
                 );
 
-                if (score < bestScore && KrsClient.rotationManager.canHitEntityAtRotation(target, yaw, pitch, maxRange, ignoreBlocks)) {
+                if (score < bestScore && Client.rotationManager.canHitEntityAtRotation(target, yaw, pitch, maxRange, ignoreBlocks)) {
                     bestScore = score;
                     bestYaw = yaw;
                     bestPitch = pitch;
@@ -852,7 +850,7 @@ public class KillAura extends Module {
                         );
 
                         if (score >= bestScore
-                                || !KrsClient.rotationManager.canHitEntityAtRotation(target, yaw, pitch, maxRange, ignoreBlocks))
+                                || !Client.rotationManager.canHitEntityAtRotation(target, yaw, pitch, maxRange, ignoreBlocks))
                             continue;
 
                         bestScore = score;
@@ -918,9 +916,11 @@ public class KillAura extends Module {
     }
 
     private void renderParticles(Entity target) {
-        mc.player.magicCrit(target);
-        if (mc.player.getDeltaMovement().y < -0.08)
-            mc.player.crit(target);
+        if (additionalParticles.get()) {
+            mc.player.magicCrit(target);
+            if (mc.player.getDeltaMovement().y < -0.08)
+                mc.player.crit(target);
+        }
     }
 
     private boolean attackCooldownMath(Entity target) {
@@ -961,7 +961,7 @@ public class KillAura extends Module {
         if (mode == null) return false;
 
         return switch (mode.toLowerCase(Locale.ROOT)) {
-            case "hypixel ncp", "blink2", "swap", "legit", "packet", "interact1", "interact2", "basic", "spoof", "delayed", "post attack" -> true;
+            case "hypixel ncp", "swap", "legit", "interact1", "interact2", "basic", "spoof", "delayed", "post attack" -> true;
             default -> false;
         };
     }
@@ -987,23 +987,16 @@ public class KillAura extends Module {
                 && !killAura.sendingTeleportSequencePacket;
     }
 
-    private boolean canAutoBlock(String mode, double squaredDistance, boolean targetVisible) {
+    private boolean canAutoBlock(String mode, boolean targetVisible) {
         return mc.player != null
                 && targetVisible
-                && squaredDistance <= square(autoBlockRange.get())
                 && (usesItemInteractionMode(mode)
                 ? findBlockableHand() != null
                 : ToolUtil.INSTANCE.isSword(mc.player.getMainHandItem()));
     }
 
-    private boolean canStartAutoBlockCycle() {
-        long now = System.currentTimeMillis();
-        long interval = Math.max(50L, (long) (1000.0f / autoBlockCps.get()));
-        return lastOpenBlockTime == 0L || now - lastOpenBlockTime >= interval;
-    }
-
     private boolean startAutoBlock(String mode, float yaw, float pitch, Entity target, boolean attacked) {
-        if (mc.player == null || wasBlocking || !canStartAutoBlockCycle())
+        if (mc.player == null || wasBlocking)
             return false;
 
         InteractionHand blockHand = InteractionHand.MAIN_HAND;
@@ -1025,10 +1018,6 @@ public class KillAura extends Module {
             return false;
 
         switch (mode) {
-            case "packet":
-                sendUseItemPacketAutoBlock(yaw, pitch);
-                break;
-
             case "interact1":
                 sendInteractAutoBlock(target, yaw, pitch);
                 break;
@@ -1052,7 +1041,6 @@ public class KillAura extends Module {
         wasPacketBlocking = true;
         wasBlocking = true;
         blockTick = 1;
-        lastOpenBlockTime = System.currentTimeMillis();
 
         if (usesBlink(mode)) {
             BlinkUtil.INSTANCE.doBlink();
@@ -1061,10 +1049,18 @@ public class KillAura extends Module {
         return true;
     }
 
-    private boolean shouldFinishAutoBlock(String mode) {
-        return switch (mode) {
-            case "delayed" -> blockTick >= 2;
-            default -> blockTick >= 1;
+    private boolean shouldFinishAutoBlock(String mode, Entity target) {
+        int minimumTicks = "delayed".equals(mode) ? 2 : 1;
+        return blockTick >= minimumTicks && isAttackReady(target);
+    }
+
+    private boolean isAttackReady(Entity target) {
+        return switch (apsMode.get().toLowerCase(Locale.ROOT)) {
+            case "cooldown" -> mc.player.getAttackStrengthScale(0f) >= (quickCooldown.get() ? 0.8f : 1f);
+            case "randomized cps" -> lastAttackTime == 0 || System.currentTimeMillis() - lastAttackTime >= randomDelay;
+            case "no delay" -> true;
+            case "hurt math" -> target instanceof LivingEntity livingEntity && livingEntity.hurtTime <= 5;
+            default -> false;
         };
     }
 
@@ -1081,9 +1077,7 @@ public class KillAura extends Module {
                 releaseAutoBlock();
                 break;
 
-            case "blink2":
             case "legit":
-            case "packet":
             case "interact1":
             case "basic":
             case "interact2":
@@ -1107,7 +1101,7 @@ public class KillAura extends Module {
         if (mode == null) return false;
 
         return switch (mode.toLowerCase(Locale.ROOT)) {
-            case "hypixel ncp", "blink2" -> true;
+            case "hypixel ncp" -> true;
             default -> false;
         };
     }
@@ -1124,11 +1118,6 @@ public class KillAura extends Module {
     private void sendUseItemAutoBlock(float yaw, float pitch) {
         syncSelectedSlot();
         sendSwordBlockPackets(yaw, pitch);
-    }
-
-    private void sendUseItemPacketAutoBlock(float yaw, float pitch) {
-        syncSelectedSlot();
-        PacketUtil.sendPacket(new ServerboundUseItemPacket(InteractionHand.MAIN_HAND, 0, yaw, pitch));
     }
 
     private void sendInteractAutoBlock(Entity target, float yaw, float pitch) {
@@ -1157,7 +1146,7 @@ public class KillAura extends Module {
     }
 
     private boolean interactWithFacingAutoBlock(float yaw, float pitch, InteractionHand blockHand) {
-        double reach = autoBlockRange.get();
+        double reach = getRealTargetReach();
         EntityHitResult entityHit = rayTraceEntity(yaw, pitch, reach);
         if (entityHit != null && interactEntityLikeUseItem(entityHit, blockHand))
             return true;
@@ -1165,7 +1154,7 @@ public class KillAura extends Module {
         if (entityHit != null)
             return useItemStrictAutoBlock(blockHand);
 
-        BlockHitResult blockHit = KrsClient.rotationManager.rayTraceBlocks(yaw, pitch, reach);
+        BlockHitResult blockHit = Client.rotationManager.rayTraceBlocks(yaw, pitch, reach);
         if (blockHit.getType() != HitResult.Type.BLOCK)
             return useItemStrictAutoBlock(blockHand);
 
@@ -1338,7 +1327,6 @@ public class KillAura extends Module {
         wasPacketBlocking = false;
         wasBlocking = false;
         blockTick = 0;
-        lastOpenBlockTime = 0;
 
         if (wasBlinking) {
             BlinkUtil.INSTANCE.sync(true, true);
@@ -1538,7 +1526,7 @@ public class KillAura extends Module {
                 continue;
             }
             if (step instanceof TeleportMoveStep moveStep) {
-                if (sequence.sentMovePackets >= movePacketTarget)
+                if (sequence.sentMovePackets >= movePacketTarget && sequence.elapsedTicks < sequence.totalTicks)
                     break;
 
                 sendTeleportMovePacket(moveStep.position(), sequence.onGround, sequence.horizontalCollision);
@@ -1612,6 +1600,8 @@ public class KillAura extends Module {
             return;
         }
 
+        sequence.pathTarget = goStep.target();
+        PathLines.show(this, goStep.target(), from, path, RenderColors.KILL_AURA_TELEPORT);
         sequence.totalMovePackets += path.size() - plannedCount;
         for (int i = 0; i < path.size(); i++)
             sequence.steps.add(sequence.nextStep + i, new TeleportMoveStep(path.get(i)));
@@ -1622,7 +1612,7 @@ public class KillAura extends Module {
         boolean lastTick = sequence.elapsedTicks >= sequence.totalTicks;
 
         if (isSameExactPosition(sequence.lastSentPosition, current)) {
-            sequence.nextStep++;
+            finishLiveReturn(sequence);
             return true;
         }
 
@@ -1631,9 +1621,11 @@ public class KillAura extends Module {
 
         ArrayList<Vec3> path = resolveReturnPath(sequence.lastSentPosition, current);
         if (path.isEmpty()) {
-            sequence.nextStep++;
+            finishLiveReturn(sequence);
             return true;
         }
+
+        PathLines.show(this, sequence.pathTarget != null ? sequence.pathTarget : this, sequence.lastSentPosition, path, RenderColors.KILL_AURA_TELEPORT);
 
         for (Vec3 position : path) {
             if (!lastTick && sequence.sentMovePackets >= movePacketTarget)
@@ -1655,11 +1647,30 @@ public class KillAura extends Module {
         }
 
         if (lastTick || isSameExactPosition(sequence.lastSentPosition, current)) {
-            sequence.nextStep++;
+            finishLiveReturn(sequence);
             return true;
         }
 
         return false;
+    }
+
+    private void finishLiveReturn(PendingTeleportSequence sequence) {
+        sequence.nextStep++;
+        sequence.totalMovePackets = sequence.sentMovePackets + remainingPlannedPackets(sequence);
+    }
+
+    private static int remainingPlannedPackets(PendingTeleportSequence sequence) {
+        int packets = 0;
+        for (int i = sequence.nextStep; i < sequence.steps.size(); i++) {
+            TeleportStep step = sequence.steps.get(i);
+            if (step instanceof TeleportMoveStep)
+                packets++;
+            else if (step instanceof TeleportGoStep goStep && goStep.plannedPath() != null)
+                packets += goStep.plannedPath().size();
+            else if (step instanceof TeleportReturnStep returnStep)
+                packets += returnStep.estimatedPackets();
+        }
+        return packets;
     }
 
     private void skipFollowingAttackAndReturn(PendingTeleportSequence sequence) {
@@ -1714,6 +1725,53 @@ public class KillAura extends Module {
             return;
 
         sendTeleportMovePacket(current, sequence.onGround, sequence.horizontalCollision);
+    }
+
+    @Override
+    public void onRender3D(Render3DEvent event) {
+        Entity target = closestEntity;
+        if (!targetPrediction.get() || target == null || mc.player == null || mc.level == null || target.isRemoved() || !target.isAlive()) {
+            PathLines.hide(this, PREDICTION_LINE);
+            return;
+        }
+
+        predictionPoints.clear();
+        Vec3 position = RenderUtil.INSTANCE.getLerpedPos(target, event.partialTicks);
+        predictionPoints.add(position);
+        double velocityX = target.getX() - target.xo;
+        double velocityY = target.getY() - target.yo;
+        double velocityZ = target.getZ() - target.zo;
+        boolean grounded = target.onGround();
+        if (grounded)
+            velocityY = 0.0D;
+
+        for (int tick = 0; tick < PREDICTION_TICKS; tick++) {
+            if (!grounded)
+                velocityY = (velocityY - PREDICTION_GRAVITY) * PREDICTION_VERTICAL_DRAG;
+
+            Vec3 next = position.add(velocityX, velocityY, velocityZ);
+            BlockHitResult hit = mc.level.clip(new ClipContext(position, next, ClipContext.Block.COLLIDER, ClipContext.Fluid.NONE, target));
+            if (hit.getType() != HitResult.Type.MISS) {
+                position = hit.getLocation();
+                predictionPoints.add(position);
+                if (hit.getDirection() != Direction.UP)
+                    break;
+
+                grounded = true;
+                velocityY = 0.0D;
+                continue;
+            }
+
+            position = next;
+            predictionPoints.add(position);
+        }
+
+        if (predictionPoints.getLast().distanceToSqr(predictionPoints.getFirst()) < PREDICTION_MIN_DISTANCE_SQUARED) {
+            PathLines.hide(this, PREDICTION_LINE);
+            return;
+        }
+
+        PathLines.show(this, PREDICTION_LINE, null, predictionPoints, RenderColors.KILL_AURA_PREDICTION);
     }
 
     private static boolean isSameExactPosition(Vec3 first, Vec3 second) {
@@ -1848,6 +1906,7 @@ public class KillAura extends Module {
                 return;
 
             if (resolvedPath != null) {
+                PathLines.show(this, target, mc.player.position(), resolvedPath.positions(), RenderColors.KILL_AURA_TELEPORT);
                 for (Vec3 path : resolvedPath.positions()) {
                     PacketUtil.sendPacket(new ServerboundMovePlayerPacket.Pos(path.x, path.y, path.z, tpOnGroundPacket.get(), mc.player.horizontalCollision));
                 }
@@ -1864,6 +1923,7 @@ public class KillAura extends Module {
                     ? resolvedPath.arrivalPosition()
                     : resolvedPath.positions().getLast();
             ArrayList<Vec3> returnPath = resolveReturnPath(lastSent, mc.player.position());
+            PathLines.show(this, target, lastSent, returnPath, RenderColors.KILL_AURA_TELEPORT);
             for (Vec3 path : returnPath) {
                 PacketUtil.sendPacket(new ServerboundMovePlayerPacket.Pos(
                         path.x,
@@ -1901,7 +1961,7 @@ public class KillAura extends Module {
         cancelPendingTeleportSequence();
 
         if (closestEntity != null)
-            KrsClient.rotationManager.stopRotation();
+            Client.rotationManager.stopRotation();
 
         if (wasBlocking) {
             resetAutoBlock();
@@ -1911,7 +1971,6 @@ public class KillAura extends Module {
         }
 
         lastAttackTime = 0;
-        lastOpenBlockTime = 0;
         randomDelay = 0;
         abTick = 0;
         blockTick = 0;

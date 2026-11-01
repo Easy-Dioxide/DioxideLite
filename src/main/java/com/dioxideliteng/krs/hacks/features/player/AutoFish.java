@@ -2,7 +2,7 @@ package com.dioxideliteng.krs.hacks.features.player;
 
 
 
-import com.dioxideliteng.krs.KrsClient;
+import com.dioxideliteng.krs.Client;
 import com.dioxideliteng.krs.events.features.UpdateEvent;
 import com.dioxideliteng.krs.hacks.Module;
 import com.dioxideliteng.krs.hacks.ModuleCategory;
@@ -62,7 +62,7 @@ public class AutoFish extends Module {
             if (!canFish)
                 return;
 
-            KrsClient.notificationManager.addNotification(hook == null ? "Wait" : "Success", hook == null ? "Started fishing... (" + mode + ")" : "Fished (" + mode + ")");
+            Client.notificationManager.addNotification(hook == null ? "Wait" : "Success", hook == null ? "Started fishing... (" + mode + ")" : "Fished (" + mode + ")");
             // The server broadcasts the swing for successful item use on its own since 26.3.
             gameMode.useItem(player, hand);
             fishTimer.reset();

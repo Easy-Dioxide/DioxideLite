@@ -7,6 +7,7 @@ import com.dioxideliteng.krs.hacks.ModuleCategory;
 import com.dioxideliteng.krs.hacks.ModuleManager;
 import com.dioxideliteng.krs.hacks.features.combat.KillAura;
 import com.dioxideliteng.krs.utils.math.ToolUtil;
+import com.dioxideliteng.krs.utils.value.BooleanValue;
 import com.dioxideliteng.krs.utils.value.ListValue;
 import net.minecraft.client.model.geom.ModelPart;
 import net.minecraft.world.entity.HumanoidArm;
@@ -20,10 +21,13 @@ import java.util.Locale;
 public class OldHitting extends Module {
 
     @Setting
-    public static final ListValue mode = new ListValue("Mode", new String[]{"Vanilla", "Push", "Dash", "Swang", "Swank", "Swonk", "Ethr"}, "Vanilla");
+    public static final ListValue mode = new ListValue("Mode", new String[]{"Vanilla", "Push", "Dash", "Swang", "Swank", "Swonk", "Ethr", "Spin"}, "Vanilla");
 
     @Setting
     private static final ListValue thirdPersonMode = new ListValue("Third Person Mode", new String[]{"Vanilla", "Legacy Vanilla"}, "Legacy Vanilla");
+
+    @Setting
+    private static final BooleanValue noEquipAnimation = new BooleanValue("No Equip Animation", true);
 
     private static boolean canBlock = false;
 
@@ -103,6 +107,27 @@ public class OldHitting extends Module {
                 arm.zRot = 0.0f;
             }
         }
+    }
+
+    /**
+     * Third-person block pose, applied after vanilla posed the arm. Vanilla poses a held item with
+     * {@code xRot * 0.5 - 0.314}; the blocking pose is {@code xRot * 0.5 - 0.942}, so the arm only has to move by the
+     * difference. yaw/roll then follow the chosen third-person mode, like {@link #thirdPersonAnimation}.
+     */
+    public static void applyThirdPersonBlockPose(ModelPart arm, HumanoidArm renderArm) {
+        int direction = renderArm == HumanoidArm.RIGHT ? 1 : -1;
+        arm.xRot -= 0.6283186f;
+        if (thirdPersonMode.get().equalsIgnoreCase("vanilla")) {
+            arm.yRot = -0.5f * direction;
+            arm.zRot = 0.1f * direction;
+        } else {
+            arm.yRot = 0.0f;
+            arm.zRot = 0.0f;
+        }
+    }
+
+    public static boolean shouldSkipEquipAnimation() {
+        return noEquipAnimation.get() && shouldBlock();
     }
 
     public static boolean shouldUseLegacyVanillaThirdPerson() {

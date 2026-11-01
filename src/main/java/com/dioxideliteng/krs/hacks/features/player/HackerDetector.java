@@ -2,7 +2,7 @@ package com.dioxideliteng.krs.hacks.features.player;
 
 
 
-import com.dioxideliteng.krs.KrsClient;
+import com.dioxideliteng.krs.Client;
 import com.dioxideliteng.krs.events.features.UpdateEvent;
 import com.dioxideliteng.krs.events.features.WorldEvent;
 import com.dioxideliteng.krs.hacks.Module;
@@ -102,7 +102,7 @@ public class HackerDetector extends Module {
                 double maxSpeed = isOnGround ? baseSpeed : baseSpeed * 1.5;
 
                 if (distanceXZSqr > maxSpeed * maxSpeed && (currentTime - state.lastAlertTime) >= 5000) {
-                    KrsClient.notificationManager.addNotification("Hacker Detected", player.getName().getString() + " is using speed hack!");
+                    Client.notificationManager.addNotification("Hacker Detected", player.getName().getString() + " is using speed hack!");
                     state.lastAlertTime = currentTime;
                 }
 
@@ -123,7 +123,7 @@ public class HackerDetector extends Module {
                     flyingDuration += deltaTime;
 
                     if (flyingDuration > 2000 && (currentTime - state.lastAlertTime) >= 3000) {
-                        KrsClient.notificationManager.addNotification("Hacker Detected", player.getName().getString() + " is using fly hack!");
+                        Client.notificationManager.addNotification("Hacker Detected", player.getName().getString() + " is using fly hack!");
                         state.lastAlertTime = currentTime;
                         flyingDuration = 0;
                     }

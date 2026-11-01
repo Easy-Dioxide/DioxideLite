@@ -1,7 +1,7 @@
 package com.dioxideliteng.krs.utils.rotation;
 
-import com.dioxideliteng.mixin.krs.LivingEntityAccessor;
-import com.dioxideliteng.mixin.krs.SwingStateAccessor;
+import mixins.krs.LivingEntityAccessor;
+import mixins.krs.SwingStateAccessor;
 
 import net.minecraft.client.Minecraft;
 import net.minecraft.core.BlockPos;

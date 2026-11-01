@@ -790,8 +790,8 @@ public class Hud extends Feature {
          if (event == Events.ROTATION) {
             if (this.mode.is("Opai")) return;
 
-            KillAura killAura = FeatureManager.killAura;
-            boolean hasPlayerTarget = killAura != null && killAura.getTarget() instanceof Player;
+            net.minecraft.world.entity.Entity auraTarget = FeatureManager.auraTarget();
+            boolean hasPlayerTarget = auraTarget instanceof Player;
             float targetAlpha = hasPlayerTarget ? 255.0F : 0.0F;
             this.previousAlpha = this.alpha;
             this.alpha = (int)Mth.lerp(0.5F, (float)this.alpha, targetAlpha);
@@ -799,7 +799,7 @@ public class Hud extends Feature {
                return;
             }
 
-            Player player = (Player)killAura.getTarget();
+            Player player = (Player)auraTarget;
             this.previousTrailingHealth = this.trailingHealth;
             this.trailingHealth = this.previousHealth;
             this.previousHealth = this.health;
@@ -843,18 +843,17 @@ public class Hud extends Feature {
             return;
          }
          if (this.mode.is("Opai")) {
-            KillAura aura = FeatureManager.killAura;
-            Player target = aura != null && aura.isEnabled() && aura.getTarget() instanceof Player player ? player : null;
+            Player target = FeatureManager.auraTarget() instanceof Player player ? player : null;
             renderOpai(render2DEvent.getGraphics(), target);
             return;
          }
          this.opaiTarget = null;
          this.opaiBounds = null;
-         KillAura killAura = FeatureManager.killAura;
-         if (killAura != null) {
-            boolean visible = killAura.getTarget() instanceof Player || this.lastTarget != null && this.alpha > 10;
+         net.minecraft.world.entity.Entity auraTarget = FeatureManager.auraTarget();
+         if (FeatureManager.killAura != null) {
+            boolean visible = auraTarget instanceof Player || this.lastTarget != null && this.alpha > 10;
             if (visible) {
-               Player player = killAura.getTarget() instanceof Player ? (Player)killAura.getTarget() : this.lastTarget;
+               Player player = auraTarget instanceof Player ? (Player)auraTarget : this.lastTarget;
                if (this.skinTarget != player) {
                   this.skinTarget = player;
                   this.skinTexture = null;

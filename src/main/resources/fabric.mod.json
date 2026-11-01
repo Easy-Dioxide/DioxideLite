@@ -20,15 +20,12 @@
     ]
   },
   "mixins": [
-    "dioxideliteng.mixins.json",
-    "dioxideliteng.krs.mixins.json"
+    "dioxideliteng.mixins.json"
   ],
-  "accessWidener": "krs.accesswidener",
+  "accessWidener": "dioxideliteng.accesswidener",
   "depends": {
     "fabricloader": ">=0.19.5",
     "minecraft": "~26.3",
-    "java": ">=25",
-    "fabric-api": "*",
-    "mixinextras": ">=0.4.1"
+    "java": ">=25"
   }
 }

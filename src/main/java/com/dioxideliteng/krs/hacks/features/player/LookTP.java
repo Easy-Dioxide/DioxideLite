@@ -2,7 +2,8 @@ package com.dioxideliteng.krs.hacks.features.player;
 
 
 
-import com.dioxideliteng.krs.KrsClient;
+import com.dioxideliteng.krs.utils.render.RenderColors;
+import com.dioxideliteng.krs.Client;
 import com.dioxideliteng.krs.events.features.MotionEvent;
 import com.dioxideliteng.krs.events.features.ReceivedPacketEvent;
 import com.dioxideliteng.krs.events.features.UpdateEvent;
@@ -15,6 +16,7 @@ import com.dioxideliteng.krs.utils.value.BooleanValue;
 import com.mojang.blaze3d.platform.InputConstants;
 import net.minecraft.network.protocol.Packet;
 import com.dioxideliteng.krs.utils.input.Keys;
+import com.dioxideliteng.krs.utils.render.PathLines;
 
 import java.util.ArrayList;
 import net.minecraft.network.protocol.game.ClientboundPlayerPositionPacket;
@@ -101,7 +103,7 @@ public class LookTP extends Module {
             }
 
             resetClientsideTeleport();
-            KrsClient.notificationManager.addNotification("Success", "Teleported!");
+            Client.notificationManager.addNotification("Success", "Teleported!");
             tpTimer.reset();
             return;
         }
@@ -127,10 +129,12 @@ public class LookTP extends Module {
             paths = MainPathFinder.computePath(mc.player.position(), posResult.getLocation());
 
             if (paths.isEmpty()) {
-                KrsClient.notificationManager.addNotification("Look TP", "Failed to teleport");
+                Client.notificationManager.addNotification("Look TP", "Failed to teleport");
                 tpTimer.reset();
                 return;
             }
+
+            PathLines.show(this, mc.player.position(), paths, RenderColors.LOOK_TP);
 
             if (clientsideTeleport.get()) {
                 clientsidePath = new ArrayList<>(paths);
@@ -141,7 +145,7 @@ public class LookTP extends Module {
                 clientsideTargetPosition = posResult.getLocation();
                 waitingForClientsideTeleport = false;
                 mc.player.setDeltaMovement(Vec3.ZERO);
-                KrsClient.notificationManager.addNotification("Look TP", "Teleporting...");
+                Client.notificationManager.addNotification("Look TP", "Teleporting...");
                 tpTimer.reset();
                 return;
             }
@@ -152,7 +156,7 @@ public class LookTP extends Module {
 
             mc.player.setPos(posResult.getLocation());
 
-            KrsClient.notificationManager.addNotification("Success", "Teleported!");
+            Client.notificationManager.addNotification("Success", "Teleported!");
             tpTimer.reset();
         }
     }
@@ -165,7 +169,7 @@ public class LookTP extends Module {
 
         if ((isMovingServerSide() || waitingForClientsideTeleport) && packet instanceof ClientboundPlayerPositionPacket) {
             resetClientsideTeleport();
-            KrsClient.notificationManager.addNotification("Look TP", "Failed to teleport");
+            Client.notificationManager.addNotification("Look TP", "Failed to teleport");
             tpTimer.reset();
         }
     }

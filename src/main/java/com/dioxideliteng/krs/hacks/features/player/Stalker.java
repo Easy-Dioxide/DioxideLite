@@ -2,6 +2,7 @@ package com.dioxideliteng.krs.hacks.features.player;
 
 
 
+import com.dioxideliteng.krs.utils.render.RenderColors;
 import com.dioxideliteng.krs.events.features.*;
 import com.dioxideliteng.krs.hacks.Module;
 import com.dioxideliteng.krs.hacks.ModuleCategory;
@@ -11,6 +12,7 @@ import com.dioxideliteng.krs.utils.packet.PacketUtil;
 import com.dioxideliteng.krs.utils.pathfinder.MainPathFinder;
 import com.dioxideliteng.krs.utils.render.RenderUtil;
 import com.dioxideliteng.krs.utils.input.Keys;
+import com.dioxideliteng.krs.utils.render.PathLines;
 
 import java.util.ArrayList;
 import java.util.Comparator;
@@ -75,6 +77,8 @@ public class Stalker extends Module {
         if (EntityExtension.boundingDistanceTo(mc.player, currentTarget) >= 1.2f) {
             ArrayList<Vec3> paths = MainPathFinder.computePath(mc.player.position(), currentTarget.position());
             if (paths == null || paths.isEmpty()) return;
+
+            PathLines.show(this, mc.player.position(), paths, RenderColors.STALKER);
 
             for (Vec3 path : paths) {
                 PacketUtil.sendPacket(new ServerboundMovePlayerPacket.Pos(path.x, path.y, path.z, true, mc.player.horizontalCollision));

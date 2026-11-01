@@ -1,6 +1,7 @@
 package com.dioxideliteng.krs.hacks.features.level;
 
-import com.dioxideliteng.krs.KrsClient;
+import com.dioxideliteng.krs.utils.render.RenderColors;
+import com.dioxideliteng.krs.Client;
 import com.dioxideliteng.krs.events.features.KeyboardEvent;
 import com.dioxideliteng.krs.events.features.MotionEvent;
 import com.dioxideliteng.krs.events.features.WorldEvent;
@@ -13,6 +14,7 @@ import com.dioxideliteng.krs.hacks.features.player.Scaffold;
 import com.dioxideliteng.krs.utils.entity.PlayerUtil;
 import com.dioxideliteng.krs.utils.math.BehaviorUtils;
 import com.dioxideliteng.krs.utils.math.ToolUtil;
+import com.dioxideliteng.krs.utils.render.BlockHighlight;
 import com.dioxideliteng.krs.utils.value.BooleanValue;
 import com.dioxideliteng.krs.utils.value.FloatValue;
 import com.dioxideliteng.krs.utils.value.ListValue;
@@ -49,6 +51,9 @@ public class Breaker extends Module {
     private static final FloatValue range = new FloatValue("Range", 4f, 1f, 6f, "m");
 
     @Setting
+    private static final ListValue swingOrderMode = new ListValue("Swing Order Mode", new String[]{"Normal", "Packet", "No Order"}, "Packet");
+
+    @Setting
     private static final BooleanValue autoWhitelist = new BooleanValue("Auto Whitelist", false);
 
     private static boolean wasBreaking = false;
@@ -56,12 +61,14 @@ public class Breaker extends Module {
     private int hypTick = 0;
     private BlockPos cachedBedPos = null;
     private BlockPos cachedSecondPos = null;
+    private final BlockHighlight blockHighlight = new BlockHighlight(RenderColors.BREAKER);
     private int originalSlot = -1;
     private boolean progress = false;
     private boolean secondProgress = false;
     private boolean breakerNoKillAura = false;
     private boolean breakerSpoofing = false;
     private static final Set<BlockPos> autoWhitelistedTargets = new HashSet<>();
+    private static final Direction[] DIRECTIONS = Direction.values();
     private static boolean autoWhitelistSearching = false;
     private static boolean autoWhitelistHasBed = false;
     private static long autoWhitelistLastScanTime = 0L;
@@ -78,6 +85,7 @@ public class Breaker extends Module {
     @Override
     public void onDisable() {
         resetBreakingState(mc.player);
+        blockHighlight.release();
     }
 
     @Override
@@ -89,13 +97,13 @@ public class Breaker extends Module {
         resetBreakingState(mc.player);
 
         if (resetAutoWhitelist(autoWhitelist.get()))
-            KrsClient.notificationManager.addNotification("Auto Whitelist", "Reset bed whitelist");
+            Client.notificationManager.addNotification("Auto Whitelist", "Reset bed whitelist");
     }
 
     @Override
     public void onKey(KeyboardEvent event) {
         if (event.action == Keys.PRESS && event.key == Keys.KEY_RIGHT_CONTROL && resetAutoWhitelist(true))
-            KrsClient.notificationManager.addNotification("Auto Whitelist", "Reset bed whitelist");
+            Client.notificationManager.addNotification("Auto Whitelist", "Reset bed whitelist");
     }
 
     public static boolean resetAutoWhitelist(boolean searchAgain) {
@@ -180,7 +188,7 @@ public class Breaker extends Module {
         releaseBreakerSpoof();
 
         if (hasBreakerState || breakerNoKillAura)
-            KrsClient.rotationManager.stopRotation();
+            Client.rotationManager.stopRotation();
 
         releaseKillAura();
         cachedSecondPos = null;
@@ -189,6 +197,7 @@ public class Breaker extends Module {
         progress = false;
         secondProgress = false;
         wasBreaking = false;
+        blockHighlight.setTarget(null);
     }
 
     private void resetAutoToolState() {
@@ -252,7 +261,7 @@ public class Breaker extends Module {
         autoWhitelistSearching = false;
 
         if (addedBed)
-            KrsClient.notificationManager.addNotification("Auto Whitelist", "Added bed to whitelist: " + formatBlockPos(targetPos));
+            Client.notificationManager.addNotification("Auto Whitelist", "Added bed to whitelist: " + formatBlockPos(targetPos));
 
         if (cachedBedPos != null && !isTargetAvailable(level, cachedBedPos)) {
             cachedBedPos = null;
@@ -287,17 +296,18 @@ public class Breaker extends Module {
         int horizontalRange = 10;
         int verticalRange = 5;
 
+        BlockPos.MutableBlockPos pos = new BlockPos.MutableBlockPos();
         for (int x = -horizontalRange; x <= horizontalRange; x++) {
             for (int y = -verticalRange; y <= verticalRange; y++) {
                 for (int z = -horizontalRange; z <= horizontalRange; z++) {
-                    BlockPos pos = playerPos.offset(x, y, z);
+                    pos.setWithOffset(playerPos, x, y, z);
                     var blockState = level.getBlockState(pos);
                     if (!isTargetBlock(blockState))
                         continue;
 
                     double distance = pos.distSqr(playerPos);
                     if (distance < closestDistance) {
-                        closest = pos;
+                        closest = pos.immutable();
                         closestDistance = distance;
                     }
                 }
@@ -340,22 +350,24 @@ public class Breaker extends Module {
             cachedBedPos = findNearbyTargets(level, player, (int) Math.ceil(rangeValue), rangeLimit);
 
         BlockPos bedPos = cachedBedPos;
+        BlockPos highlightPos = null;
         if (bedPos != null && isTargetAvailable(level, bedPos) && isWithinRange(player, bedPos, rangeLimit)) {
             wasBreaking = true;
             switch (mode.get().toLowerCase(Locale.ROOT)) {
                 case "normal" -> {
                     blockKillAura();
                     selectBestTool(player, bedPos);
-                    KrsClient.rotationManager.faceBlock(bedPos, 180f);
+                    Client.rotationManager.faceBlock(bedPos, 180f);
+                    highlightPos = bedPos;
                     BlockHitResult hitResult = hitResult(bedPos);
                     switch (clickMode.get().toLowerCase(Locale.ROOT)) {
                         case "break" -> {
-                            PlayerUtil.INSTANCE.destroyBlock(hitResult);
+                            PlayerUtil.INSTANCE.destroyBlock(hitResult, swingOrderMode.get());
                             progress = true;
                         }
                         case "place" -> {
                             if (gameMode.useItemOn(player, InteractionHand.MAIN_HAND, hitResult).consumesAction())
-                                PlayerUtil.INSTANCE.swingInteractHand(InteractionHand.MAIN_HAND);
+                                PlayerUtil.INSTANCE.swingInteractHand(InteractionHand.MAIN_HAND, swingOrderMode.get());
                         }
                     }
                 }
@@ -373,19 +385,20 @@ public class Breaker extends Module {
                         progress = false;
                         hypTick = 0;
                     } else if (!bedTouchingAir && secondPos != null && !level.getBlockState(secondPos).isAir() && isWithinRange(player, secondPos, rangeLimit)) {
+                        highlightPos = secondPos;
                         selectBestTool(player, secondPos);
                         BlockHitResult hitResult = hitResult(secondPos);
                         hypTick++;
                         if (secondProgress) {
-                            PlayerUtil.INSTANCE.destroyBlock(hitResult);
+                            PlayerUtil.INSTANCE.destroyBlock(hitResult, swingOrderMode.get());
                             if (hypTick >= 6) {
                                 if (!ModuleManager.getModuleState(KillAura.class) || KillAura.closestEntity == null)
-                                    KrsClient.rotationManager.faceBlock(secondPos, 180f);
+                                    Client.rotationManager.faceBlock(secondPos, 180f);
                             }
                         } else {
                             blockKillAura();
-                            KrsClient.rotationManager.faceBlock(secondPos, 180f);
-                            PlayerUtil.INSTANCE.destroyBlock(hitResult);
+                            Client.rotationManager.faceBlock(secondPos, 180f);
+                            PlayerUtil.INSTANCE.destroyBlock(hitResult, swingOrderMode.get());
                             secondProgress = true;
                         }
                     } else {
@@ -398,19 +411,20 @@ public class Breaker extends Module {
                             secondProgress = false;
                             hypTick = 0;
                         }
+                        highlightPos = bedPos;
                         selectBestTool(player, bedPos);
                         BlockHitResult hitResult = hitResult(bedPos);
                         hypTick++;
                         if (progress) {
-                            PlayerUtil.INSTANCE.destroyBlock(hitResult);
+                            PlayerUtil.INSTANCE.destroyBlock(hitResult, swingOrderMode.get());
                             if (hypTick >= 6) {
                                 if (!ModuleManager.getModuleState(KillAura.class) || KillAura.closestEntity == null)
-                                    KrsClient.rotationManager.faceBlock(bedPos, 180f);
+                                    Client.rotationManager.faceBlock(bedPos, 180f);
                             }
                         } else {
                             blockKillAura();
-                            KrsClient.rotationManager.faceBlock(bedPos, 180f);
-                            PlayerUtil.INSTANCE.destroyBlock(hitResult);
+                            Client.rotationManager.faceBlock(bedPos, 180f);
+                            PlayerUtil.INSTANCE.destroyBlock(hitResult, swingOrderMode.get());
                             progress = true;
                         }
                     }
@@ -426,13 +440,14 @@ public class Breaker extends Module {
                         secondProgress = false;
                         progress = false;
                     } else if (secondPos != null && !level.getBlockState(secondPos).isAir() && isWithinRange(player, secondPos, rangeLimit)) {
+                        highlightPos = secondPos;
                         selectBestTool(player, secondPos);
-                        KrsClient.rotationManager.faceBlock(secondPos, 180f);
+                        Client.rotationManager.faceBlock(secondPos, 180f);
                         BlockHitResult hitResult = hitResult(secondPos);
                         if (progress) {
-                            PlayerUtil.INSTANCE.destroyBlock(hitResult);
+                            PlayerUtil.INSTANCE.destroyBlock(hitResult, swingOrderMode.get());
                         } else {
-                            PlayerUtil.INSTANCE.destroyBlock(hitResult);
+                            PlayerUtil.INSTANCE.destroyBlock(hitResult, swingOrderMode.get());
                             progress = true;
                         }
                     } else {
@@ -444,10 +459,11 @@ public class Breaker extends Module {
                             cachedSecondPos = null;
                             secondProgress = false;
                         }
-                        KrsClient.rotationManager.faceBlock(bedPos, 180f);
+                        highlightPos = bedPos;
+                        Client.rotationManager.faceBlock(bedPos, 180f);
                         BlockHitResult hitResult = hitResult(bedPos);
                         if (gameMode.useItemOn(player, InteractionHand.MAIN_HAND, hitResult).consumesAction())
-                            PlayerUtil.INSTANCE.swingInteractHand(InteractionHand.MAIN_HAND);
+                            PlayerUtil.INSTANCE.swingInteractHand(InteractionHand.MAIN_HAND, swingOrderMode.get());
                     }
                 }
             }
@@ -458,14 +474,14 @@ public class Breaker extends Module {
             PlayerUtil.INSTANCE.stopDestroyBlock();
             if (!mode.get().equalsIgnoreCase("hypixel")) {
                 releaseKillAura();
-                KrsClient.rotationManager.stopRotation();
+                Client.rotationManager.stopRotation();
             }
             boolean keepHypixelKillAura = false;
             BlockPos secondPos = cachedSecondPos;
             if (secondProgress && secondPos != null) {
                 if (mode.get().equalsIgnoreCase("hypixel")) {
                     blockKillAura();
-                    KrsClient.rotationManager.faceBlock(secondPos, 180f);
+                    Client.rotationManager.faceBlock(secondPos, 180f);
                     hypTick = 810;
                     keepHypixelKillAura = true;
                 }
@@ -474,14 +490,14 @@ public class Breaker extends Module {
             if (progress && currentBedPos != null) {
                 if (mode.get().equalsIgnoreCase("hypixel")) {
                     blockKillAura();
-                    KrsClient.rotationManager.faceBlock(currentBedPos, 180f);
+                    Client.rotationManager.faceBlock(currentBedPos, 180f);
                     hypTick = 810;
                     keepHypixelKillAura = true;
                 }
             }
             if (mode.get().equalsIgnoreCase("hypixel") && !keepHypixelKillAura) {
                 releaseKillAura();
-                KrsClient.rotationManager.stopRotation();
+                Client.rotationManager.stopRotation();
             }
             cachedSecondPos = null;
             secondProgress = false;
@@ -499,7 +515,7 @@ public class Breaker extends Module {
                 cachedBedPos = null;
             if (hypTick == 0 && breakerNoKillAura) {
                 releaseKillAura();
-                KrsClient.rotationManager.stopRotation();
+                Client.rotationManager.stopRotation();
             }
             if (hypTick != 0) {
                 if (mode.get().equalsIgnoreCase("hypixel")) {
@@ -507,12 +523,24 @@ public class Breaker extends Module {
                         hypTick++;
                     if (hypTick >= 812) {
                         releaseKillAura();
-                        KrsClient.rotationManager.stopRotation();
+                        Client.rotationManager.stopRotation();
                         hypTick = 0;
                     }
                 } else hypTick = 0;
             }
         }
+
+        updateHighlight(level, highlightPos);
+    }
+
+    private void updateHighlight(ClientLevel level, BlockPos highlightPos) {
+        if (highlightPos == null) {
+            blockHighlight.setTarget(null);
+            return;
+        }
+
+        BlockState blockState = level.getBlockState(highlightPos);
+        blockHighlight.setTarget(highlightPos, blockState.getBlock() instanceof BedBlock ? findOtherBedPart(level, highlightPos, blockState) : null);
     }
 
     private boolean isBedTouchingAir(ClientLevel level, BlockPos bedPos) {
@@ -546,8 +574,9 @@ public class Breaker extends Module {
     }
 
     private boolean hasAdjacentAir(ClientLevel level, BlockPos pos) {
-        for (Direction direction : Direction.values()) {
-            if (level.getBlockState(pos.relative(direction)).isAir())
+        BlockPos.MutableBlockPos adjacentPos = new BlockPos.MutableBlockPos();
+        for (Direction direction : DIRECTIONS) {
+            if (level.getBlockState(adjacentPos.setWithOffset(pos, direction)).isAir())
                 return true;
         }
 
@@ -559,16 +588,23 @@ public class Breaker extends Module {
         BlockPos closest = null;
         double closestDistance = Double.MAX_VALUE;
 
+        double playerX = player.getX();
+        double playerY = player.getY();
+        double playerZ = player.getZ();
+        BlockPos.MutableBlockPos pos = new BlockPos.MutableBlockPos();
         for (int x = -radius; x <= radius; x++) {
             for (int y = -radius; y <= radius; y++) {
                 for (int z = -radius; z <= radius; z++) {
-                    BlockPos pos = playerPos.offset(x, y, z);
-                    if (!isTargetAvailable(level, pos) || !isWithinRange(player, pos, rangeLimit))
+                    pos.setWithOffset(playerPos, x, y, z);
+                    double dx = pos.getX() + 0.5 - playerX;
+                    double dy = pos.getY() + 0.5 - playerY;
+                    double dz = pos.getZ() + 0.5 - playerZ;
+                    double distance = dx * dx + dy * dy + dz * dz;
+                    if (rangeLimit < distance || !isTargetAvailable(level, pos))
                         continue;
 
-                    double distance = player.distanceToSqr(Vec3.atCenterOf(pos));
                     if (distance < closestDistance) {
-                        closest = pos;
+                        closest = pos.immutable();
                         closestDistance = distance;
                     }
                 }

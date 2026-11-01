@@ -222,7 +222,7 @@ public final class AutoRod extends Feature {
 
    private boolean requirementsMet() {
       if (!rodAt(this.availableSlot) || mc.player.getHealth() <= this.minHealth.getValue()
-         || enabled(FeatureManager.scaffold) || enabled(FeatureManager.blink) || enabled(FeatureManager.stasis)) return false;
+         || FeatureManager.scaffoldActive() || enabled(FeatureManager.blink) || enabled(FeatureManager.stasis)) return false;
       ItemStack main = mc.player.getMainHandItem();
       if (this.ignoredItems.contains(BuiltInRegistries.ITEM.getKey(main.getItem()).toString())) return false;
       if (this.ignores.contains("Open Inventory") && mc.gui.screen() instanceof AbstractContainerScreen<?>

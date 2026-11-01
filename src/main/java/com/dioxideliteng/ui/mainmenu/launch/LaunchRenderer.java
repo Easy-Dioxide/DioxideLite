@@ -154,11 +154,11 @@ public final class LaunchRenderer implements AutoCloseable {
       }
       rect(994, 520, 570, 128, 0xF000ABD1);
       glyph("cart", 1101, 569, 44, 0x55B1F5FF);
-      text("卫戍协议", 1011, 611, 36, WHITE, "serif", 0);
+      text("采购中心", 1011, 611, 36, WHITE, "serif", 0);
       rect(1226, 526, 331, 39, 0xFF45454B);
-      text("进入", 1242, 556, 27, WHITE, "serif", 0);
-      text("单机", 1235, 617, 29, WHITE, "serif", 0);
-      text("联机", 1410, 617, 29, WHITE, "serif", 0);
+      text("招募", 1242, 556, 27, WHITE, "serif", 0);
+      text("公开招募", 1235, 617, 29, WHITE, "serif", 0);
+      text("干员寻访", 1410, 617, 29, WHITE, "serif", 0);
       line(1396, 568, 1396, 644, 2, 0xAA218FAA);
       rect(1381, 553, 31, 33, 0xFFEA6224);
       text("4", 1396, 580, 25, WHITE, "regular", NVG_ALIGN_CENTER);

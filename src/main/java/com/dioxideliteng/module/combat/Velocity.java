@@ -476,7 +476,7 @@ public class Velocity extends Feature {
 
       void rotate() {
          if (this.mode.get().equals("Reduce") && this.remainingSprintTicks >= 1
-            && FeatureManager.killAura.getTarget() == null && !FeatureManager.scaffold.isEnabled()) {
+            && FeatureManager.killAura.getTarget() == null && !FeatureManager.scaffoldActive()) {
             Events.ROTATION.setYaw(this.knockbackYaw);
          }
       }
@@ -529,7 +529,7 @@ public class Velocity extends Feature {
             if (System.currentTimeMillis() - this.lastReduceCorrectionTime >= CORRECTION_GRACE_MILLIS) { Events.MOVE_INPUT.setJump(true); pressForward(); }
             this.reduceJumpPending = false;
          }
-         if (this.remainingSprintTicks-- >= 1 && FeatureManager.killAura.getTarget() == null && !FeatureManager.scaffold.isEnabled()
+         if (this.remainingSprintTicks-- >= 1 && FeatureManager.killAura.getTarget() == null && !FeatureManager.scaffoldActive()
             && System.currentTimeMillis() - this.lastReduceCorrectionTime >= CORRECTION_GRACE_MILLIS) pressForward();
       }
 

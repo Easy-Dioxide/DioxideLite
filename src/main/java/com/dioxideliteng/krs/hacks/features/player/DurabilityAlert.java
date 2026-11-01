@@ -1,6 +1,6 @@
 package com.dioxideliteng.krs.hacks.features.player;
 
-import com.dioxideliteng.krs.KrsClient;
+import com.dioxideliteng.krs.Client;
 import com.dioxideliteng.krs.events.features.UpdateEvent;
 import com.dioxideliteng.krs.events.features.WorldEvent;
 import com.dioxideliteng.krs.hacks.Module;
@@ -43,12 +43,7 @@ public class DurabilityAlert extends Module {
     private int checkTicks;
 
     public DurabilityAlert() {
-        super("Durability Alert", ModuleCategory.Player, Keys.KEY_UNKNOWN, false, true);
-    }
-
-    @Override
-    public String tag() {
-        return threshold.get() + "%";
+        super("Durability Alert", ModuleCategory.Player, Keys.KEY_UNKNOWN, false, false);
     }
 
     @Override
@@ -121,8 +116,8 @@ public class DurabilityAlert extends Module {
         if (remainingPercent <= threshold.get() && (!state.warned || repeatReady)) {
             String message = slotName(slot) + " " + stack.getHoverName().getString()
                     + ": " + remaining + " durability (" + remainingPercent + "%)";
-            if (KrsClient.notificationManager != null)
-                KrsClient.notificationManager.addNotification("Low Durability", message);
+            if (Client.notificationManager != null)
+                Client.notificationManager.addNotification("Low Durability", message);
             state.warned = true;
             state.lastAlertNanos = now;
         }

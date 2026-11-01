@@ -2,7 +2,7 @@ package com.dioxideliteng.krs.hacks.features.player;
 
 
 
-import com.dioxideliteng.krs.KrsClient;
+import com.dioxideliteng.krs.Client;
 import com.dioxideliteng.krs.events.features.UpdateEvent;
 import com.dioxideliteng.krs.hacks.Module;
 import com.dioxideliteng.krs.hacks.ModuleCategory;
@@ -38,7 +38,7 @@ public class SpinBot extends Module {
         if (mc.player == null) return;
 
         spinYaw = 0f;
-        KrsClient.rotationManager.stopRotation();
+        Client.rotationManager.stopRotation();
     }
 
     @Override
@@ -54,6 +54,6 @@ public class SpinBot extends Module {
 
         spinYaw += spinSpeed.get();
 
-        KrsClient.rotationManager.startRotation(spinYaw, pitch.get(), 180f);
+        Client.rotationManager.startRotation(spinYaw, pitch.get(), 180f);
     }
 }

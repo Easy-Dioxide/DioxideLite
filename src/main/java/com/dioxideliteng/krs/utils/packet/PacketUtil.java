@@ -1,12 +1,13 @@
 package com.dioxideliteng.krs.utils.packet;
 
-import com.dioxideliteng.krs.KrsClient;
+import com.dioxideliteng.krs.Client;
 import com.dioxideliteng.krs.utils.IMinecraft;
 import com.mojang.logging.LogUtils;
 import java.util.Collections;
 import java.util.IdentityHashMap;
 import java.util.Set;
 import net.minecraft.client.multiplayer.ClientPacketListener;
+import net.minecraft.network.Connection;
 import net.minecraft.network.protocol.game.ClientGamePacketListener;
 import net.minecraft.network.protocol.Packet;
 import org.slf4j.Logger;
@@ -44,6 +45,28 @@ public class PacketUtil implements IMinecraft {
         }
     }
 
+    /**
+     * Sends a packet that a KRS listener substituted for the original. It is marked silent so the KRS listeners do
+     * not see (and possibly substitute) it again; DioxideLiteNG's own listeners still do.
+     */
+    public static void sendReplacement(Packet<?> packet, Connection connection) {
+        if (packet == null || connection == null) return;
+
+        Set<Packet<?>> packetsForThread = SILENT_PACKETS.get();
+        if (packetsForThread == null) {
+            packetsForThread = Collections.newSetFromMap(new IdentityHashMap<>());
+            SILENT_PACKETS.set(packetsForThread);
+        }
+        packetsForThread.add(packet);
+        try {
+            connection.send(packet, null);
+        } finally {
+            packetsForThread.remove(packet);
+            if (packetsForThread.isEmpty())
+                SILENT_PACKETS.remove();
+        }
+    }
+
     public static boolean consumeSilentPacket(Packet<?> packet) {
         if (packet == null)
             return false;
@@ -59,10 +82,10 @@ public class PacketUtil implements IMinecraft {
     }
 
     private static Packet<?> normalizeRotationPacket(Packet<?> packet) {
-        if (KrsClient.rotationManager == null)
+        if (Client.rotationManager == null)
             return packet;
 
-        return KrsClient.rotationManager.normalizeOutgoingPacket(packet);
+        return Client.rotationManager.normalizeOutgoingPacket(packet);
     }
 
     @SuppressWarnings("unchecked")

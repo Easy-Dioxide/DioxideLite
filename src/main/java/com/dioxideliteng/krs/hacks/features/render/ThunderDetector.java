@@ -1,6 +1,6 @@
 package com.dioxideliteng.krs.hacks.features.render;
 
-import com.dioxideliteng.krs.KrsClient;
+import com.dioxideliteng.krs.Client;
 import com.dioxideliteng.krs.events.features.ReceivedPacketEvent;
 import com.dioxideliteng.krs.events.features.WorldEvent;
 import com.dioxideliteng.krs.hacks.Module;
@@ -76,7 +76,7 @@ public class ThunderDetector extends Module {
                             .withHoverEvent(new HoverEvent.ShowText(Component.literal("§lClick to easily prepare for teleport to " + (int) addEntityPacket.getX() + ", " + (int) addEntityPacket.getY() + ", " + (int) addEntityPacket.getZ())))
             );
             ChatUtil.printModifiedChat(tpMessage);
-            KrsClient.notificationManager.addNotification("Lightning detected!", showMessage);
+            Client.notificationManager.addNotification("Lightning detected!", showMessage);
         }
     }
 

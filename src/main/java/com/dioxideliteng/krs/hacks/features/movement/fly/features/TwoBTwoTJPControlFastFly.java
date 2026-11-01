@@ -2,7 +2,7 @@ package com.dioxideliteng.krs.hacks.features.movement.fly.features;
 
 
 
-import com.dioxideliteng.krs.KrsClient;
+import com.dioxideliteng.krs.Client;
 import com.dioxideliteng.krs.events.features.*;
 import com.dioxideliteng.krs.hacks.features.movement.InventoryMove;
 import com.dioxideliteng.krs.hacks.features.movement.fly.FlyEvent;
@@ -74,12 +74,12 @@ public class TwoBTwoTJPControlFastFly implements FlyEvent {
 
         if (InputConstants.isKeyDown(InputConstants.KEY_LCONTROL) && MovementUtil.isMoving()) {
             if (boostSpeed != 1.5f) {
-                KrsClient.notificationManager.addNotification("Tesla bypass", "Boosted speed to MAX");
+                Client.notificationManager.addNotification("Tesla bypass", "Boosted speed to MAX");
                 boostSpeed = 1.5f;
             }
         } else if (boostSpeed > 1f) {
             boostSpeed = 1f;
-            KrsClient.notificationManager.addNotification("Reset", "Reset boost speed (cancel)");
+            Client.notificationManager.addNotification("Reset", "Reset boost speed (cancel)");
         }
 
         float yMotion = 0f;
@@ -118,7 +118,7 @@ public class TwoBTwoTJPControlFastFly implements FlyEvent {
 
         if (packet instanceof ClientboundPlayerPositionPacket && boostSpeed > 1f) {
             boostSpeed = 1f;
-            KrsClient.notificationManager.addNotification("Reset", "Reset boost speed (flag)");
+            Client.notificationManager.addNotification("Reset", "Reset boost speed (flag)");
         }
     }
 

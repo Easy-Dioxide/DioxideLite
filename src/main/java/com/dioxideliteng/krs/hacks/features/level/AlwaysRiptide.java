@@ -6,7 +6,7 @@ import com.dioxideliteng.krs.events.features.WorldEvent;
 import com.dioxideliteng.krs.hacks.Module;
 import com.dioxideliteng.krs.hacks.ModuleCategory;
 import com.dioxideliteng.krs.hacks.ModuleManager;
-import com.dioxideliteng.mixin.krs.LivingEntityAccessor;
+import mixins.krs.LivingEntityAccessor;
 import net.minecraft.client.multiplayer.ClientLevel;
 import net.minecraft.client.player.LocalPlayer;
 import net.minecraft.server.level.ServerPlayer;

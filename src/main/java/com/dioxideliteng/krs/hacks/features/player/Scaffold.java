@@ -1,6 +1,7 @@
 package com.dioxideliteng.krs.hacks.features.player;
 
-import com.dioxideliteng.krs.KrsClient;
+import com.dioxideliteng.krs.utils.render.RenderColors;
+import com.dioxideliteng.krs.Client;
 import com.dioxideliteng.krs.events.features.BlockEdgeEvent;
 import com.dioxideliteng.krs.events.features.TickEvent;
 import com.dioxideliteng.krs.events.features.UpdateEvent;
@@ -18,6 +19,7 @@ import com.dioxideliteng.krs.utils.math.TimerUtil;
 import com.dioxideliteng.krs.utils.move.InputUtil;
 import com.dioxideliteng.krs.utils.move.MovementUtil;
 import com.dioxideliteng.krs.utils.packet.PacketUtil;
+import com.dioxideliteng.krs.utils.render.BlockHighlight;
 import com.dioxideliteng.krs.utils.value.BooleanValue;
 import com.dioxideliteng.krs.utils.value.FloatValue;
 import com.dioxideliteng.krs.utils.value.IntValue;
@@ -78,6 +80,9 @@ public class Scaffold extends Module {
 
     @Setting
     private static final ListValue mode = new ListValue("Mode", new String[]{"Normal", "Telly"}, "Normal");
+
+    @Setting
+    private static final ListValue swingOrderMode = new ListValue("Swing Order Mode", new String[]{"Normal", "Packet"}, "Packet");
 
     @Setting
     private static final BooleanValue tower = new BooleanValue("Tower", true);
@@ -176,6 +181,7 @@ public class Scaffold extends Module {
     private boolean wasTellyKeepYOnGround = false;
     private boolean tellyJumpDownOnLastGround = false;
     private boolean tellyClutchMode = false;
+    private boolean jumpKeyOverridden = false;
     private Integer lastSlot = null;
     private PlacementTarget humanizedMathAimTarget = null;
     private Vec3 humanizedMathAimPos = null;
@@ -193,6 +199,8 @@ public class Scaffold extends Module {
     private final ArrayList<BlockPos> scaffoldCandidates = new ArrayList<>(64);
     private final ArrayList<BlockPos> scaffoldDistanceCandidates = new ArrayList<>(32);
     private final HashSet<BlockPos> scaffoldCandidateSet = new HashSet<>(64);
+    private static final long HIGHLIGHT_HOLD_MILLIS = 900L;
+    private final BlockHighlight blockHighlight = new BlockHighlight(0.45f, RenderColors.SCAFFOLD);
 
     private record PlacementTarget(BlockPos pos, BlockPos neighbour, Vec3 hitPos, Direction side, int searchDistance) {
     }
@@ -237,7 +245,7 @@ public class Scaffold extends Module {
                 }
             }
             if (once) {
-                KrsClient.rotationManager.stopRotation();
+                Client.rotationManager.stopRotation();
                 TimerUtil.reset();
                 BehaviorUtils.noKillAura = false;
                 if (lastSlot != null)
@@ -268,7 +276,16 @@ public class Scaffold extends Module {
         tellyClutchMode = false;
         resetRotationHumanization();
         updateAutoSneak(false);
+        restorePhysicalMovementKeys();
         PlayerUtil.INSTANCE.stopSpoof();
+        blockHighlight.release();
+    }
+
+    private void restorePhysicalMovementKeys() {
+        boolean screenClosed = mc.gui.screen() == null;
+        mc.options.keyJump.setDown(screenClosed && isPhysicalJumpDown());
+        mc.options.keyShift.setDown(screenClosed && isPhysicalKeyDown(mc.options.keyShift.saveString()));
+        jumpKeyOverridden = false;
     }
 
     @Override
@@ -317,14 +334,16 @@ public class Scaffold extends Module {
         if (down.get())
             mc.options.keyShift.setDown(false);
 
-        if (tellyGroundPhase || wasTowering)
+        if (tellyGroundPhase || wasTowering) {
             mc.options.keyJump.setDown(false);
-
-        if (!tellyGroundPhase
-                && !wasTowering
-                && isTellyUpwardJumpInputActive(mc.player)
-                && !ModuleManager.getModuleState(SpeedModule.class))
+            jumpKeyOverridden = true;
+        } else if (isTellyUpwardJumpInputActive(mc.player) && !ModuleManager.getModuleState(SpeedModule.class)) {
             mc.options.keyJump.setDown(true);
+            jumpKeyOverridden = true;
+        } else if (jumpKeyOverridden) {
+            mc.options.keyJump.setDown(mc.gui.screen() == null && isPhysicalJumpDown());
+            jumpKeyOverridden = false;
+        }
     }
 
     public static void hookTellyJumpInput(ClientInput input) {
@@ -382,7 +401,7 @@ public class Scaffold extends Module {
         if (Sprint.tryStartSprinting(player, keyPresses, true))
             sprinting = true;
 
-        if (!sprinting)
+        if (!sprinting && !player.horizontalCollision)
             return false;
 
         InputUtil.applyInput(input, new Input(
@@ -624,7 +643,18 @@ public class Scaffold extends Module {
                 && player != null
                 && player.horizontalCollision
                 && isPhysicalJumpDown()
-                && isTellyMoving();
+                && isTellyMoving()
+                && canTowerLift(player);
+    }
+
+    private boolean canTowerLift(net.minecraft.client.player.LocalPlayer player) {
+        boolean modeAllowed = !towerMode.get().equalsIgnoreCase("hypixel")
+                || !player.hasEffect(MobEffects.JUMP_BOOST) && !ModuleManager.getModuleState(SpeedModule.class)
+                || player.hasEffect(MobEffects.SPEED);
+        boolean timingAllowed = towerWhen.get().equalsIgnoreCase("always")
+                || towerWhen.get().equalsIgnoreCase("standing") && !MovementUtil.isMoving()
+                || towerWhen.get().equalsIgnoreCase("moving") && MovementUtil.isMoving();
+        return modeAllowed && timingAllowed && hotbarStackSize > 0 && hasAroundBlock();
     }
 
     private boolean isTellyUpwardJumpInputActive(net.minecraft.client.player.LocalPlayer player) {
@@ -954,7 +984,7 @@ public class Scaffold extends Module {
             checkGround = false;
             wasTowering = false;
             if (once) {
-                KrsClient.rotationManager.stopRotation();
+                Client.rotationManager.stopRotation();
                 TimerUtil.reset();
                 BehaviorUtils.noKillAura = false;
                 if (lastSlot != null) {
@@ -1204,9 +1234,9 @@ public class Scaffold extends Module {
         if (searchOrigin == null || level == null || player == null || !rotationMode.get().equalsIgnoreCase("math"))
             return null;
 
-        BlockHitResult hit = KrsClient.rotationManager.rayTraceBlocks(
-                KrsClient.rotationManager.getRotationYaw(),
-                KrsClient.rotationManager.getRotationPitch(),
+        BlockHitResult hit = Client.rotationManager.rayTraceBlocks(
+                Client.rotationManager.getRotationYaw(),
+                Client.rotationManager.getRotationPitch(),
                 placementReach()
         );
         if (hit.getType() != HitResult.Type.BLOCK)
@@ -1334,9 +1364,9 @@ public class Scaffold extends Module {
         float currentYaw = rotationsToHitPos(currentTarget.hitPos())[0];
         float candidateYaw = rotationsToHitPos(candidateTarget.hitPos())[0];
         double currentScore = mathMovementAlignmentError(currentYaw, movementYaw) * MATH_MOVEMENT_ALIGNMENT_WEIGHT
-                + mathMovementTransitionScore(KrsClient.rotationManager.getRotationYaw(), currentYaw, movementYaw);
+                + mathMovementTransitionScore(Client.rotationManager.getRotationYaw(), currentYaw, movementYaw);
         double candidateScore = mathMovementAlignmentError(candidateYaw, movementYaw) * MATH_MOVEMENT_ALIGNMENT_WEIGHT
-                + mathMovementTransitionScore(KrsClient.rotationManager.getRotationYaw(), candidateYaw, movementYaw);
+                + mathMovementTransitionScore(Client.rotationManager.getRotationYaw(), candidateYaw, movementYaw);
         return candidateScore + MATH_MOVEMENT_ALIGNMENT_EPSILON < currentScore ? candidateTarget : currentTarget;
     }
 
@@ -1363,8 +1393,8 @@ public class Scaffold extends Module {
 
     private double placementRotationTicks(PlacementTarget target) {
         float[] rotations = rotationsToHitPos(target.hitPos());
-        float yawDiff = Math.abs(Mth.wrapDegrees(rotations[0] - KrsClient.rotationManager.getRotationYaw()));
-        float pitchDiff = Math.abs(rotations[1] - KrsClient.rotationManager.getRotationPitch());
+        float yawDiff = Math.abs(Mth.wrapDegrees(rotations[0] - Client.rotationManager.getRotationYaw()));
+        float pitchDiff = Math.abs(rotations[1] - Client.rotationManager.getRotationPitch());
         double yawTicks = rotationTicks(yawDiff, expectedMathYawSpeed());
         double pitchTicks = rotationTicks(pitchDiff, expectedMathPitchSpeed());
         double movementAlignmentTicks = mathMovementAlignmentScore(rotations[0])
@@ -1444,7 +1474,7 @@ public class Scaffold extends Module {
 
     private boolean isIdealPlacementHitReachable(PlacementTarget target) {
         float[] rotations = rotationsToHitPos(target.hitPos());
-        BlockHitResult hit = KrsClient.rotationManager.rayTraceBlocks(rotations[0], rotations[1], placementReach());
+        BlockHitResult hit = Client.rotationManager.rayTraceBlocks(rotations[0], rotations[1], placementReach());
         return isMatchingPlacementHit(hit, target);
     }
 
@@ -1712,6 +1742,8 @@ public class Scaffold extends Module {
     }
 
     private static boolean isScaffoldReplaceable(BlockState state) {
+        if (state.getBlock() instanceof SnowLayerBlock)
+            return state.getValue(SnowLayerBlock.LAYERS) == 1;
         return state.canBeReplaced();
     }
 
@@ -1815,10 +1847,10 @@ public class Scaffold extends Module {
         Vec3 faceCenter = placementFaceCenter(neighbour, sideToClick);
         double reach = placementReach();
         double reachSqr = reach * reach;
-        float currentYaw = KrsClient.rotationManager.getRotationYaw();
-        float currentPitch = KrsClient.rotationManager.getRotationPitch();
+        float currentYaw = Client.rotationManager.getRotationYaw();
+        float currentPitch = Client.rotationManager.getRotationPitch();
         float[] centerRotations = rotationsToHitPos(faceCenter);
-        BlockHitResult currentHit = KrsClient.rotationManager.rayTraceBlocks(currentYaw, currentPitch, reach);
+        BlockHitResult currentHit = Client.rotationManager.rayTraceBlocks(currentYaw, currentPitch, reach);
         PlacementHit currentPlacementHit = null;
         Vec3 bestHitPos = null;
         double bestDistanceSqr = 0.0D;
@@ -1858,7 +1890,7 @@ public class Scaffold extends Module {
             bestScore = movementAlignedHit.rotationScore();
         }
 
-        BlockHitResult centerHit = KrsClient.rotationManager.rayTraceBlocks(centerRotations[0], centerRotations[1], reach);
+        BlockHitResult centerHit = Client.rotationManager.rayTraceBlocks(centerRotations[0], centerRotations[1], reach);
         if (isMatchingPlacementHit(centerHit, neighbour, sideToClick)) {
             Vec3 hitPos = centerHit.getLocation();
             double score = smartPlacementHitScore(hitPos, centerRotations, currentYaw, currentPitch, eyesPos, faceCenter, sideToClick, currentPlacementHit != null);
@@ -1884,7 +1916,7 @@ public class Scaffold extends Module {
                         continue;
 
                     float[] rotations = rotationsToHitPos(hitPos);
-                    BlockHitResult hit = KrsClient.rotationManager.rayTraceBlocks(rotations[0], rotations[1], reach);
+                    BlockHitResult hit = Client.rotationManager.rayTraceBlocks(rotations[0], rotations[1], reach);
                     if (!isMatchingPlacementHit(hit, neighbour, sideToClick))
                         continue;
 
@@ -1921,7 +1953,7 @@ public class Scaffold extends Module {
                 continue;
 
             float alignedPitch = rotationsToHitPos(targetHitPos)[1];
-            BlockHitResult hit = KrsClient.rotationManager.rayTraceBlocks(alignedYaw, alignedPitch, reach);
+            BlockHitResult hit = Client.rotationManager.rayTraceBlocks(alignedYaw, alignedPitch, reach);
             if (!isMatchingPlacementHit(hit, neighbour, sideToClick))
                 continue;
 
@@ -2088,7 +2120,7 @@ public class Scaffold extends Module {
         double targetAlignmentScore = mathMovementAlignmentError(targetYaw, movementYaw)
                 * MATH_MOVEMENT_ALIGNMENT_WEIGHT;
         return targetAlignmentScore + mathMovementTransitionScore(
-                KrsClient.rotationManager.getRotationYaw(),
+                Client.rotationManager.getRotationYaw(),
                 targetYaw,
                 movementYaw
         );
@@ -2283,7 +2315,7 @@ public class Scaffold extends Module {
 
     private double placementTargetScore(PlacementTarget target) {
         float[] rotations = rotationsToHitPos(target.hitPos());
-        return placementRotationScore(rotations, KrsClient.rotationManager.getRotationYaw(), KrsClient.rotationManager.getRotationPitch())
+        return placementRotationScore(rotations, Client.rotationManager.getRotationYaw(), Client.rotationManager.getRotationPitch())
                 + minimumPlacementTargetScore(target.searchDistance())
                 + placementSideScore(target.side());
     }
@@ -2326,7 +2358,6 @@ public class Scaffold extends Module {
 
             BlockHitResult bhr = new BlockHitResult(target.hitPos(), target.side(), target.neighbour(), false);
             if (!rotationMode.get().equalsIgnoreCase("none") && !isPlacementBypassRotationMode(target) && !isNoHitCheckActive(target)) {
-                facePlacementTarget(target);
                 BlockHitResult currentHit = currentPlacementHit(target);
                 if (currentHit == null)
                     return false;
@@ -2339,13 +2370,14 @@ public class Scaffold extends Module {
             if (placed) {
                 placedScaffoldBlock = true;
                 lastPlacedScaffoldBlock = new BlockPos(target.pos().getX(), target.pos().getY(), target.pos().getZ());
+                blockHighlight.flash(lastPlacedScaffoldBlock, HIGHLIGHT_HOLD_MILLIS);
                 startedScaffold = true;
                 if (shouldActivateTellyAfterPlaceNoHitCheck(player))
                     tellyAfterPlaceNoHitCheckActive = true;
                 clearMathPlacementTarget();
                 if (isSnapRotationActive())
                     snapRotationResetPending = true;
-                // The server broadcasts the placement swing on its own since 26.3.
+                PlayerUtil.INSTANCE.swingInteractHand(hand, swingOrderMode.get());
             }
 
             return placed;
@@ -2405,9 +2437,9 @@ public class Scaffold extends Module {
         if (isNoHitCheckActive(target))
             return true;
         if (isRotationTargetHitCheckMode(target))
-            return KrsClient.rotationManager.isRotating() && ModuleManager.rotTick > 1 && isFacingRotationTarget(target);
+            return Client.rotationManager.isRotating() && ModuleManager.rotTick > 1 && isFacingRotationTarget(target);
 
-        return KrsClient.rotationManager.isRotating() && ModuleManager.rotTick > 1 && currentPlacementHit(target) != null;
+        return Client.rotationManager.isRotating() && ModuleManager.rotTick > 1 && currentPlacementHit(target) != null;
     }
 
     private boolean isNoHitCheckActive() {
@@ -2429,7 +2461,7 @@ public class Scaffold extends Module {
             return false;
 
         snapRotationResetPending = false;
-        KrsClient.rotationManager.stopRotation();
+        Client.rotationManager.stopRotation();
         return noPlaceWhenSnapping.get();
     }
 
@@ -2511,7 +2543,7 @@ public class Scaffold extends Module {
             return false;
 
         float placementYaw = rotationsToHitPos(target.hitPos())[0];
-        float yawDiff = Math.abs(Mth.wrapDegrees(placementYaw - KrsClient.rotationManager.getRotationYaw()));
+        float yawDiff = Math.abs(Mth.wrapDegrees(placementYaw - Client.rotationManager.getRotationYaw()));
         return yawDiff >= 90.0F;
     }
 
@@ -2669,7 +2701,7 @@ public class Scaffold extends Module {
         if (player == null) return;
 
         float[] rotations = simpleRotationTarget();
-        KrsClient.rotationManager.startRotation(rotations[0], rotations[1], getRotationSpeed());
+        Client.rotationManager.startRotation(rotations[0], rotations[1], getRotationSpeed());
     }
 
     private void faceBackwardsRotation(PlacementTarget target) {
@@ -2677,7 +2709,7 @@ public class Scaffold extends Module {
         if (player == null) return;
 
         float[] rotations = backwardsRotationTarget(target);
-        KrsClient.rotationManager.startRotation(rotations[0], rotations[1], getRotationSpeed());
+        Client.rotationManager.startRotation(rotations[0], rotations[1], getRotationSpeed());
     }
 
     private boolean isFacingRotationTarget(PlacementTarget placementTarget) {
@@ -2685,8 +2717,8 @@ public class Scaffold extends Module {
         if (rotations == null)
             return false;
 
-        float yawDiff = Math.abs(Mth.wrapDegrees(KrsClient.rotationManager.getRotationYaw() - rotations[0]));
-        float pitchDiff = Math.abs(KrsClient.rotationManager.getRotationPitch() - rotations[1]);
+        float yawDiff = Math.abs(Mth.wrapDegrees(Client.rotationManager.getRotationYaw() - rotations[0]));
+        float pitchDiff = Math.abs(Client.rotationManager.getRotationPitch() - rotations[1]);
         return yawDiff <= 5.0F && pitchDiff <= 5.0F;
     }
 
@@ -2723,9 +2755,9 @@ public class Scaffold extends Module {
 
         Float preparedPitch = mathTellyPreparationPitch(mathPitchTarget);
         if (preparedPitch != null)
-            KrsClient.rotationManager.startRotation(tellyJumpRotationYaw(), preparedPitch, 180f, getRotationSpeed());
+            Client.rotationManager.startRotation(tellyJumpRotationYaw(), preparedPitch, 180f, getRotationSpeed());
         else
-            KrsClient.rotationManager.startRotation(tellyJumpRotationYaw(), KrsClient.rotationManager.getRotationPitch(), 180f);
+            Client.rotationManager.startRotation(tellyJumpRotationYaw(), Client.rotationManager.getRotationPitch(), 180f);
     }
 
     private Float mathTellyPreparationPitch(PlacementTarget target) {
@@ -2749,9 +2781,9 @@ public class Scaffold extends Module {
     }
 
     private BlockHitResult currentPlacementHit(PlacementTarget target) {
-        BlockHitResult hit = KrsClient.rotationManager.rayTraceBlocks(
-                KrsClient.rotationManager.getRotationYaw(),
-                KrsClient.rotationManager.getRotationPitch(),
+        BlockHitResult hit = Client.rotationManager.rayTraceBlocks(
+                Client.rotationManager.getRotationYaw(),
+                Client.rotationManager.getRotationPitch(),
                 mc.player != null ? mc.player.blockInteractionRange() : 4.5D
         );
 
@@ -2763,10 +2795,17 @@ public class Scaffold extends Module {
     }
 
     private boolean isMatchingPlacementHit(BlockHitResult hit, BlockPos neighbour, Direction side) {
-        return hit != null
-                && hit.getType() == HitResult.Type.BLOCK
-                && hit.getBlockPos().equals(neighbour)
-                && hit.getDirection() == side;
+        if (hit == null || hit.getType() != HitResult.Type.BLOCK)
+            return false;
+
+        BlockPos hitPos = hit.getBlockPos();
+        if (hitPos.equals(neighbour))
+            return hit.getDirection() == side;
+
+        var level = mc.level;
+        return level != null
+                && hitPos.equals(neighbour.relative(side))
+                && isScaffoldReplaceable(level.getBlockState(hitPos));
     }
 
     private void facePlacementTarget(PlacementTarget target) {
@@ -2778,7 +2817,7 @@ public class Scaffold extends Module {
         Vec3 aimPos = getHumanizedMathAimPos(target);
         float[] rotations = rotationsToHitPos(aimPos);
         float[] speeds = humanizedMathRotationSpeeds(rotations[0], rotations[1]);
-        KrsClient.rotationManager.startRotation(rotations[0], rotations[1], speeds[0], speeds[1]);
+        Client.rotationManager.startRotation(rotations[0], rotations[1], speeds[0], speeds[1]);
     }
 
     private static boolean usesHumanizedMathRotation() {
@@ -2842,7 +2881,7 @@ public class Scaffold extends Module {
                 return false;
         }
 
-        BlockHitResult hit = KrsClient.rotationManager.rayTraceBlocks(
+        BlockHitResult hit = Client.rotationManager.rayTraceBlocks(
                 candidateRotations[0],
                 candidateRotations[1],
                 placementReach()
@@ -2915,7 +2954,7 @@ public class Scaffold extends Module {
 
         float yawMin = Math.min(minRotationSpeed.get(), maxRotationSpeed.get());
         float yawMax = Math.max(minRotationSpeed.get(), maxRotationSpeed.get());
-        float yawDifference = Math.abs(Mth.wrapDegrees(targetYaw - KrsClient.rotationManager.getRotationYaw()));
+        float yawDifference = Math.abs(Mth.wrapDegrees(targetYaw - Client.rotationManager.getRotationYaw()));
         float desiredYawSpeed = humanizedDesiredRotationSpeed(
                 yawMin, yawMax, yawDifference, 90.0F, 0.18F, humanizedMathSpeedBias
         );
@@ -2928,7 +2967,7 @@ public class Scaffold extends Module {
         );
 
         float[] pitchBounds = mathPitchSpeedBounds();
-        float pitchDifference = Math.abs(targetPitch - KrsClient.rotationManager.getRotationPitch());
+        float pitchDifference = Math.abs(targetPitch - Client.rotationManager.getRotationPitch());
         float desiredPitchSpeed = humanizedDesiredRotationSpeed(
                 pitchBounds[0], pitchBounds[1], pitchDifference, 35.0F, 0.25F, humanizedMathSpeedBias
         );
@@ -3045,9 +3084,9 @@ public class Scaffold extends Module {
     private void faceHitPos(Vec3 hitPos, float speed) {
         float[] rotations = rotationsToHitPos(hitPos);
         if (rotationMode.get().equalsIgnoreCase("math") && !isDownScaffoldActive())
-            KrsClient.rotationManager.startRotation(rotations[0], rotations[1], speed, getMathPitchRotationSpeed());
+            Client.rotationManager.startRotation(rotations[0], rotations[1], speed, getMathPitchRotationSpeed());
         else
-            KrsClient.rotationManager.startRotation(rotations[0], rotations[1], speed);
+            Client.rotationManager.startRotation(rotations[0], rotations[1], speed);
     }
 
     private float[] rotationsToHitPos(Vec3 hitPos) {

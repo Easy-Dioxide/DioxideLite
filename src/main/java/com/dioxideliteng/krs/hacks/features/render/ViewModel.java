@@ -1,6 +1,6 @@
 package com.dioxideliteng.krs.hacks.features.render;
 
-import com.dioxideliteng.krs.KrsClient;
+import com.dioxideliteng.krs.Client;
 import com.dioxideliteng.krs.hacks.Module;
 import com.dioxideliteng.krs.hacks.ModuleCategory;
 import com.dioxideliteng.krs.hacks.ModuleManager;
@@ -36,6 +36,10 @@ public class ViewModel extends Module {
     @Setting
     public static final BooleanValue noEquipAnimation = new BooleanValue("No Equip Animation", false);
 
+    public static boolean shouldSkipEquipAnimation() {
+        return ModuleManager.getModuleState(ViewModel.class) && noEquipAnimation.get() || OldHitting.shouldSkipEquipAnimation();
+    }
+
     @Setting
     public static final BooleanValue fluxSwing = new BooleanValue("Flux Swing", false);
 
@@ -52,7 +56,7 @@ public class ViewModel extends Module {
     private static final BooleanValue slowSwing = new BooleanValue("Slow Swing", false);
 
     @Setting
-    private static final IntValue setSwingSpeed = new IntValue("Set Swing Speed", 5, -5, 20, slowSwing::get);
+    private static final IntValue setSwingSpeed = new IntValue("Set Swing Speed", 5, -6, 20, slowSwing::get);
 
     public ViewModel() {
         super("View Model", ModuleCategory.Render, Keys.KEY_UNKNOWN, true, false);
@@ -60,7 +64,7 @@ public class ViewModel extends Module {
 
     @Override
     public void onDisable() {
-        if (KrsClient.loaded)
+        if (Client.loaded)
             this.toggle();
     }
 

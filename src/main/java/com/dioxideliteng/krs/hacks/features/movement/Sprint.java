@@ -7,7 +7,7 @@ import com.dioxideliteng.krs.hacks.Module;
 import com.dioxideliteng.krs.hacks.ModuleCategory;
 import com.dioxideliteng.krs.hacks.ModuleManager;
 import com.dioxideliteng.krs.hacks.features.player.Scaffold;
-import com.dioxideliteng.mixin.krs.LocalPlayerSprintAccessor;
+import mixins.krs.LocalPlayerSprintAccessor;
 import com.dioxideliteng.krs.utils.move.MovementUtil;
 import com.dioxideliteng.krs.utils.packet.PacketUtil;
 import com.dioxideliteng.krs.utils.value.BooleanValue;

@@ -110,6 +110,8 @@ public abstract class Feature {
          this.onDisable();
       }
       this.pendingWorldEnable = false;
+      // Native and ported twins (KillAura/KillAura2, Scaffold/Scaffold2) fight over rotation and placement.
+      if (this.enabled) FeatureManager.resolveConflicts(this);
 
       Events.refreshListeners();
       DynamicIslandManager.onModuleToggled(this);

@@ -1,6 +1,7 @@
 package com.dioxideliteng.krs.hacks.features.level;
 
-import com.dioxideliteng.krs.KrsClient;
+import com.dioxideliteng.krs.utils.render.RenderColors;
+import com.dioxideliteng.krs.Client;
 import com.dioxideliteng.krs.events.features.MotionEvent;
 import com.dioxideliteng.krs.hacks.Module;
 import com.dioxideliteng.krs.hacks.ModuleCategory;
@@ -9,6 +10,7 @@ import com.dioxideliteng.krs.hacks.features.player.AutoTool;
 import com.dioxideliteng.krs.utils.entity.PlayerUtil;
 import com.dioxideliteng.krs.utils.math.MSTimer;
 import com.dioxideliteng.krs.utils.math.ToolUtil;
+import com.dioxideliteng.krs.utils.render.BlockHighlight;
 import com.dioxideliteng.krs.utils.value.BooleanValue;
 import com.dioxideliteng.krs.utils.value.IntValue;
 import com.dioxideliteng.krs.utils.value.ListValue;
@@ -46,11 +48,15 @@ public class Nuker extends Module {
     private static final IntValue nukeSpeed = new IntValue("Nuke Speed", 10, 1, 10, () -> !singleBlock.get());
 
     @Setting
+    private static final ListValue swingOrderMode = new ListValue("Swing Order Mode", new String[]{"Normal", "Packet", "No Order"}, "Packet");
+
+    @Setting
     private static final BooleanValue noteBlockOnly = new BooleanValue("Note Block Only", false);
 
     private static boolean wasBreaking = false;
 
     private final MSTimer nukeTimer = new MSTimer();
+    private final BlockHighlight blockHighlight = new BlockHighlight(0.45f, RenderColors.NUKER);
     private BlockPos currentBlock = null;
     private final ArrayDeque<BlockPos> blockQueue = new ArrayDeque<>(256);
     private final ArrayList<BlockPos> potentialBlocks = new ArrayList<>(256);
@@ -68,13 +74,14 @@ public class Nuker extends Module {
         currentBlock = null;
         if (wasBreaking) {
             PlayerUtil.INSTANCE.stopDestroyBlock();
-            KrsClient.rotationManager.stopRotation();
+            Client.rotationManager.stopRotation();
         }
         wasBreaking = false;
         if (mc.player != null)
             restoreOriginalSlot(mc.player);
         originalSlot = -1;
         PlayerUtil.INSTANCE.stopSpoof();
+        blockHighlight.release();
     }
 
     @Override
@@ -102,13 +109,14 @@ public class Nuker extends Module {
     private void collectPotentialBlocks(ClientLevel level, BlockPos playerPos, Vec3 playerPosVec, int startY, int rangeValue, boolean breaking, boolean placing, boolean noteOnly, boolean skipCloseAirPlace) {
         potentialBlocks.clear();
         int rangeSquared = rangeValue * rangeValue;
+        BlockPos.MutableBlockPos targetPos = new BlockPos.MutableBlockPos();
 
         for (int x = -rangeValue; x <= rangeValue; x++) {
             for (int y = startY; y <= rangeValue; y++) {
                 for (int z = -rangeValue; z <= rangeValue; z++) {
                     if (x * x + y * y + z * z > rangeSquared) continue;
 
-                    BlockPos targetPos = playerPos.offset(x, y, z);
+                    targetPos.setWithOffset(playerPos, x, y, z);
                     if (skipCloseAirPlace && placing && !noteOnly && playerPosVec != null) {
                         double dx = playerPosVec.x - (targetPos.getX() + 0.5);
                         double dy = playerPosVec.y - (targetPos.getY() + 0.5);
@@ -117,10 +125,17 @@ public class Nuker extends Module {
                     }
 
                     if (shouldHandleBlock(level, targetPos, breaking, placing, noteOnly))
-                        potentialBlocks.add(targetPos);
+                        potentialBlocks.add(targetPos.immutable());
                 }
             }
         }
+    }
+
+    private void sortPotentialBlocks(BlockPos playerPos, boolean farthestFirst) {
+        if (farthestFirst)
+            potentialBlocks.sort((a, b) -> Double.compare(b.distSqr(playerPos), a.distSqr(playerPos)));
+        else
+            potentialBlocks.sort((a, b) -> Double.compare(a.distSqr(playerPos), b.distSqr(playerPos)));
     }
 
     private boolean isWithinRange(LocalPlayer player, BlockPos pos, int rangeValue) {
@@ -162,11 +177,12 @@ public class Nuker extends Module {
 
         if (potentialBlocks.isEmpty()) {
             resetBreaking(player, breaking);
-            KrsClient.rotationManager.stopRotation();
+            Client.rotationManager.stopRotation();
             return;
         }
 
-        potentialBlocks.sort((a, b) -> Double.compare(a.distSqr(playerPos), b.distSqr(playerPos)));
+        sortPotentialBlocks(playerPos, placing);
+        blockHighlight.setTargets(potentialBlocks);
         blockQueue.clear();
         blockQueue.addAll(potentialBlocks);
 
@@ -186,11 +202,11 @@ public class Nuker extends Module {
 
             if (breaking) {
                 selectBestTool(player, targetPos);
-                PlayerUtil.INSTANCE.nukeBlockWithPacket(hitResult);
+                PlayerUtil.INSTANCE.nukeBlockWithPacket(hitResult, swingOrderMode.get());
                 handledBlock = true;
             } else if (placing) {
                 if (gameMode.useItemOn(player, InteractionHand.MAIN_HAND, hitResult).consumesAction()) {
-                    PlayerUtil.INSTANCE.swingInteractHand(InteractionHand.MAIN_HAND);
+                    PlayerUtil.INSTANCE.swingInteractHand(InteractionHand.MAIN_HAND, swingOrderMode.get());
                     handledBlock = true;
                 }
             }
@@ -201,7 +217,7 @@ public class Nuker extends Module {
             PlayerUtil.INSTANCE.doSpoof(originalSlot);
         } else {
             resetBreaking(player, breaking);
-            KrsClient.rotationManager.stopRotation();
+            Client.rotationManager.stopRotation();
         }
 
         nukeTimer.reset();
@@ -212,6 +228,7 @@ public class Nuker extends Module {
         var player = mc.player;
         var level = mc.level;
         var gameMode = mc.gameMode;
+        blockHighlight.setTarget(null);
         if (player == null || level == null || gameMode == null) return;
 
         if (wasBreaking)
@@ -249,11 +266,11 @@ public class Nuker extends Module {
 
             if (potentialBlocks.isEmpty()) {
                 resetBreaking(player, breaking);
-                KrsClient.rotationManager.stopRotation();
+                Client.rotationManager.stopRotation();
                 return;
             }
 
-            potentialBlocks.sort((a, b) -> Double.compare(a.distSqr(playerPos), b.distSqr(playerPos)));
+            sortPotentialBlocks(playerPos, placing);
             currentBlock = potentialBlocks.get(0);
             current = currentBlock;
             breakStartTime = System.currentTimeMillis();
@@ -264,9 +281,10 @@ public class Nuker extends Module {
 
         wasBreaking = true;
         PlayerUtil.INSTANCE.doSpoof(originalSlot);
+        blockHighlight.setTarget(current);
 
         if (single && rotations.get())
-            KrsClient.rotationManager.faceBlock(current, 180f);
+            Client.rotationManager.faceBlock(current, 180f);
 
         BlockHitResult hitResult = PlayerUtil.INSTANCE.blockHitResult(current);
 
@@ -274,7 +292,7 @@ public class Nuker extends Module {
             selectBestTool(player, current);
 
             if (single || nukeTimer.hasTimePassed(1000L / (nukeSpeed.get() + 3))) {
-                PlayerUtil.INSTANCE.destroyBlock(hitResult);
+                PlayerUtil.INSTANCE.destroyBlock(hitResult, swingOrderMode.get());
                 nukeTimer.reset();
             }
 
@@ -284,7 +302,7 @@ public class Nuker extends Module {
             }
         } else if (placing) {
             if (gameMode.useItemOn(player, InteractionHand.MAIN_HAND, hitResult).consumesAction()) {
-                PlayerUtil.INSTANCE.swingInteractHand(InteractionHand.MAIN_HAND);
+                PlayerUtil.INSTANCE.swingInteractHand(InteractionHand.MAIN_HAND, swingOrderMode.get());
                 currentBlock = null;
                 breakStartTime = 0L;
             }

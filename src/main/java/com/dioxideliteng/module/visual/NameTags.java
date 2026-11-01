@@ -60,7 +60,9 @@ public final class NameTags extends Feature {
 
    public static boolean replaces(Entity entity) {
       NameTags module = FeatureManager.nameTags;
-      return module != null && module.isEnabled() && module.accepts(entity);
+      return module != null && module.isEnabled() && module.accepts(entity)
+         // The ported KRS tags ("NameTags2") also hide the vanilla tag for the entities they draw.
+         || com.dioxideliteng.krs.hacks.features.render.NameTags.replacesVanilla(entity);
    }
 
    private boolean accepts(Entity entity) {

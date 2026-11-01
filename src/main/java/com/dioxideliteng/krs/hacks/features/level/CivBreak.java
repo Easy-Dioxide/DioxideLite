@@ -1,6 +1,7 @@
 package com.dioxideliteng.krs.hacks.features.level;
 
-import com.dioxideliteng.krs.KrsClient;
+import com.dioxideliteng.krs.utils.render.RenderColors;
+import com.dioxideliteng.krs.Client;
 import com.dioxideliteng.krs.events.features.MotionEvent;
 import com.dioxideliteng.krs.events.features.SendPacketEvent;
 import com.dioxideliteng.krs.events.features.WorldEvent;
@@ -14,6 +15,7 @@ import com.dioxideliteng.krs.utils.math.BehaviorUtils;
 import com.dioxideliteng.krs.utils.math.MSTimer;
 import com.dioxideliteng.krs.utils.math.ToolUtil;
 import com.dioxideliteng.krs.utils.packet.PacketUtil;
+import com.dioxideliteng.krs.utils.render.BlockHighlight;
 import com.dioxideliteng.krs.utils.value.BooleanValue;
 import com.dioxideliteng.krs.utils.value.FloatValue;
 import com.dioxideliteng.krs.utils.value.IntValue;
@@ -39,11 +41,15 @@ public class CivBreak extends Module {
     private static final IntValue fastSpeed = new IntValue("Fast Speed", 10, 1, 10, () -> mode.get().equalsIgnoreCase("instant") || mode.get().equalsIgnoreCase("wait one break"));
 
     @Setting
+    private static final ListValue swingOrderMode = new ListValue("Swing Order Mode", new String[]{"Normal", "Packet", "No Order"}, "Packet");
+
+    @Setting
     private static final BooleanValue rotations = new BooleanValue("Rotations", true);
 
     private static boolean wasBreaking = false;
 
     private final MSTimer rotateTimer = new MSTimer();
+    private final BlockHighlight blockHighlight = new BlockHighlight(RenderColors.CIV_BREAK);
     private int originalSlot = -1;
     private BlockPos pos = null;
     private Direction direction = null;
@@ -65,13 +71,14 @@ public class CivBreak extends Module {
         }
         PlayerUtil.INSTANCE.stopSpoof();
         if (wasBreaking)
-            KrsClient.rotationManager.stopRotation();
+            Client.rotationManager.stopRotation();
         if (wasBreaking)
             PlayerUtil.INSTANCE.stopDestroyBlock();
         wasBreaking = false;
         pos = null;
         direction = null;
         stage = 0;
+        blockHighlight.release();
     }
 
     @Override
@@ -91,7 +98,7 @@ public class CivBreak extends Module {
             BehaviorUtils.noKillAura = false;
         }
         if (wasBreaking)
-            KrsClient.rotationManager.stopRotation();
+            Client.rotationManager.stopRotation();
         if (wasBreaking)
             PlayerUtil.INSTANCE.stopDestroyBlock();
         wasBreaking = false;
@@ -105,20 +112,25 @@ public class CivBreak extends Module {
         var player = mc.player;
         var level = mc.level;
         var gameMode = mc.gameMode;
+        blockHighlight.setTarget(null);
         if (player == null || level == null || gameMode == null || gameMode.getPlayerMode() == GameType.ADVENTURE || gameMode.getPlayerMode() == GameType.SPECTATOR) return;
         if (ModuleManager.getModuleState(Scaffold.class)) return;
 
         BlockPos targetPos = pos;
         Direction targetDirection = direction;
+        if (targetPos != null)
+            blockHighlight.setTarget(targetPos);
+
         double rangeLimit = range.get() * range.get();
-        if (targetPos == null
-                || targetDirection == null
-                || level.getBlockState(targetPos).isAir() && stage == 1
-                || rangeLimit < player.distanceToSqr(Vec3.atCenterOf(targetPos))) {
+        boolean validTarget = targetPos != null
+                && targetDirection != null
+                && rangeLimit >= player.distanceToSqr(Vec3.atCenterOf(targetPos));
+
+        if (!validTarget || level.getBlockState(targetPos).isAir() && stage == 1) {
             if (wasBreaking) {
                 PlayerUtil.INSTANCE.stopDestroyBlock();
                 if (rotations.get())
-                    KrsClient.rotationManager.stopRotation();
+                    Client.rotationManager.stopRotation();
                 if (originalSlot != -1 && originalSlot != player.getInventory().getSelectedSlot()) {
                     player.getInventory().setSelectedSlot(originalSlot);
                     originalSlot = -1;
@@ -131,7 +143,7 @@ public class CivBreak extends Module {
         }
 
         if (rotations.get())
-            KrsClient.rotationManager.faceBlock(targetPos, 180f);
+            Client.rotationManager.faceBlock(targetPos, 180f);
 
         BehaviorUtils.noKillAura = true;
 
@@ -153,10 +165,10 @@ public class CivBreak extends Module {
         wasBreaking = true;
 
         switch (stage) {
-            case 0 -> PlayerUtil.INSTANCE.destroyBlock(targetPos);
+            case 0 -> PlayerUtil.INSTANCE.destroyBlock(targetPos, swingOrderMode.get());
             case 1 -> {
                 if (rotateTimer.hasTimePassed(1000L / (fastSpeed.get() + 2))) {
-                    PlayerUtil.INSTANCE.sendSwingPacket(InteractionHand.MAIN_HAND);
+                    PlayerUtil.INSTANCE.swingHand(InteractionHand.MAIN_HAND, swingOrderMode.get());
                     ServerboundPlayerActionPacket.Action action = mc.player.isCreative() ? ServerboundPlayerActionPacket.Action.START_DESTROY_BLOCK : ServerboundPlayerActionPacket.Action.STOP_DESTROY_BLOCK;
                     for (int i = 0; i < 2; i++) {
                         PacketUtil.sendPacket(new ServerboundPlayerActionPacket(

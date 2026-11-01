@@ -1,25 +1,30 @@
 package com.dioxideliteng.krs.hacks;
 
-import com.dioxideliteng.krs.KrsClient;
-import com.dioxideliteng.krs.configs.ConfigObject;
-import com.dioxideliteng.krs.events.EventManager;
 import com.dioxideliteng.krs.events.EventListener;
-import com.dioxideliteng.krs.hacks.features.render.Interface;
 
 import java.lang.annotation.ElementType;
 import java.lang.annotation.Retention;
 import java.lang.annotation.RetentionPolicy;
 import java.lang.annotation.Target;
 
+/**
+ * Compatibility base class for ported KRS modules.
+ *
+ * <p>KRS modules keep their original shape (constructor, {@code @Setting} value fields, {@code onXxx} listener methods).
+ * Registration, enabling, key binds, settings UI and persistence are provided by DioxideLiteNG through the
+ * {@link KrsFeature} that wraps each module. This class intentionally does <em>not</em> extend
+ * {@link com.dioxideliteng.module.Feature}: KRS code reaches {@code mc} through {@code IMinecraft}, which would be an
+ * ambiguous simple name next to {@code Feature.mc}.
+ */
 public abstract class Module implements EventListener {
     public final String moduleName;
     public final ModuleCategory moduleCategory;
     public int key;
+    /** Mirrors the wrapping feature's enabled flag; it is already updated while {@link #onEnable()} runs. */
     public volatile boolean tempEnabled;
     public boolean showOnArray;
-    private boolean disposing;
 
-    public ConfigObject configObject = new ConfigObject(this);
+    private KrsFeature feature;
 
     @Target(ElementType.FIELD)
     @Retention(RetentionPolicy.RUNTIME)
@@ -34,77 +39,34 @@ public abstract class Module implements EventListener {
         this.showOnArray = showOnArray;
     }
 
+    final void attach(KrsFeature feature) {
+        this.feature = feature;
+    }
+
+    /** The DioxideLiteNG feature wrapping this module, or {@code null} before registration. */
+    public final KrsFeature feature() {
+        return feature;
+    }
+
+    /** Name shown in the Click GUI and config; differs from {@link #moduleName} when a DioxideLiteNG module owns it (suffix "2"). */
+    public final String displayName() {
+        return feature == null ? moduleName : feature.getName();
+    }
+
     public synchronized void setState(boolean state) {
-        if (disposing) return;
-        if (tempEnabled == state) return;
-
-        if (state) {
-            EventManager eventManager = KrsClient.eventManager;
-            if (eventManager == null)
-                throw new IllegalStateException("Event manager is not initialized");
-
-            this.tempEnabled = true;
-            eventManager.register(this);
-            try {
-                onEnable();
-            } catch (RuntimeException | Error failure) {
-                this.tempEnabled = false;
-                eventManager.unregister(this);
-                try {
-                    onDisable();
-                } catch (RuntimeException | Error cleanupFailure) {
-                    if (cleanupFailure != failure)
-                        failure.addSuppressed(cleanupFailure);
-                }
-                throw failure;
-            }
-        } else {
-            this.tempEnabled = false;
-            EventManager eventManager = KrsClient.eventManager;
-            if (eventManager != null)
-                eventManager.unregister(this);
-            onDisable();
+        if (feature == null) {
+            this.tempEnabled = state;
+            return;
         }
+        feature.setEnabled(state);
     }
 
     public synchronized void toggle() {
-        if (disposing) return;
-
-        try {
-            setState(!this.tempEnabled);
-        } finally {
-            Interface.reloadSortedModules();
-        }
-    }
-
-    final synchronized void activateInitialState() {
-        if (!tempEnabled)
+        if (feature == null) {
+            this.tempEnabled = !this.tempEnabled;
             return;
-
-        tempEnabled = false;
-        setState(true);
-    }
-
-    final synchronized void dispose(EventManager eventManager) {
-        boolean wasEnabled = tempEnabled;
-        disposing = true;
-        tempEnabled = false;
-        try {
-            if (eventManager != null)
-                eventManager.unregister(this);
-            if (KrsClient.eventManager != null && KrsClient.eventManager != eventManager)
-                KrsClient.eventManager.unregister(this);
-
-            if (wasEnabled)
-                onDisable();
-        } finally {
-            tempEnabled = false;
-            if (eventManager != null)
-                eventManager.unregister(this);
-            if (KrsClient.eventManager != null && KrsClient.eventManager != eventManager)
-                KrsClient.eventManager.unregister(this);
-            disposing = false;
         }
+        feature.toggle();
     }
 
     public String description() {
@@ -116,5 +78,6 @@ public abstract class Module implements EventListener {
     }
 
     public abstract void onEnable();
+
     public abstract void onDisable();
 }
