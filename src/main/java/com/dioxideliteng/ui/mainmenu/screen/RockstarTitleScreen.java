@@ -462,6 +462,14 @@ public class RockstarTitleScreen extends Screen {
          if (!System.getProperty("os.name", "").toLowerCase(Locale.ROOT).contains("win")) {
             return;
          }
+         // 这段只在 Windows 执行，通过 JNA 调 dwmapi 的 DwmSetWindowAttribute，
+         // 效果仅为暗色标题栏/圆角，纯装饰，但属于原生调用。诊断版默认关闭，
+         // 以排除它对「窗口出现后崩端」的干扰；需要时可显式开启。
+         if (!Boolean.getBoolean("dioxideliteng.windowChrome")) {
+            LOG.info("DioxideLiteNG: Windows DWM window chrome skipped in the diagnostic build "
+               + "(-Ddioxideliteng.windowChrome=true to restore)");
+            return;
+         }
          // Window.handle() is an SDL_Window*, never a GLFWwindow* in 26.3.
          int properties = SDLVideo.SDL_GetWindowProperties(window.handle());
          long hwnd = SDLProperties.SDL_GetPointerProperty(properties, SDLVideo.SDL_PROP_WINDOW_WIN32_HWND_POINTER, 0L);

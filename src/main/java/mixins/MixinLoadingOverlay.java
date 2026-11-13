@@ -30,15 +30,20 @@ public abstract class MixinLoadingOverlay {
       cancellable = true
    )
    private void dioxideliteng$customLoadingScreen(CallbackInfo callbackInfo) {
-      Minecraft mc = Minecraft.getInstance();
-      if (!NVGRenderer.isAvailable()) return;
-      // Keep vanilla tick's completion callback, error handling and screen init intact.
-      if (this.fadeIn && this.fadeInStart == -1L) this.fadeInStart = Util.getMillis();
-      boolean done = this.reload.isDone();
-      DioxideLiteNGLoadingState.progress = this.reload.getActualProgress();
-      DioxideLiteNGLoadingState.done = done;
+      try {
+         Minecraft mc = Minecraft.getInstance();
+         if (!NVGRenderer.isAvailable()) return;
+         // Keep vanilla tick's completion callback, error handling and screen init intact.
+         if (this.fadeIn && this.fadeInStart == -1L) this.fadeInStart = Util.getMillis();
+         boolean done = this.reload.isDone();
+         DioxideLiteNGLoadingState.progress = this.reload.getActualProgress();
+         DioxideLiteNGLoadingState.done = done;
 
-      if (this.fadeOutStart != -1L && Util.getMillis() - this.fadeOutStart > 400L) mc.gui.setOverlay(null);
-      callbackInfo.cancel();
+         if (this.fadeOutStart != -1L && Util.getMillis() - this.fadeOutStart > 400L) mc.gui.setOverlay(null);
+         callbackInfo.cancel();
+      } catch (Throwable error) {
+         // 出现任何异常都不 cancel，直接回落到原版加载画面，保证游戏能进主菜单。
+         com.dioxideliteng.util.render.RenderDiagnostics.report("loadingOverlay", error);
+      }
    }
 }

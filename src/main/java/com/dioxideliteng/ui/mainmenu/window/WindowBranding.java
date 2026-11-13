@@ -34,7 +34,10 @@ public final class WindowBranding {
             if (surface != null) SDL_DestroySurface(surface);
             MemoryUtil.memFree(pixels);
          }
-      } catch (Exception error) {
+      } catch (Throwable error) {
+         // NoClassDefFoundError / UnsatisfiedLinkError 是 Error 而不是 Exception，
+         // 之前 catch(Exception) 会让它们直接冒泡到启动流程。
+         com.dioxideliteng.util.render.RenderDiagnostics.report("windowIcon", error);
          LoggerFactory.getLogger("dioxideliteng").warn("Unable to apply DioxideLiteNG window icon", error);
       }
    }

@@ -28,8 +28,12 @@ public class MixinGuiRenderer {
    @Inject(method = "render", at = @At("HEAD"))
    private void dioxideliteng$prepareHudBackdrop(CallbackInfo callbackInfo) {
       this.dioxideliteng$islandBehindContainer = false;
-      HudBackdrop.prepare();
-      this.dioxideliteng$renderIslandBeforeContainer();
+      try {
+         HudBackdrop.prepare();
+         this.dioxideliteng$renderIslandBeforeContainer();
+      } catch (Throwable error) {
+         com.dioxideliteng.util.render.RenderDiagnostics.report("guiRendererHead", error);
+      }
    }
 
    @Unique
@@ -55,11 +59,23 @@ public class MixinGuiRenderer {
 
    @Inject(method = "close", at = @At("HEAD"))
    private void dioxideliteng$closeHudBackdrop(CallbackInfo callbackInfo) {
-      HudBackdrop.close();
+      try { HudBackdrop.close(); }
+      catch (Throwable error) {
+         com.dioxideliteng.util.render.RenderDiagnostics.report("guiRendererClose", error);
+      }
    }
 
    @Inject(method = "endFrame", at = @At("TAIL"))
    private void dioxideliteng$renderNanoGui(CallbackInfo callbackInfo) {
+      // 注入点里任何 Java 异常都必须就地吞掉并写诊断，不能冒泡成崩端。
+      try {
+         dioxideliteng$renderNanoGuiUnsafe();
+      } catch (Throwable error) {
+         com.dioxideliteng.util.render.RenderDiagnostics.report("guiRendererTail", error);
+      }
+   }
+
+   private void dioxideliteng$renderNanoGuiUnsafe() {
       boolean hud = FeatureManager.hud != null && (FeatureManager.hud.isEnabled() || com.dioxideliteng.ui.hud.editor.HudEditorScreen.active());
       Minecraft mc = Minecraft.getInstance();
       Screen current = mc == null ? null : mc.gui.screen();
